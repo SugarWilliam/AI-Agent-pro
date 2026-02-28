@@ -116,10 +116,17 @@
             
             // 6. 调用MCP工具
             let mcpResults = [];
+            let searchThinking = '';
             if (enableWebSearch && resources.mcp.some(m => m.id === 'mcp_web_search')) {
                 const searchResults = await this.performWebSearch(messages[messages.length - 1]?.content);
                 if (searchResults.length > 0) {
                     mcpResults.push({ type: 'search', data: searchResults });
+                    
+                    // 将搜索结果格式化为思考过程
+                    searchThinking = '\n\n🔍 网络搜索结果：\n';
+                    searchResults.forEach((result, index) => {
+                        searchThinking += `\n${index + 1}. ${result.title}\n   ${result.url}\n   ${result.snippet || ''}\n`;
+                    });
                 }
             }
 
@@ -140,7 +147,7 @@
             });
 
             // 9. 调用LLM
-            return await this.callLLM({
+            const result = await this.callLLM({
                 messages,
                 systemPrompt,
                 modelId: actualModelId,
@@ -148,6 +155,13 @@
                 outputFormat,
                 taskAnalysis
             });
+
+            // 10. 如果有搜索结果，添加到思考过程中
+            if (searchThinking) {
+                result.thinking = (result.thinking || '') + searchThinking;
+            }
+
+            return result;
         },
 
         // 分析任务类型

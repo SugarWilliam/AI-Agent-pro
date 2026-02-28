@@ -39,6 +39,15 @@
         
         updateAgentName();
         updateModeBadge();
+        updateSearchButton();
+    }
+
+    function updateSearchButton() {
+        const btn = document.getElementById('search-btn');
+        if (btn) {
+            const isEnabled = window.AppState.settings?.webSearchEnabled || false;
+            btn.classList.toggle('active', isEnabled);
+        }
     }
 
     function updateAgentName() {
@@ -379,27 +388,48 @@
         if (!input) return;
 
         const content = input.value.trim();
-        if (!content) return;
+        if (!content && (!window.AppState.uploadedFiles || window.AppState.uploadedFiles.length === 0)) return;
 
         // 创建新对话（如果没有）
         if (!window.AppState.currentChatId) {
             createNewChat();
         }
 
+        // 处理文件附件
+        let messageContent = content;
+        let attachments = [];
+        
+        if (window.AppState.uploadedFiles && window.AppState.uploadedFiles.length > 0) {
+            const fileContents = window.AppState.uploadedFiles.map(f => {
+                return `\n\n【文件：${f.file.name}】\n${f.content}`;
+            }).join('');
+            
+            if (messageContent) {
+                messageContent += fileContents;
+            } else {
+                messageContent = fileContents.substring(2);
+            }
+            
+            attachments = window.AppState.uploadedFiles.map(f => f.attachment);
+        }
+
         // 添加用户消息
         const userMessage = {
             id: 'msg_' + Date.now(),
             role: 'user',
-            content: content,
+            content: messageContent,
+            attachments: attachments,
             timestamp: Date.now()
         };
 
         if (!window.AppState.messages) window.AppState.messages = [];
         window.AppState.messages.push(userMessage);
 
-        // 清空输入
+        // 清空输入和文件附件
         input.value = '';
         input.style.height = 'auto';
+        window.AppState.uploadedFiles = [];
+        renderFileAttachments();
 
         // 更新UI
         window.AIAgentUI?.renderMessages?.();
@@ -487,17 +517,10 @@
         const files = Array.from(e.target.files);
         if (!files || files.length === 0) return;
 
-        // 创建新对话（如果没有）
-        if (!window.AppState.currentChatId) {
-            createNewChat();
-        }
-
         // 存储上传的文件
         if (!window.AppState.uploadedFiles) {
             window.AppState.uploadedFiles = [];
         }
-
-        window.AIAgentUI?.showToast?.(`已选择 ${files.length} 个文件，点击"分析文件"按钮开始分析`, 'info');
 
         try {
             for (const file of files) {
@@ -562,8 +585,8 @@
                 });
             }
 
-            // 显示文件列表
-            showFileList();
+            // 在输入框上方显示文件附件
+            renderFileAttachments();
 
         } catch (error) {
             console.error('文件处理失败:', error);
@@ -573,95 +596,55 @@
         e.target.value = '';
     }
 
-    // 显示文件列表
-    function showFileList() {
+    // 渲染文件附件
+    function renderFileAttachments() {
+        const container = document.getElementById('file-attachments');
+        if (!container) return;
+
         const files = window.AppState.uploadedFiles || [];
-        if (files.length === 0) return;
-
-        // 创建或更新文件列表UI
-        let fileListEl = document.getElementById('file-list-container');
-        if (!fileListEl) {
-            fileListEl = document.createElement('div');
-            fileListEl.id = 'file-list-container';
-            fileListEl.className = 'file-list-container';
-            const messagesContainer = document.getElementById('messages-container');
-            if (messagesContainer) {
-                messagesContainer.insertBefore(fileListEl, messagesContainer.firstChild);
-            }
-        }
-
-        fileListEl.innerHTML = `
-            <div class="file-list-header">
-                <span><i class="fas fa-paperclip"></i> 已选择 ${files.length} 个文件</span>
-                <button class="btn btn-sm btn-primary" id="analyze-files-btn">
-                    <i class="fas fa-magic"></i> 分析文件
-                </button>
-            </div>
-            <div class="file-list-items">
-                ${files.map((f, i) => `
-                    <div class="file-list-item">
-                        <input type="checkbox" id="file-check-${i}" class="file-checkbox" checked>
-                        <label for="file-check-${i}">
-                            <i class="fas fa-file"></i>
-                            <span>${f.file.name}</span>
-                            <span class="file-size">(${(f.file.size / 1024).toFixed(1)} KB)</span>
-                        </label>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-
-        // 绑定分析按钮事件
-        document.getElementById('analyze-files-btn')?.addEventListener('click', analyzeSelectedFiles);
-    }
-
-    // 分析选中的文件
-    async function analyzeSelectedFiles() {
-        const files = window.AppState.uploadedFiles || [];
-        const checkboxes = document.querySelectorAll('.file-checkbox:checked');
-        const selectedIndices = Array.from(checkboxes).map(cb => 
-            parseInt(cb.id.replace('file-check-', ''))
-        );
-
-        if (selectedIndices.length === 0) {
-            window.AIAgentUI?.showToast?.('请至少选择一个文件', 'warning');
+        
+        if (files.length === 0) {
+            container.innerHTML = '';
             return;
         }
 
-        window.AIAgentUI?.showToast?.(`正在分析 ${selectedIndices.length} 个文件...`, 'info');
-
-        // 移除文件列表UI
-        const fileListEl = document.getElementById('file-list-container');
-        if (fileListEl) fileListEl.remove();
-
-        // 处理选中的文件
-        for (const index of selectedIndices) {
-            const fileData = files[index];
-            if (!fileData) continue;
-
-            const userMessage = {
-                id: 'msg_' + Date.now() + '_' + index,
-                role: 'user',
-                content: `请分析以下文件：\n\n文件名：${fileData.file.name}\n\n内容：\n${fileData.content}`,
-                attachments: fileData.attachment ? [fileData.attachment] : [],
-                timestamp: Date.now()
-            };
-
-            if (!window.AppState.messages) window.AppState.messages = [];
-            window.AppState.messages.push(userMessage);
-        }
-
-        // 清空已上传文件列表
-        window.AppState.uploadedFiles = [];
-
-        // 更新UI
-        window.AIAgentUI?.renderMessages?.();
-        updateCurrentChat();
-        window.AIAgentApp?.debouncedSave?.();
-
-        // 发送消息获取AI回复
-        await sendMessageWithContent(`请分析以上 ${selectedIndices.length} 个文件的内容`);
+        container.innerHTML = files.map((fileData, index) => {
+            const file = fileData.file;
+            const fileSize = (file.size / 1024).toFixed(1);
+            const iconClass = getFileIcon(file.type, file.name);
+            
+            return `
+                <div class="file-attachment-item" data-index="${index}">
+                    <i class="fas ${iconClass} file-icon"></i>
+                    <span class="file-name">${file.name}</span>
+                    <span class="file-size">${fileSize} KB</span>
+                    <button class="file-remove" onclick="removeFileAttachment(${index})" title="移除">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        }).join('');
     }
+
+    // 获取文件图标
+    function getFileIcon(fileType, fileName) {
+        if (fileType.startsWith('image/')) return 'fa-image';
+        if (fileType === 'application/pdf') return 'fa-file-pdf';
+        if (fileType.includes('word') || fileType.includes('document')) return 'fa-file-word';
+        if (fileType === 'text/csv' || fileName.endsWith('.csv')) return 'fa-file-csv';
+        if (fileType.includes('sheet') || fileType.includes('excel') || fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) return 'fa-file-excel';
+        if (fileType === 'text/plain' || fileName.endsWith('.txt')) return 'fa-file-alt';
+        if (fileType === 'text/markdown' || fileName.endsWith('.md')) return 'fa-file-code';
+        return 'fa-file';
+    }
+
+    // 移除文件附件
+    window.removeFileAttachment = function(index) {
+        if (window.AppState.uploadedFiles) {
+            window.AppState.uploadedFiles.splice(index, 1);
+            renderFileAttachments();
+        }
+    };
 
     // 解析PDF文件
     async function parsePDFFile(file) {
