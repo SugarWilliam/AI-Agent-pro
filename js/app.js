@@ -1,12 +1,12 @@
 /**
- * AI Agent Pro v6.0.0 - 应用状态管理
+ * AI Agent Pro v8.0.0 - 应用状态管理
  * 多模态AI Agent - 支持输入输出多模态
  */
 
 (function() {
     'use strict';
 
-    const VERSION = '7.9.0';
+    const VERSION = '8.0.0';
     const STORAGE_KEY = 'ai_agent_state_v6';
     const CUSTOM_MODELS_KEY = 'ai_agent_custom_models_v6';
     const CUSTOM_SUBAGENTS_KEY = 'ai_agent_custom_subagents_v6';
@@ -40,7 +40,8 @@
         'glm-4-flash': '052dd25c55a54c3f8a4e087230b7e43c.V3pCoVwBQsxhKqVe',
         'deepseek-chat': 'sk-a135315b7bf248c1978dabca70819936',
         'deepseek-reasoner': 'sk-a135315b7bf248c1978dabca70819936',
-        'qwen-max': 'sk-9eeb995cf93d441aa74869af1f2decd0'
+        'qwen-max': 'sk-9eeb995cf93d441aa74869af1f2decd0',
+        'jina-ai': '' // Jina AI API密钥（用户需要自行配置）
     };
 
     // ==================== 内置模型配置 ====================
@@ -642,7 +643,7 @@ ${prompt}
             category: '金融',
             documents: [],
             protocol: 'rag://1.0',
-            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'html', 'url'],
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
             vectorized: false,
             documentCount: 0,
             externalSources: [
@@ -666,7 +667,7 @@ ${prompt}
             category: '哲学',
             documents: [],
             protocol: 'rag://1.0',
-            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'html', 'url'],
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
             vectorized: false,
             documentCount: 0,
             externalSources: [
@@ -689,7 +690,7 @@ ${prompt}
             category: '文学',
             documents: [],
             protocol: 'rag://1.0',
-            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'html', 'url'],
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
             vectorized: false,
             documentCount: 0,
             externalSources: [
@@ -712,7 +713,7 @@ ${prompt}
             category: '技术',
             documents: [],
             protocol: 'rag://1.0',
-            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'html', 'url'],
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
             vectorized: false,
             documentCount: 0,
             externalSources: [
@@ -736,7 +737,7 @@ ${prompt}
             category: 'AI',
             documents: [],
             protocol: 'rag://1.0',
-            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'html', 'url'],
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
             vectorized: false,
             documentCount: 0,
             externalSources: [
@@ -760,7 +761,7 @@ ${prompt}
             category: '摄影',
             documents: [],
             protocol: 'rag://1.0',
-            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'html', 'url', 'image'],
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
             vectorized: false,
             documentCount: 0,
             externalSources: [
@@ -783,7 +784,7 @@ ${prompt}
             category: '地理',
             documents: [],
             protocol: 'rag://1.0',
-            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'html', 'url'],
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
             vectorized: false,
             documentCount: 0,
             externalSources: [
@@ -806,7 +807,7 @@ ${prompt}
             category: '社科',
             documents: [],
             protocol: 'rag://1.0',
-            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'html', 'url'],
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
             vectorized: false,
             documentCount: 0,
             externalSources: [
@@ -829,7 +830,7 @@ ${prompt}
             category: '思维方法',
             documents: [],
             protocol: 'rag://1.0',
-            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'html', 'url'],
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
             vectorized: false,
             documentCount: 0,
             externalSources: [
@@ -858,7 +859,7 @@ ${prompt}
             category: '思维方法',
             documents: [],
             protocol: 'rag://1.0',
-            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'html', 'url'],
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
             vectorized: false,
             documentCount: 0,
             externalSources: [
@@ -888,7 +889,7 @@ ${prompt}
             category: '心理学',
             documents: [],
             protocol: 'rag://1.0',
-            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'html', 'url'],
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
             vectorized: false,
             documentCount: 0,
             externalSources: [
@@ -926,7 +927,7 @@ ${prompt}
             category: '科学',
             documents: [],
             protocol: 'rag://1.0',
-            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'html', 'url'],
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
             vectorized: false,
             documentCount: 0,
             externalSources: [
@@ -965,7 +966,7 @@ ${prompt}
             category: '逻辑学',
             documents: [],
             protocol: 'rag://1.0',
-            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'html', 'url'],
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
             vectorized: false,
             documentCount: 0,
             externalSources: [
@@ -999,7 +1000,7 @@ ${prompt}
             category: '时间逻辑',
             documents: [],
             protocol: 'rag://1.0',
-            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'html', 'url'],
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
             vectorized: false,
             documentCount: 0,
             externalSources: [],
@@ -1029,7 +1030,7 @@ ${prompt}
             category: '常识',
             documents: [],
             protocol: 'rag://1.0',
-            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'html', 'url'],
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
             vectorized: false,
             documentCount: 0,
             externalSources: [],
@@ -1059,7 +1060,7 @@ ${prompt}
             category: '历史',
             documents: [],
             protocol: 'rag://1.0',
-            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'html', 'url'],
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
             vectorized: false,
             documentCount: 0,
             externalSources: [],
@@ -1083,6 +1084,125 @@ ${prompt}
    - 成功案例：改革成功、创新突破、危机处理
    - 失败教训：决策失误、战略错误、执行失败
    - 经典决策：历史名臣的决策智慧`
+        },
+        {
+            id: 'rag_industry_reports',
+            name: '行业权威报告',
+            description: '安防、人工智能、奶粉、直播、短视频、AI、前瞻性行业权威报告',
+            enabled: true,
+            category: '行业报告',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [
+                { name: '艾瑞咨询', url: 'https://www.iresearch.com.cn/', type: 'website', description: '行业研究报告' },
+                { name: '36氪研究院', url: 'https://36kr.com/research', type: 'website', description: '科技行业报告' },
+                { name: '前瞻产业研究院', url: 'https://bg.qianzhan.com/', type: 'website', description: '前瞻性行业分析' },
+                { name: '中商产业研究院', url: 'https://www.askci.com/', type: 'website', description: '产业研究报告' }
+            ],
+            defaultContent: `行业权威报告知识库：
+1. 安防行业：
+   - 市场规模：全球安防市场规模、中国安防市场占比
+   - 技术趋势：AI+安防、智能监控、人脸识别、行为分析
+   - 应用场景：智慧城市、智能交通、金融安防、企业安防
+   - 竞争格局：海康威视、大华股份、宇视科技等头部企业
+   - 政策环境：国家政策支持、行业标准规范
+
+2. 人工智能行业：
+   - 技术发展：机器学习、深度学习、大模型、AGI
+   - 应用领域：计算机视觉、自然语言处理、语音识别、机器人
+   - 市场规模：全球AI市场、中国AI产业规模
+   - 投资趋势：AI投资热点、独角兽企业、IPO情况
+   - 政策支持：国家AI战略、产业政策、人才培养
+
+3. 奶粉行业：
+   - 市场规模：婴幼儿配方奶粉市场规模、增长趋势
+   - 品牌格局：国际品牌vs国产品牌、市场份额
+   - 消费趋势：高端化、有机化、个性化需求
+   - 监管政策：配方注册制、食品安全标准
+   - 渠道变化：线上渠道增长、新零售模式
+
+4. 直播行业：
+   - 市场规模：直播电商GMV、用户规模、主播经济
+   - 平台格局：抖音、快手、淘宝直播、小红书
+   - 商业模式：打赏、广告、电商、知识付费
+   - 技术趋势：VR直播、AI虚拟主播、互动技术
+   - 监管政策：内容监管、税务规范、行业自律
+
+5. 短视频行业：
+   - 用户规模：短视频用户数、使用时长、渗透率
+   - 平台竞争：抖音、快手、视频号、B站
+   - 内容生态：UGC、PGC、MCN机构
+   - 商业化：广告、电商、游戏、教育
+   - 技术趋势：AI推荐算法、视频编辑工具、特效技术
+
+6. AI行业（综合）：
+   - 技术前沿：大语言模型、多模态AI、AGI进展
+   - 应用落地：AI+各行业应用案例、商业化路径
+   - 投资融资：AI融资情况、估值水平、退出渠道
+   - 人才需求：AI人才缺口、薪资水平、培养路径
+   - 伦理安全：AI安全、数据隐私、算法公平性
+
+7. 前瞻性行业：
+   - 新兴技术：量子计算、脑机接口、基因编辑、新能源
+   - 未来趋势：数字化转型、绿色经济、老龄化应对
+   - 投资机会：早期投资、成长投资、产业投资
+   - 风险评估：技术风险、市场风险、政策风险
+   - 战略规划：企业战略、产业布局、区域规划`
+        },
+        {
+            id: 'rag_government_reports',
+            name: '政府工作报告',
+            description: '政府工作报告、五年规划、国家政策、发展规划',
+            enabled: true,
+            category: '政策报告',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [
+                { name: '中国政府网', url: 'http://www.gov.cn/', type: 'website', description: '政府工作报告、政策文件' },
+                { name: '国家发展改革委', url: 'https://www.ndrc.gov.cn/', type: 'website', description: '发展规划、产业政策' },
+                { name: '国务院', url: 'http://www.gov.cn/guowuyuan/', type: 'website', description: '国务院政策文件' }
+            ],
+            defaultContent: `政府工作报告与政策知识库：
+1. 五年规划：
+   - 十五五规划（2026-2030）：国家中长期发展规划
+     * 发展目标：经济增长、科技创新、绿色发展、民生改善
+     * 重点任务：产业升级、区域协调、乡村振兴、新型城镇化
+     * 战略举措：创新驱动、改革开放、绿色发展、共同富裕
+   - 十四五规划（2021-2025）：已实施规划
+     * 双循环新发展格局
+     * 科技创新自立自强
+     * 碳达峰碳中和
+   - 历史规划：十三五、十二五等历史规划经验
+
+2. 政府工作报告：
+   - 年度政府工作报告：经济发展目标、重点工作任务
+   - 政策导向：宏观调控、产业政策、区域政策
+   - 民生保障：就业、教育、医疗、养老、住房
+   - 改革开放：营商环境、对外开放、制度创新
+
+3. 国家政策：
+   - 产业政策：战略性新兴产业、传统产业升级
+   - 区域政策：京津冀、长三角、粤港澳、成渝双城
+   - 科技政策：科技创新、人才培养、知识产权
+   - 环保政策：双碳目标、绿色发展、生态文明
+
+4. 发展规划：
+   - 国家战略：一带一路、乡村振兴、新型城镇化
+   - 区域规划：城市群规划、都市圈规划
+   - 专项规划：交通、能源、信息、教育、医疗
+   - 政策解读：政策背景、实施路径、预期效果
+
+5. 决策参考：
+   - 政策趋势：政策方向、重点领域、支持措施
+   - 投资机会：政策支持领域、重点投资项目
+   - 风险提示：政策风险、合规要求、监管变化
+   - 战略建议：基于政策导向的战略建议`
         }
     ];
 
@@ -1343,7 +1463,7 @@ ${prompt}
         super_decision: {
             id: 'super_decision',
             name: '超级决策',
-            description: '深度决策分析、认知偏差识别、风险评估、决策矩阵渲染、Mermaid可视化',
+            description: '深度决策分析、认知偏差识别、风险评估、决策矩阵渲染、Mermaid可视化。默认关联行业权威报告、政府工作报告、金字塔原理、SMART原则、社会结构约束、关键洞察、沙盘推演。支持对话问答收集用户个性数据和状态，进行个性化输出矫正',
             icon: 'fa-chess-king',
             systemPrompt: `你是超级决策专家，深度融合决策分析与认知心理学，帮助用户做出更精准、更完备的决策。
 
@@ -1386,6 +1506,8 @@ ${prompt}
 3. SWOT分析：评估优势劣势机会威胁
 4. 成本效益分析：量化决策影响
 5. 前景理论：理解损失厌恶和风险偏好
+6. 金字塔原理：结构化思维，先结论后论据，确保逻辑严密
+7. SMART原则：制定具体(Specific)、可衡量(Measurable)、可达成(Achievable)、相关(Relevant)、有时限(Time-bound)的目标
 
 四、逻辑严密性（基于逻辑学知识库）
 1. 形式逻辑验证：
@@ -1427,21 +1549,164 @@ ${prompt}
    - 因果关系借鉴
    - 趋势类比推理
 
-八、输出规范
-1. 【逻辑验证】论证有效性检查
-2. 【时序分析】因果关系和时间合理性
-3. 【常识检查】方案的现实可行性
-4. 【历史借鉴】相关历史案例和经验
-5. 【认知偏差】可能的认知陷阱提醒
-6. 【最终建议】综合以上分析的决策建议
+八、行业与政策参考（基于行业报告和政府工作报告知识库）
+1. 行业权威报告：
+   - 安防、人工智能、奶粉、直播、短视频、AI等行业报告
+   - 前瞻性行业趋势分析
+   - 市场规模、竞争格局、技术趋势
+   - 投资机会和风险评估
+2. 政府工作报告：
+   - 十五五规划等国家发展规划
+   - 年度政府工作报告和政策导向
+   - 产业政策、区域政策、科技政策
+   - 政策趋势和决策参考
 
-请确保决策建议既科学严谨，又充分考虑人的认知特点，帮助用户做出最优决策。`,
-            capabilities: ['超级决策', '认知偏差识别', '思维模式分析', '风险评估', '方案对比', '决策矩阵', '决策链', '概率分析', 'Mermaid可视化', '第一性原理', '系统思考', '前景理论', '数据分析', '建议生成'],
+九、社会结构约束分析（基于社科知识库）
+1. 社会结构识别：
+   - 权力结构：层级关系、权力分配、决策机制
+   - 组织架构：正式组织、非正式网络、利益相关者
+   - 制度约束：法律法规、行业规范、文化传统
+   - 资源分配：资源分布、获取渠道、竞争格局
+
+2. 约束条件分析：
+   - 结构性约束：不可改变或难以改变的结构性因素
+   - 制度性约束：法律法规、政策规定、行业标准
+   - 文化性约束：价值观念、行为规范、社会期望
+   - 资源性约束：资金、人力、技术、信息等资源限制
+
+3. 约束影响评估：
+   - 决策空间：在约束条件下的可行决策范围
+   - 突破可能性：哪些约束可以突破、如何突破
+   - 适应策略：如何在约束条件下优化决策
+   - 风险识别：违反约束可能带来的后果
+
+4. 社会网络分析：
+   - 利益相关者识别：关键人物、组织、群体
+   - 关系网络：合作关系、竞争关系、依赖关系
+   - 影响力评估：各方的权力和影响力
+   - 联盟与对抗：可能的联盟和对抗关系
+
+十、关键洞察提取
+1. 洞察识别方法：
+   - 模式识别：从大量信息中识别关键模式
+   - 异常发现：识别与常规不同的关键信号
+   - 连接发现：发现看似无关事物间的关键连接
+   - 本质提取：透过现象看本质，提取核心洞察
+
+2. 洞察类型：
+   - 趋势洞察：未来发展趋势的关键判断
+   - 机会洞察：未被发现或未被充分利用的机会
+   - 风险洞察：潜在风险的关键预警信号
+   - 价值洞察：核心价值创造点的识别
+
+3. 洞察验证：
+   - 证据支撑：洞察是否有充分证据支持
+   - 逻辑一致性：洞察是否符合逻辑推理
+   - 历史验证：类似历史案例是否支持该洞察
+   - 专家验证：领域专家是否认同该洞察
+
+4. 洞察应用：
+   - 战略指导：洞察如何指导战略决策
+   - 行动建议：基于洞察的具体行动建议
+   - 优先级排序：哪些洞察最重要、最紧急
+   - 持续监控：如何持续跟踪洞察的演变
+
+十一、沙盘推演分析
+1. 场景构建：
+   - 基础场景：当前状态和关键变量
+   - 变化因素：可能影响决策的关键变化因素
+   - 不确定性：不确定因素的范围和概率
+   - 时间维度：短期、中期、长期的不同场景
+
+2. 推演方法：
+   - 最佳情况推演：假设一切顺利的最佳结果
+   - 最坏情况推演：假设最不利情况的结果
+   - 最可能情况推演：基于概率的最可能结果
+   - 多路径推演：不同决策路径的推演结果
+
+3. 推演维度：
+   - 决策路径：不同决策选择的推演
+   - 时间演进：决策在不同时间点的演变
+   - 利益相关者反应：各方可能的反应和应对
+   - 连锁反应：决策可能引发的连锁反应
+
+4. 推演结果分析：
+   - 结果对比：不同场景下的结果对比
+   - 关键节点：推演过程中的关键转折点
+   - 风险识别：推演中暴露的潜在风险
+   - 机会识别：推演中发现的潜在机会
+
+5. 推演应用：
+   - 决策优化：基于推演结果优化决策方案
+   - 预案准备：为不同场景准备应对预案
+   - 风险控制：识别并控制推演中的风险点
+   - 时机把握：识别最佳决策时机
+
+十二、对话问答与个性化数据收集
+1. 主动询问机制：
+   - 在开始分析前，主动询问用户的个性数据和当前状态
+   - 根据决策问题的特点，有针对性地询问关键信息
+   - 使用友好的对话方式，避免一次性询问过多问题
+   - 根据用户的回答，继续深入询问相关细节
+
+2. 需要收集的个性化数据：
+   - **风险偏好**：风险承受能力（保守/稳健/激进）、损失厌恶程度
+   - **决策风格**：决策速度偏好（快速/深思熟虑）、决策方式（独自/咨询/团队）
+   - **资源状况**：资金预算、时间约束、人力资源、技术能力、社会资源
+   - **当前状态**：当前处境、压力水平、情绪状态、可用时间窗口
+   - **价值观念**：核心价值追求、优先级排序、道德底线、长期目标
+   - **历史经验**：类似决策的经验、成功/失败案例、学习到的教训
+   - **约束条件**：不可改变的限制、必须遵守的规则、外部压力
+
+3. 数据收集策略：
+   - **首次对话**：如果缺少关键信息，先询问再分析
+   - **渐进式收集**：根据分析需要，逐步收集更多细节
+   - **验证确认**：对重要信息进行确认，避免误解
+   - **持续更新**：在对话过程中，根据新信息更新理解
+
+4. 个性化输出矫正：
+   - **风险调整**：根据用户的风险偏好，调整风险建议的强度
+   - **方案筛选**：基于用户的资源状况，筛选可行的方案
+   - **优先级排序**：根据用户的价值观念，调整建议的优先级
+   - **表达方式**：根据用户的决策风格，调整建议的表达方式
+   - **时间规划**：根据用户的时间约束，调整实施时间表
+   - **资源匹配**：根据用户的资源状况，提供匹配的建议
+
+5. 对话技巧：
+   - 使用开放式问题，鼓励用户详细回答
+   - 对用户的回答表示理解和确认
+   - 根据用户的回答，提出跟进问题
+   - 在收集足够信息后，明确告知将基于这些信息进行分析
+
+十三、输出规范
+1. 【信息收集】主动询问用户的个性数据和当前状态（如缺少关键信息）
+2. 【逻辑验证】论证有效性检查
+3. 【时序分析】因果关系和时间合理性
+4. 【常识检查】方案的现实可行性
+5. 【历史借鉴】相关历史案例和经验
+6. 【行业参考】相关行业报告和趋势分析
+7. 【政策参考】相关政策导向和规划要求
+8. 【社会结构约束】社会结构、制度约束、资源限制分析
+9. 【关键洞察】核心洞察提取和验证
+10. 【沙盘推演】多场景推演和结果分析
+11. 【认知偏差】可能的认知陷阱提醒
+12. 【个性化调整】根据用户的个性数据和状态，调整和矫正决策建议
+13. 【结构化分析】使用金字塔原理组织分析结果
+14. 【目标设定】使用SMART原则设定决策目标
+15. 【最终建议】综合以上分析的个性化决策建议
+
+请确保决策建议既科学严谨，又充分考虑人的认知特点、行业趋势、政策环境、社会结构约束，并通过关键洞察和沙盘推演，特别是根据用户的个性数据和当前状态进行个性化调整，帮助用户做出最优决策。
+
+**重要提示**：
+- 如果缺少用户的个性数据或关键状态信息，请先通过友好的对话方式主动询问
+- 根据用户的回答，调整分析重点和输出建议
+- 在给出建议时，明确说明这些建议是如何基于用户的个性化信息进行调整的`,
+            capabilities: ['超级决策', '认知偏差识别', '思维模式分析', '风险评估', '方案对比', '决策矩阵', '决策链', '概率分析', 'Mermaid可视化', '第一性原理', '系统思考', '前景理论', '数据分析', '行业分析', '政策分析', '社会结构约束分析', '关键洞察提取', '沙盘推演', '对话问答', '个性化数据收集', '个性化输出矫正', '金字塔原理', 'SMART原则', '建议生成'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
-            skills: ['skill_analyst', 'skill_researcher', 'skill_planner', 'skill_swot', 'skill_decision_expert', 'skill_first_principles', 'skill_iceberg_model', 'skill_mermaid_visualization', 'skill_cognitive_psychology', 'skill_pyramid_method', 'skill_mece', 'skill_data_cleaning', 'skill_advanced_analytics'],
+            skills: ['skill_analyst', 'skill_researcher', 'skill_planner', 'skill_swot', 'skill_decision_expert', 'skill_first_principles', 'skill_iceberg_model', 'skill_mermaid_visualization', 'skill_cognitive_psychology', 'skill_pyramid', 'skill_smart', 'skill_mece', 'skill_data_cleaning', 'skill_advanced_analytics'],
             rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
-            rag: ['rag_finance', 'rag_social', 'rag_first_principles', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_logic', 'rag_temporal_logic', 'rag_common_sense', 'rag_history'],
+            rag: ['rag_finance', 'rag_social', 'rag_first_principles', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_logic', 'rag_temporal_logic', 'rag_common_sense', 'rag_history', 'rag_industry_reports', 'rag_government_reports'],
             color: '#8b5cf6'
         },
         cognitive: {
@@ -1534,33 +1799,69 @@ ${prompt}
             enabled: false,
             lastSync: null
         },
-        ragVectors: {}
+        ragVectors: {},
+        jinaAI: {
+            apiKey: '', // Jina AI API密钥
+            enabled: true // 是否启用Jina AI解析
+        }
     };
 
     // ==================== 初始化 ====================
-    function init() {
+    async function init() {
+        const startTime = Date.now();
+        const minDuration = 3000; // 最少3秒
+        const maxDuration = 4000; // 最多4秒
+        
         updateSplashProgress(10, '正在加载模型...');
+        await sleep(300);
         initModels();
         
         updateSplashProgress(30, '正在加载资源...');
+        await sleep(400);
         initResources();
         
         updateSplashProgress(50, '正在加载助手...');
+        await sleep(400);
         initSubAgents();
         
         updateSplashProgress(70, '正在恢复状态...');
+        await sleep(300);
         loadState();
         
+        updateSplashProgress(80, '正在加载SubAgent配置...');
+        await sleep(200);
+        loadSubAgentConfigs();
+        
         updateSplashProgress(85, '正在加载配置...');
+        await sleep(300);
         loadSyncConfig();
         loadRagVectors();
+        loadJinaAIConfig();
+        
+        // 初始化RAGManager
+        if (window.RAGManager && typeof window.RAGManager.init === 'function') {
+            window.RAGManager.init();
+            window.Logger?.info('RAGManager初始化完成');
+        }
+        
+        updateSplashProgress(95, '正在初始化界面...');
+        await sleep(200);
         
         updateSplashProgress(100, '加载完成');
         
-        // 延迟隐藏启动页 - 确保动画持续2-3秒
+        // 确保至少显示3-4秒
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, minDuration - elapsed);
+        const maxRemaining = maxDuration - elapsed;
+        
         setTimeout(() => {
             hideSplash();
-        }, 2500);
+        }, Math.min(remaining, maxRemaining));
+    }
+    
+    // 辅助函数：延迟
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
     
     // 更新启动页进度
@@ -1594,7 +1895,7 @@ ${prompt}
                 const customModels = JSON.parse(saved);
                 Object.assign(AppState.models, customModels);
             } catch (e) {
-                console.error('加载自定义模型失败:', e);
+                window.Logger?.error('加载自定义模型失败:', e);
             }
         }
     }
@@ -1614,7 +1915,7 @@ ${prompt}
                 AppState.customSubAgents = JSON.parse(saved);
                 Object.assign(AppState.subAgents, AppState.customSubAgents);
             } catch (e) {
-                console.error('加载自定义Sub Agent失败:', e);
+                window.Logger?.error('加载自定义Sub Agent失败:', e);
             }
         }
     }
@@ -1635,9 +1936,11 @@ ${prompt}
                 if (state.currentOutputFormat) AppState.currentOutputFormat = state.currentOutputFormat;
                 if (state.settings) AppState.settings = { ...AppState.settings, ...state.settings };
                 if (state.user) AppState.user = state.user;
+                if (state.resources) AppState.resources = { ...AppState.resources, ...state.resources };
+                if (state.jinaAI) AppState.jinaAI = { ...AppState.jinaAI, ...state.jinaAI };
             }
         } catch (error) {
-            console.error('加载状态失败:', error);
+            window.Logger?.error('加载状态失败:', error);
         }
     }
 
@@ -1655,12 +1958,17 @@ ${prompt}
                 currentOutputFormat: AppState.currentOutputFormat,
                 settings: AppState.settings,
                 user: AppState.user,
+                resources: AppState.resources, // 保存资源配置
+                jinaAI: AppState.jinaAI, // 保存Jina AI配置
                 savedAt: Date.now(),
                 version: AppState.version
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            
+            // 同时保存subagent配置（包括自定义和内置的配置修改）
+            saveSubAgentConfigs();
         } catch (error) {
-            console.error('保存状态失败:', error);
+            window.Logger?.error('保存状态失败:', error);
             // 如果存储失败，尝试清理旧数据
             try {
                 const saved = localStorage.getItem(STORAGE_KEY);
@@ -1677,8 +1985,87 @@ ${prompt}
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(minimalState));
                 }
             } catch (retryError) {
-                console.error('重试保存失败:', retryError);
+                window.Logger?.error('重试保存失败:', retryError);
             }
+        }
+    }
+    
+    // 保存SubAgent配置（包括资源关联）
+    function saveSubAgentConfigs() {
+        try {
+            // 保存自定义subagent
+            localStorage.setItem(CUSTOM_SUBAGENTS_KEY, JSON.stringify(AppState.customSubAgents));
+            
+            // 保存subagent的资源配置（包括内置subagent的配置修改）
+            const subAgentConfigs = {};
+            Object.keys(AppState.subAgents).forEach(id => {
+                const agent = AppState.subAgents[id];
+                if (agent) {
+                    subAgentConfigs[id] = {
+                        skills: agent.skills || [],
+                        rules: agent.rules || [],
+                        mcp: agent.mcp || [],
+                        rag: agent.rag || [],
+                        modelPreference: agent.modelPreference || []
+                    };
+                }
+            });
+            localStorage.setItem('ai_agent_subagent_configs_v6', JSON.stringify(subAgentConfigs));
+        } catch (error) {
+            window.Logger?.error('保存SubAgent配置失败:', error);
+        }
+    }
+    
+    // 加载SubAgent配置
+    function loadSubAgentConfigs() {
+        try {
+            const saved = localStorage.getItem('ai_agent_subagent_configs_v6');
+            if (saved) {
+                const configs = JSON.parse(saved);
+                Object.keys(configs).forEach(id => {
+                    if (AppState.subAgents[id]) {
+                        const config = configs[id];
+                        if (config.skills) AppState.subAgents[id].skills = config.skills;
+                        if (config.rules) AppState.subAgents[id].rules = config.rules;
+                        if (config.mcp) AppState.subAgents[id].mcp = config.mcp;
+                        if (config.rag) AppState.subAgents[id].rag = config.rag;
+                        if (config.modelPreference) AppState.subAgents[id].modelPreference = config.modelPreference;
+                    }
+                });
+            }
+        } catch (error) {
+            window.Logger?.error('加载SubAgent配置失败:', error);
+        }
+    }
+    
+    // 清除所有SubAgent配置
+    function clearSubAgentConfigs() {
+        try {
+            // 清除自定义subagent
+            AppState.customSubAgents = {};
+            localStorage.removeItem(CUSTOM_SUBAGENTS_KEY);
+            
+            // 清除配置修改
+            localStorage.removeItem('ai_agent_subagent_configs_v6');
+            
+            // 恢复内置subagent到默认配置
+            // 先清除现有subagent
+            AppState.subAgents = {};
+            // 重新初始化
+            initSubAgents();
+            
+            // 如果当前选中的subagent被删除，切换到默认的
+            if (!AppState.subAgents[AppState.currentSubAgent]) {
+                AppState.currentSubAgent = 'general';
+            }
+            
+            // 保存状态
+            saveState();
+            
+            return true;
+        } catch (error) {
+            window.Logger?.error('清除SubAgent配置失败:', error);
+            return false;
         }
     }
 
@@ -1689,7 +2076,7 @@ ${prompt}
                 AppState.syncConfig = { ...AppState.syncConfig, ...JSON.parse(saved) };
             }
         } catch (e) {
-            console.error('加载同步配置失败:', e);
+            window.Logger?.error('加载同步配置失败:', e);
         }
     }
 
@@ -1697,7 +2084,7 @@ ${prompt}
         try {
             localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(AppState.syncConfig));
         } catch (e) {
-            console.error('保存同步配置失败:', e);
+            window.Logger?.error('保存同步配置失败:', e);
         }
     }
 
@@ -1708,7 +2095,7 @@ ${prompt}
                 AppState.ragVectors = JSON.parse(saved);
             }
         } catch (e) {
-            console.error('加载RAG向量失败:', e);
+            window.Logger?.error('加载RAG向量失败:', e);
         }
     }
 
@@ -1716,8 +2103,52 @@ ${prompt}
         try {
             localStorage.setItem(RAG_VECTORS_KEY, JSON.stringify(AppState.ragVectors));
         } catch (e) {
-            console.error('保存RAG向量失败:', e);
+            window.Logger?.error('保存RAG向量失败:', e);
         }
+    }
+
+    // ==================== Jina AI配置管理 ====================
+    function loadJinaAIConfig() {
+        try {
+            const saved = localStorage.getItem('ai_agent_jina_ai_config_v6');
+            if (saved) {
+                AppState.jinaAI = { ...AppState.jinaAI, ...JSON.parse(saved) };
+            }
+        } catch (e) {
+            window.Logger?.error('加载Jina AI配置失败:', e);
+        }
+    }
+
+    function saveJinaAIConfig() {
+        try {
+            localStorage.setItem('ai_agent_jina_ai_config_v6', JSON.stringify(AppState.jinaAI));
+        } catch (e) {
+            window.Logger?.error('保存Jina AI配置失败:', e);
+        }
+    }
+
+    function setJinaAIKey(apiKey) {
+        AppState.jinaAI.apiKey = apiKey || '';
+        saveJinaAIConfig();
+        return true;
+    }
+
+    function getJinaAIKey() {
+        return AppState.jinaAI?.apiKey || '';
+    }
+
+    function hasJinaAIKey() {
+        return !!(AppState.jinaAI?.apiKey && AppState.jinaAI.apiKey.trim().length > 0);
+    }
+
+    function setJinaAIEnabled(enabled) {
+        AppState.jinaAI.enabled = enabled !== false;
+        saveJinaAIConfig();
+        return true;
+    }
+
+    function isJinaAIEnabled() {
+        return AppState.jinaAI?.enabled !== false;
     }
 
     // ==================== 模型管理 ====================
@@ -1959,6 +2390,9 @@ ${prompt}
             localStorage.setItem(CUSTOM_SUBAGENTS_KEY, JSON.stringify(AppState.customSubAgents));
         }
         
+        // 保存配置（包括内置subagent的配置修改）
+        saveSubAgentConfigs();
+        
         return true;
     }
 
@@ -2067,6 +2501,10 @@ ${prompt}
     function applyTheme(theme) {
         AppState.settings.theme = theme;
         const body = document.body;
+        if (!body) {
+            window.Logger?.warn('applyTheme: document.body is not available');
+            return;
+        }
         body.classList.remove('theme-dark', 'theme-light');
         
         if (theme === 'auto') {
@@ -2086,7 +2524,9 @@ ${prompt}
 
     function applyLanguage(lang) {
         AppState.settings.language = lang;
-        document.documentElement.lang = lang === 'zh' || lang === 'zh-CN' ? 'zh-CN' : 'en';
+        if (document.documentElement) {
+            document.documentElement.lang = lang === 'zh' || lang === 'zh-CN' ? 'zh-CN' : 'en';
+        }
         debouncedSave();
         
         // 更新语言选择器
@@ -2099,6 +2539,10 @@ ${prompt}
     function applyFontSize(size) {
         AppState.settings.fontSize = size;
         const body = document.body;
+        if (!body) {
+            window.Logger?.warn('applyFontSize: document.body is not available');
+            return;
+        }
         body.classList.remove('font-small', 'font-medium', 'font-large');
         body.classList.add(`font-${size}`);
         debouncedSave();
@@ -2131,11 +2575,22 @@ ${prompt}
     }
 
     // ==================== 初始化执行 ====================
-    init();
-    applyTheme(AppState.settings.theme);
-    applyLanguage(AppState.settings.language);
-    applyFontSize(AppState.settings.fontSize);
-    applyShortcut(AppState.settings.sendShortcut);
+    // 延迟初始化，确保DOM已加载
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            init();
+            applyTheme(AppState.settings.theme);
+            applyLanguage(AppState.settings.language);
+            applyFontSize(AppState.settings.fontSize);
+            applyShortcut(AppState.settings.sendShortcut);
+        });
+    } else {
+        init();
+        applyTheme(AppState.settings.theme);
+        applyLanguage(AppState.settings.language);
+        applyFontSize(AppState.settings.fontSize);
+        applyShortcut(AppState.settings.sendShortcut);
+    }
 
     // ==================== 暴露到全局 ====================
     window.AppState = AppState;
@@ -2149,6 +2604,7 @@ ${prompt}
         BUILTIN_SUB_AGENTS,
         DEFAULT_API_KEYS,
         saveState,
+        loadState,
         saveSyncConfig,
         saveRagVectors,
         saveCustomModels,
@@ -2176,6 +2632,13 @@ ${prompt}
         applyLanguage,
         applyFontSize,
         applyShortcut,
-        switchSubAgent
+        switchSubAgent,
+        saveSubAgentConfigs,
+        loadSubAgentConfigs,
+        setJinaAIKey,
+        getJinaAIKey,
+        hasJinaAIKey,
+        setJinaAIEnabled,
+        isJinaAIEnabled
     };
 })();

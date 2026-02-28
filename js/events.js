@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v5.0.0 - 事件处理模块
+ * AI Agent Pro v8.0.0 - 事件处理模块
  * 未来科技感交互设计
  */
 
@@ -201,6 +201,116 @@
         document.getElementById('import-file-input')?.addEventListener('change', importData);
         document.getElementById('clear-data-btn')?.addEventListener('click', clearAllData);
 
+        // 消息操作按钮事件委托（修复复制和下载按钮无法点击的问题）
+        const messagesContainer = document.getElementById('messages-list') || document.getElementById('messages-container');
+        if (messagesContainer) {
+            messagesContainer.addEventListener('click', (e) => {
+                // 处理消息操作按钮（复制、下载等）
+                const btn = e.target.closest('.msg-action-btn');
+                if (btn) {
+                    const action = btn.dataset.action;
+                    const messageId = btn.dataset.messageId;
+
+                    if (!action || !messageId) return;
+
+                    e.stopPropagation();
+                    e.preventDefault();
+
+                    // 根据action调用相应的函数
+                    switch (action) {
+                        case 'copy':
+                            if (window.AIAgentUI?.copyMessage) {
+                                window.AIAgentUI.copyMessage(messageId);
+                            }
+                            break;
+                        case 'download':
+                            if (window.AIAgentUI?.downloadMessage) {
+                                window.AIAgentUI.downloadMessage(messageId);
+                            }
+                            break;
+                        case 'speak':
+                            if (window.AIAgentUI?.speakMessage) {
+                                window.AIAgentUI.speakMessage(messageId);
+                            }
+                            break;
+                        case 'regenerate':
+                            if (window.AIAgentUI?.regenerateMessage) {
+                                window.AIAgentUI.regenerateMessage(messageId);
+                            }
+                            break;
+                        case 'edit':
+                            if (window.AIAgentUI?.editMessage) {
+                                window.AIAgentUI.editMessage(messageId);
+                            }
+                            break;
+                        case 'delete':
+                            if (window.AIAgentUI?.deleteMessage) {
+                                window.AIAgentUI.deleteMessage(messageId);
+                            }
+                            break;
+                    }
+                    return;
+                }
+                
+                // 处理PDF下载按钮
+                const pdfBtn = e.target.closest('.pdf-download-btn');
+                if (pdfBtn) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const pdfId = pdfBtn.dataset.pdfId;
+                    if (pdfId && window.AIAgentUI?.downloadAsPDF) {
+                        window.AIAgentUI.downloadAsPDF(pdfId);
+                    }
+                    return;
+                }
+                
+                // 处理DOC下载按钮
+                const docBtn = e.target.closest('.doc-download-btn');
+                if (docBtn) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const docId = docBtn.dataset.docId;
+                    if (docId && window.AIAgentUI?.downloadAsDOC) {
+                        window.AIAgentUI.downloadAsDOC(docId);
+                    }
+                    return;
+                }
+                
+                // 处理CSV下载按钮
+                const csvBtn = e.target.closest('.csv-download-btn');
+                if (csvBtn) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (window.AIAgentUI?.downloadAsCSV) {
+                        window.AIAgentUI.downloadAsCSV(csvBtn);
+                    }
+                    return;
+                }
+                
+                // 处理H5预览按钮
+                const h5PreviewBtn = e.target.closest('.h5-preview-btn');
+                if (h5PreviewBtn) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (window.AIAgentUI?.previewH5) {
+                        window.AIAgentUI.previewH5(h5PreviewBtn);
+                    }
+                    return;
+                }
+                
+                // 处理H5下载按钮
+                const h5DownloadBtn = e.target.closest('.h5-download-btn');
+                if (h5DownloadBtn) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (window.AIAgentUI?.downloadH5) {
+                        window.AIAgentUI.downloadH5(h5DownloadBtn);
+                    }
+                    return;
+                }
+            });
+        }
+
         // 通用设置
         document.getElementById('setting-theme')?.addEventListener('change', (e) => {
             window.AIAgentApp?.applyTheme?.(e.target.value);
@@ -232,10 +342,18 @@
             if (e.key === 'Escape') window.AIAgentUI?.closeAllModals?.();
         });
 
-        // 页面可见性变化
+        // 页面可见性变化 - 支持后台运行
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') {
+                // 页面隐藏时保存状态
                 window.AIAgentApp?.saveState?.();
+                // 标记为后台运行状态
+                window.AppState.isBackground = true;
+            } else {
+                // 页面显示时恢复
+                window.AppState.isBackground = false;
+                // 检查是否有未完成的任务
+                checkPendingTasks();
             }
         });
 
@@ -243,6 +361,27 @@
         window.addEventListener('beforeunload', () => {
             window.AIAgentApp?.saveState?.();
         });
+        
+        // 页面失焦/获得焦点事件（额外支持）
+        window.addEventListener('blur', () => {
+            window.AppState.isBackground = true;
+        });
+        
+        window.addEventListener('focus', () => {
+            window.AppState.isBackground = false;
+            checkPendingTasks();
+        });
+        
+        // 检查待处理任务
+        function checkPendingTasks() {
+            // 检查是否有正在进行的LLM请求
+            if (window.LLMService?.currentController) {
+                // 请求仍在进行，继续处理
+                return;
+            }
+            
+            // 可以在这里添加其他后台任务检查逻辑
+        }
     }
 
     // ==================== SubAgent选择器 ====================
@@ -253,7 +392,7 @@
         // 使用专门的subagent-modal
         const subagentList = document.getElementById('subagent-list');
         if (!subagentList) {
-            console.error('subagent-list element not found');
+            window.Logger?.warn('subagent-list element not found');
             return;
         }
         
@@ -448,12 +587,15 @@
                 window.AIAgentUI?.streamMessageUpdate
             );
 
-            // 完成流式消息
-            window.AIAgentUI?.finalizeStreamMessage?.(response.content, response.thinking);
+            // 生成消息ID（在finalizeStreamMessage之前生成，确保ID一致）
+            const aiMessageId = 'msg_' + Date.now();
+            
+            // 完成流式消息，传入消息ID确保一致性
+            window.AIAgentUI?.finalizeStreamMessage?.(response.content, response.thinking, aiMessageId);
 
-            // 添加AI消息
+            // 添加AI消息（使用相同的ID）
             const aiMessage = {
-                id: 'msg_' + Date.now(),
+                id: aiMessageId,
                 role: 'assistant',
                 content: response.content,
                 thinking: response.thinking,
@@ -465,9 +607,27 @@
             window.AIAgentApp?.saveState?.();
 
         } catch (error) {
-            console.error('发送消息失败:', error);
+            window.ErrorHandler?.handle(error, {
+                type: window.ErrorType?.API,
+                showToast: true,
+                logError: true
+            });
             window.AIAgentUI?.showToast?.('发送失败: ' + error.message, 'error');
-            window.AIAgentUI?.finalizeStreamMessage?.('发送失败，请检查网络连接或API配置后重试。', '');
+            // 失败时也生成ID并保存错误消息
+            const errorMessageId = 'msg_' + Date.now();
+            window.AIAgentUI?.finalizeStreamMessage?.('发送失败，请检查网络连接或API配置后重试。', '', errorMessageId);
+            
+            // 保存错误消息到AppState
+            const errorMessage = {
+                id: errorMessageId,
+                role: 'assistant',
+                content: '发送失败，请检查网络连接或API配置后重试。',
+                timestamp: Date.now()
+            };
+            if (!window.AppState.messages) window.AppState.messages = [];
+            window.AppState.messages.push(errorMessage);
+            updateCurrentChat();
+            window.AIAgentApp?.saveState?.();
         }
     }
 
@@ -517,13 +677,25 @@
         const files = Array.from(e.target.files);
         if (!files || files.length === 0) return;
 
-        // 存储上传的文件
+        // 存储上传的文件（不清空已有文件，支持追加）
         if (!window.AppState.uploadedFiles) {
             window.AppState.uploadedFiles = [];
         }
 
-        try {
-            for (const file of files) {
+        // 显示加载提示
+        const totalFiles = files.length;
+        if (totalFiles > 1) {
+            window.AIAgentUI?.showToast?.(`正在加载 ${totalFiles} 个文件...`, 'info');
+        }
+
+        let successCount = 0;
+        let failCount = 0;
+        const errors = [];
+
+        // 逐个处理文件，即使某个文件失败也继续处理其他文件
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            try {
                 let content = '';
                 let attachment = null;
 
@@ -570,42 +742,126 @@
                         type: 'excel',
                         name: file.name
                     };
-                } else {
-                    content = `[文件: ${file.name}]`;
+                } else if (file.type.includes('presentation') || file.type.includes('powerpoint') ||
+                           file.name.endsWith('.ppt') || file.name.endsWith('.pptx')) {
+                    content = `[演示文稿: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB`;
                     attachment = {
-                        type: 'file',
+                        type: 'ppt',
                         name: file.name
                     };
+                } else if (file.type === 'text/html' || file.name.endsWith('.html') || 
+                           file.name.endsWith('.htm') || file.name.endsWith('.h5')) {
+                    content = await readFileAsText(file);
+                    attachment = {
+                        type: 'html',
+                        name: file.name,
+                        content: content.substring(0, 1000)
+                    };
+                } else if (file.name.endsWith('.md') || file.name.endsWith('.markdown')) {
+                    content = await readFileAsText(file);
+                    attachment = {
+                        type: 'markdown',
+                        name: file.name,
+                        content: content.substring(0, 1000)
+                    };
+                } else {
+                    // 默认处理：尝试作为文本读取，失败则只显示文件名
+                    try {
+                        if (file.type.startsWith('text/') || file.size < 1024 * 1024) {
+                            // 小于1MB的文本类型文件，尝试读取内容
+                            content = await readFileAsText(file);
+                            attachment = {
+                                type: 'file',
+                                name: file.name,
+                                content: content.substring(0, 1000)
+                            };
+                        } else {
+                            content = `[文件: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n文件类型: ${file.type || '未知'}`;
+                            attachment = {
+                                type: 'file',
+                                name: file.name
+                            };
+                        }
+                    } catch (readError) {
+                        window.Logger?.warn(`读取文件 ${file.name} 失败:`, readError);
+                        content = `[文件: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n文件类型: ${file.type || '未知'}`;
+                        attachment = {
+                            type: 'file',
+                            name: file.name
+                        };
+                    }
                 }
 
+                // 添加到文件列表
                 window.AppState.uploadedFiles.push({
                     file: file,
                     content: content,
                     attachment: attachment
                 });
+                successCount++;
+
+            } catch (error) {
+                // 单个文件处理失败，记录错误但继续处理其他文件
+                failCount++;
+                errors.push(`${file.name}: ${error.message}`);
+                window.Logger?.error(`处理文件 ${file.name} 失败:`, error);
+                
+                // 即使处理失败，也添加文件信息（至少显示文件名）
+                try {
+                    window.AppState.uploadedFiles.push({
+                        file: file,
+                        content: `[文件: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n处理失败: ${error.message}`,
+                        attachment: {
+                            type: 'file',
+                            name: file.name
+                        }
+                    });
+                } catch (pushError) {
+                    window.Logger?.error(`添加文件 ${file.name} 到列表失败:`, pushError);
+                }
             }
-
-            // 在输入框上方显示文件附件
-            renderFileAttachments();
-
-        } catch (error) {
-            console.error('文件处理失败:', error);
-            window.AIAgentUI?.showToast?.('文件处理失败: ' + error.message, 'error');
         }
 
+        // 在输入框上方显示文件附件
+        renderFileAttachments();
+
+        // 显示处理结果提示
+        if (totalFiles > 1) {
+            if (failCount === 0) {
+                window.AIAgentUI?.showToast?.(`成功加载 ${successCount} 个文件`, 'success');
+            } else {
+                window.AIAgentUI?.showToast?.(`已加载 ${successCount} 个文件，${failCount} 个失败`, 'warning');
+                if (errors.length > 0) {
+                    window.Logger?.warn('文件处理错误:', errors);
+                }
+            }
+        } else if (successCount > 0) {
+            window.AIAgentUI?.showToast?.('文件已加载', 'success');
+        }
+
+        // 清空文件输入，允许再次选择相同文件
         e.target.value = '';
     }
 
     // 渲染文件附件
     function renderFileAttachments() {
         const container = document.getElementById('file-attachments');
+        const containerWrapper = document.getElementById('file-attachments-container');
         if (!container) return;
 
         const files = window.AppState.uploadedFiles || [];
         
         if (files.length === 0) {
             container.innerHTML = '';
+            if (containerWrapper) {
+                containerWrapper.style.display = 'none';
+            }
             return;
+        }
+        
+        // 显示容器
+        if (containerWrapper) {
+            containerWrapper.style.display = 'block';
         }
 
         container.innerHTML = files.map((fileData, index) => {
@@ -669,7 +925,7 @@
             
             return result;
         } catch (error) {
-            console.error('CSV解析失败:', error);
+            window.Logger?.error('CSV解析失败:', error);
             return `[CSV文件: ${file.name}]\n解析失败: ${error.message}`;
         }
     }
@@ -718,7 +974,11 @@
             await sendMessageWithContent('请分析这张图片的内容');
 
         } catch (error) {
-            console.error('图片处理失败:', error);
+            window.ErrorHandler?.handle(error, {
+                type: window.ErrorType?.VALIDATION,
+                showToast: true,
+                logError: true
+            });
             window.AIAgentUI?.showToast?.('图片处理失败: ' + error.message, 'error');
         }
 
@@ -759,12 +1019,15 @@
                 window.AIAgentUI?.streamMessageUpdate
             );
 
-            // 完成流式消息
-            window.AIAgentUI?.finalizeStreamMessage?.(response.content, response.thinking);
+            // 生成消息ID（在finalizeStreamMessage之前生成，确保ID一致）
+            const aiMessageId = 'msg_' + Date.now();
+            
+            // 完成流式消息，传入消息ID确保一致性
+            window.AIAgentUI?.finalizeStreamMessage?.(response.content, response.thinking, aiMessageId);
 
-            // 添加AI消息
+            // 添加AI消息（使用相同的ID）
             const aiMessage = {
-                id: 'msg_' + Date.now(),
+                id: aiMessageId,
                 role: 'assistant',
                 content: response.content,
                 thinking: response.thinking,
@@ -776,9 +1039,27 @@
             window.AIAgentApp?.saveState?.();
 
         } catch (error) {
-            console.error('发送消息失败:', error);
+            window.ErrorHandler?.handle(error, {
+                type: window.ErrorType?.API,
+                showToast: true,
+                logError: true
+            });
             window.AIAgentUI?.showToast?.('发送失败: ' + error.message, 'error');
-            window.AIAgentUI?.finalizeStreamMessage?.('发送失败，请检查网络连接或API配置后重试。', '');
+            // 失败时也生成ID并保存错误消息
+            const errorMessageId = 'msg_' + Date.now();
+            window.AIAgentUI?.finalizeStreamMessage?.('发送失败，请检查网络连接或API配置后重试。', '', errorMessageId);
+            
+            // 保存错误消息到AppState
+            const errorMessage = {
+                id: errorMessageId,
+                role: 'assistant',
+                content: '发送失败，请检查网络连接或API配置后重试。',
+                timestamp: Date.now()
+            };
+            if (!window.AppState.messages) window.AppState.messages = [];
+            window.AppState.messages.push(errorMessage);
+            updateCurrentChat();
+            window.AIAgentApp?.saveState?.();
         }
     }
 
@@ -810,7 +1091,11 @@
         };
 
         recognition.onerror = (event) => {
-            console.error('语音识别错误:', event.error);
+            window.ErrorHandler?.handle(event.error, {
+                type: window.ErrorType?.UNKNOWN,
+                showToast: true,
+                logError: true
+            });
             window.AIAgentUI?.showToast?.('语音识别失败', 'error');
             voiceBtn?.classList.remove('active');
         };
@@ -865,6 +1150,7 @@
         
         // 加载同步配置
         loadSyncConfigUI();
+        loadJinaAIConfigUI();
     }
 
     function switchSettingsTab(tab) {
@@ -1882,6 +2168,73 @@ tags: code, review, quality
         document.getElementById('sync-now-btn')?.addEventListener('click', syncNow);
     }
 
+    // ==================== Jina AI配置 ====================
+    function loadJinaAIConfigUI() {
+        const config = window.AppState?.jinaAI || {};
+        
+        const apiKeyInput = document.getElementById('jina-api-key');
+        const enabledCheckbox = document.getElementById('jina-enabled');
+        
+        if (apiKeyInput) apiKeyInput.value = config.apiKey || '';
+        if (enabledCheckbox) enabledCheckbox.checked = config.enabled !== false;
+        
+        // 绑定事件
+        document.getElementById('jina-save-btn')?.addEventListener('click', saveJinaAIConfig);
+        document.getElementById('jina-test-btn')?.addEventListener('click', testJinaAIConnection);
+    }
+
+    async function testJinaAIConnection() {
+        const apiKey = document.getElementById('jina-api-key')?.value.trim();
+        
+        if (!apiKey) {
+            window.AIAgentUI?.showToast?.('请输入Jina AI API密钥', 'error');
+            return;
+        }
+        
+        window.AIAgentUI?.showToast?.('正在测试连接...', 'info');
+        
+        try {
+            // 测试一个简单的URL解析请求
+            const headers = {
+                'X-Return-Format': 'text'
+            };
+            
+            if (apiKey) {
+                headers['Authorization'] = `Bearer ${apiKey}`;
+            }
+            
+            const response = await fetch('https://r.jina.ai/http://example.com', {
+                method: 'GET',
+                headers: headers
+            });
+            
+            if (response.ok) {
+                window.AIAgentUI?.showToast?.('Jina AI连接成功', 'success');
+            } else if (response.status === 401 || response.status === 403) {
+                window.AIAgentUI?.showToast?.('API密钥无效或已过期', 'error');
+            } else if (response.status === 429) {
+                window.AIAgentUI?.showToast?.('请求频率限制，请稍后重试', 'warning');
+            } else {
+                window.AIAgentUI?.showToast?.('连接失败: ' + response.status, 'error');
+            }
+        } catch (error) {
+            window.AIAgentUI?.showToast?.('连接失败: ' + error.message, 'error');
+        }
+    }
+
+    function saveJinaAIConfig() {
+        const apiKey = document.getElementById('jina-api-key')?.value.trim();
+        const enabled = document.getElementById('jina-enabled')?.checked !== false;
+        
+        if (window.AIAgentApp && typeof window.AIAgentApp.setJinaAIKey === 'function') {
+            window.AIAgentApp.setJinaAIKey(apiKey);
+            window.AIAgentApp.setJinaAIEnabled(enabled);
+            window.AIAgentUI?.showToast?.('Jina AI配置已保存', 'success');
+        } else {
+            window.AIAgentUI?.showToast?.('保存失败：AIAgentApp未初始化', 'error');
+        }
+    }
+
     async function testSyncConnection() {
         const serverUrl = document.getElementById('sync-server-url')?.value.trim();
         const apiKey = document.getElementById('sync-api-key')?.value.trim();
@@ -2040,7 +2393,11 @@ tags: code, review, quality
                 window.AIAgentUI?.showToast?.(`计划创建成功，包含 ${todos.length} 个任务`, 'success');
                 window.AIAgentUI?.showPlanDetail?.(plan.id);
             } catch (error) {
-                console.error('创建计划失败:', error);
+                window.ErrorHandler?.handle(error, {
+                    type: window.ErrorType?.API,
+                    showToast: true,
+                    logError: true
+                });
                 window.AIAgentUI?.showToast?.('创建计划失败: ' + error.message, 'error');
             }
         });
@@ -2070,6 +2427,8 @@ tags: code, review, quality
         createPlanFromMessage,
         showAddRAGDialog,
         openTaskModal,
-        openPlanModal
+        openPlanModal,
+        toggleSidebar,
+        closeSidebar
     };
 })();

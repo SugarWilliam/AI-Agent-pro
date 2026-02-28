@@ -1,0 +1,16 @@
+{
+  "name": "ai-agent-pro-tests",
+  "version": "1.0.0",
+  "description": "AI Agent Pro 自动化测试套件",
+  "scripts": {
+    "test": "node test-runner.js",
+    "test:headless": "HEADLESS=true node test-runner.js",
+    "test:verbose": "VERBOSE=true node test-runner.js",
+    "test:comprehensive": "node auto-run-tests.js",
+    "test:all": "npm run test:comprehensive"
+  },
+  "dependencies": {
+    "puppeteer": "^21.5.0"
+  },
+  "devDependencies": {}
+}

@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v6.0.0 - LLM服务
+ * AI Agent Pro v8.0.0 - LLM服务
  * 多模态输入输出支持
  */
 
@@ -114,19 +114,66 @@
             // 5. 应用Rules
             const rulesPrompt = this.buildRulesPrompt(resources.rules);
             
-            // 6. 调用MCP工具
+            // 6. 调用MCP工具 - 增强网络搜索功能
             let mcpResults = [];
             let searchThinking = '';
+            const lastMessage = messages[messages.length - 1]?.content || '';
+            
+            // 如果启用网络搜索且subagent支持，自动进行搜索和网页爬取
             if (enableWebSearch && resources.mcp.some(m => m.id === 'mcp_web_search')) {
-                const searchResults = await this.performWebSearch(messages[messages.length - 1]?.content);
-                if (searchResults.length > 0) {
-                    mcpResults.push({ type: 'search', data: searchResults });
+                try {
+                    // 提取搜索关键词（从用户消息中提取）
+                    const searchQuery = this.extractSearchQuery(lastMessage);
                     
-                    // 将搜索结果格式化为思考过程
-                    searchThinking = '\n\n🔍 网络搜索结果：\n';
-                    searchResults.forEach((result, index) => {
-                        searchThinking += `\n${index + 1}. ${result.title}\n   ${result.url}\n   ${result.snippet || ''}\n`;
-                    });
+                    if (searchQuery) {
+                        // 执行网络搜索
+                        const searchResults = await this.performWebSearch(searchQuery);
+                        
+                        if (searchResults.length > 0) {
+                            mcpResults.push({ type: 'search', data: searchResults });
+                            
+                            // 自动爬取前3个搜索结果的内容
+                            const crawledContents = [];
+                            for (let i = 0; i < Math.min(3, searchResults.length); i++) {
+                                try {
+                                    const pageContent = await this.fetchWebPage(searchResults[i].url);
+                                    if (pageContent && pageContent.content) {
+                                        crawledContents.push({
+                                            title: searchResults[i].title,
+                                            url: searchResults[i].url,
+                                            content: pageContent.content.substring(0, 2000) // 限制内容长度
+                                        });
+                                    }
+                                } catch (err) {
+                                    window.Logger?.warn('爬取网页失败:', searchResults[i].url, err);
+                                }
+                            }
+                            
+                            // 将搜索结果和爬取内容格式化为思考过程
+                            searchThinking = '\n\n🔍 网络搜索结果：\n';
+                            searchResults.forEach((result, index) => {
+                                searchThinking += `\n${index + 1}. ${result.title}\n   ${result.url}\n   ${result.snippet || ''}\n`;
+                            });
+                            
+                            // 添加爬取的网页内容
+                            if (crawledContents.length > 0) {
+                                searchThinking += '\n\n📄 网页内容摘要：\n';
+                                crawledContents.forEach((item, index) => {
+                                    searchThinking += `\n【${index + 1}】${item.title} (${item.url})\n${item.content}\n`;
+                                });
+                                
+                                // 将爬取的内容添加到RAG上下文中
+                                if (!ragContext) ragContext = '';
+                                ragContext += '\n\n【网络搜索结果】\n';
+                                crawledContents.forEach(item => {
+                                    ragContext += `\n${item.title}:\n${item.content}\n`;
+                                });
+                            }
+                        }
+                    }
+                } catch (error) {
+                    window.Logger?.error('网络搜索失败:', error);
+                    // 搜索失败不影响主流程
                 }
             }
 
@@ -213,21 +260,33 @@
             return sortedRules.map(r => `- ${r.content}`).join('\n');
         },
 
-        // 查询RAG知识库
+        // 查询RAG知识库（优化版，使用真正的向量搜索）
         async queryRAG(query, ragList) {
-            // 简化版RAG查询，实际应该使用向量相似度搜索
-            let context = '';
-            
-            for (const rag of ragList) {
-                if (rag.documents && rag.documents.length > 0) {
-                    context += `\n【${rag.name}】\n`;
-                    // 这里应该进行向量相似度搜索
-                    // 暂时返回文档列表
-                    context += rag.documents.map(d => `- ${d.name}`).join('\n');
-                }
+            if (!query || !ragList || ragList.length === 0) {
+                return '';
             }
-            
-            return context;
+
+            try {
+                // 使用RAGManager的queryRAGKnowledgeBase方法
+                if (window.RAGManager && typeof window.RAGManager.queryRAGKnowledgeBase === 'function') {
+                    const context = await window.RAGManager.queryRAGKnowledgeBase(query, ragList);
+                    window.Logger?.debug(`RAG查询结果长度: ${context.length} 字符`);
+                    return context;
+                } else {
+                    // 降级方案：使用buildRAGContext
+                    if (window.RAGManager && typeof window.RAGManager.buildRAGContext === 'function') {
+                        const contexts = await window.RAGManager.buildRAGContext(query, ragList);
+                        return contexts.map(c => `【${c.source}】\n${c.content}`).join('\n\n');
+                    } else {
+                        window.Logger?.warn('RAGManager未初始化，无法查询RAG知识库');
+                        return '';
+                    }
+                }
+            } catch (error) {
+                window.Logger?.error('RAG查询失败:', error);
+                // 返回空字符串，不影响主流程
+                return '';
+            }
         },
 
         // 构建增强系统提示词
@@ -367,7 +426,7 @@
                                 }
                             }
                         } catch (e) {
-                            console.error('解析流数据失败:', e);
+                            window.Logger?.error('解析流数据失败:', e);
                         }
                     }
                 }
@@ -421,7 +480,7 @@
                                 if (onStream) onStream(content);
                             }
                         } catch (e) {
-                            console.error('解析 GLM 流数据失败:', e);
+                            window.Logger?.error('解析 GLM 流数据失败:', e);
                         }
                     }
                 }
@@ -474,7 +533,7 @@
                                 if (onStream) onStream(content);
                             }
                         } catch (e) {
-                            console.error('解析 Kimi 流数据失败:', e);
+                            window.Logger?.error('解析 Kimi 流数据失败:', e);
                         }
                     }
                 }
@@ -539,7 +598,7 @@
                                 }
                             }
                         } catch (e) {
-                            console.error('解析 Qwen 流数据失败:', e);
+                            window.Logger?.error('解析 Qwen 流数据失败:', e);
                         }
                     }
                 }
@@ -593,7 +652,7 @@
                                 if (onStream) onStream(content);
                             }
                         } catch (e) {
-                            console.error('解析 OpenAI 流数据失败:', e);
+                            window.Logger?.error('解析 OpenAI 流数据失败:', e);
                         }
                     }
                 }
@@ -676,7 +735,7 @@
                                 if (onStream) onStream(content);
                             }
                         } catch (e) {
-                            console.error('解析自定义模型流数据失败:', e);
+                            window.Logger?.error('解析自定义模型流数据失败:', e);
                         }
                     }
                 }
@@ -689,12 +748,20 @@
         async performWebSearch(query) {
             try {
                 // 使用 Jina AI 进行网络搜索
+                const jinaApiKey = window.AIAgentApp?.getJinaAIKey?.() || '';
+                const searchHeaders = {
+                    'X-Return-Format': 'text'
+                };
+                if (jinaApiKey) {
+                    searchHeaders['Authorization'] = `Bearer ${jinaApiKey}`;
+                }
                 const searchUrl = `https://r.jina.ai/http://www.google.com/search?q=${encodeURIComponent(query)}`;
-                const response = await fetch(searchUrl);
+                const response = await fetch(searchUrl, {
+                    headers: searchHeaders
+                });
                 
                 if (!response.ok) {
-                    console.error('网络搜索失败:', response.status);
-                    return [];
+                    throw new Error(`网络搜索失败: ${response.status}`);
                 }
                 
                 const html = await response.text();
@@ -704,7 +771,11 @@
                 
                 return results.slice(0, 5); // 限制返回前5个结果
             } catch (error) {
-                console.error('网络搜索异常:', error);
+                window.ErrorHandler?.handle(error, {
+                    type: window.ErrorType?.NETWORK,
+                    showToast: false, // 网络搜索失败不显示Toast，避免干扰
+                    logError: true
+                });
                 return [];
             }
         },
@@ -748,11 +819,56 @@
             return html.replace(/<[^>]*>/g, '').trim();
         },
 
+        // 提取搜索关键词
+        extractSearchQuery(message) {
+            if (!message || typeof message !== 'string') return null;
+            
+            // 检测是否需要搜索的关键词
+            const searchKeywords = ['搜索', '查找', '查询', '最新', '现在', '当前', '实时', '今天', '最近', '什么', '如何', '为什么', '哪里'];
+            const hasSearchIntent = searchKeywords.some(keyword => message.includes(keyword));
+            
+            // 检测URL
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            const urls = message.match(urlRegex);
+            if (urls && urls.length > 0) {
+                return urls[0]; // 如果有URL，直接返回URL
+            }
+            
+            // 如果没有明确的搜索意图，返回null（不自动搜索）
+            if (!hasSearchIntent) return null;
+            
+            // 提取关键词：移除常见停用词
+            const stopWords = ['的', '了', '在', '是', '我', '你', '他', '她', '它', '我们', '你们', '他们', '请', '帮', '能', '可以', '要', '想', '给', '告诉'];
+            let query = message;
+            stopWords.forEach(word => {
+                query = query.replace(new RegExp(word, 'g'), ' ');
+            });
+            
+            // 清理多余空格
+            query = query.replace(/\s+/g, ' ').trim();
+            
+            // 限制长度
+            if (query.length > 50) {
+                query = query.substring(0, 50);
+            }
+            
+            return query || null;
+        },
+
         async fetchWebPage(url) {
             try {
                 // 使用 Jina AI 抓取网页内容
+                const jinaApiKey = window.AIAgentApp?.getJinaAIKey?.() || '';
+                const fetchHeaders = {
+                    'X-Return-Format': 'text'
+                };
+                if (jinaApiKey) {
+                    fetchHeaders['Authorization'] = `Bearer ${jinaApiKey}`;
+                }
                 const fetchUrl = `https://r.jina.ai/http://${url.replace(/^https?:\/\//, '')}`;
-                const response = await fetch(fetchUrl);
+                const response = await fetch(fetchUrl, {
+                    headers: fetchHeaders
+                });
                 
                 if (!response.ok) {
                     throw new Error(`抓取网页失败: ${response.status}`);
@@ -766,7 +882,11 @@
                     content: this.stripHtmlTags(content).substring(0, 5000) // 限制内容长度
                 };
             } catch (error) {
-                console.error('抓取网页异常:', error);
+                window.ErrorHandler?.handle(error, {
+                    type: window.ErrorType?.NETWORK,
+                    showToast: false,
+                    logError: true
+                });
                 throw error;
             }
         },

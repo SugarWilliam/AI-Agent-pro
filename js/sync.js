@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v5.0.0 - 云同步服务
+ * AI Agent Pro v8.0.0 - 云同步服务
  * 支持私人云端服务器对接
  */
 
@@ -26,7 +26,7 @@
                         ...JSON.parse(saved) 
                     };
                 } catch (e) {
-                    console.error('加载同步配置失败:', e);
+                    window.Logger?.error('加载同步配置失败:', e);
                 }
             }
         },
@@ -42,7 +42,11 @@
                 clearInterval(this.syncInterval);
             }
 
-            const config = window.AppState.syncConfig;
+            const config = window.AppState?.syncConfig;
+            if (!config) {
+                window.Logger?.warn('startAutoSync: syncConfig is not available');
+                return;
+            }
             if (config?.enabled && config?.interval) {
                 const intervalMs = config.interval * 60 * 1000;
                 this.syncInterval = setInterval(() => {
@@ -79,7 +83,7 @@
 
             try {
                 const data = {
-                    version: window.AIAgentApp?.VERSION || '5.0.0',
+                    version: window.AIAgentApp?.VERSION || '8.0.0',
                     timestamp: Date.now(),
                     device: this.getDeviceInfo(),
                     data: {

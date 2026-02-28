@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v6.0.0 - RAG文档解析与向量化模块
+ * AI Agent Pro v8.0.0 - RAG文档解析与向量化模块
  * 支持PDF、DOC、网页、文本的解析和语义检索
  */
 
@@ -9,11 +9,20 @@
     const RAGManager = {
         documents: [],
         vectors: new Map(), // 文档ID -> 向量列表
+        searchCache: null, // 搜索结果缓存
+        searchCacheMaxSize: 100, // 缓存最大大小
         
         // ==================== 初始化 ====================
         init() {
             this.loadDocuments();
             this.loadVectors();
+            this.loadExternalSources();
+            
+            // 初始化搜索缓存
+            this.searchCache = new Map();
+            this.searchCacheMaxSize = 100;
+            
+            window.Logger?.info(`RAGManager初始化完成: ${this.documents.length} 个文档, ${this.vectors.size} 个向量集合`);
         },
 
         loadDocuments() {
@@ -22,7 +31,7 @@
                 try {
                     this.documents = JSON.parse(saved);
                 } catch (e) {
-                    console.error('加载RAG文档失败:', e);
+                    window.Logger?.error('加载RAG文档失败:', e);
                     this.documents = [];
                 }
             }
@@ -39,7 +48,7 @@
                     const data = JSON.parse(saved);
                     this.vectors = new Map(Object.entries(data));
                 } catch (e) {
-                    console.error('加载向量数据失败:', e);
+                    window.Logger?.error('加载向量数据失败:', e);
                     this.vectors = new Map();
                 }
             }
@@ -70,34 +79,103 @@
                 let content = '';
                 
                 // 根据文件类型选择解析方式
-                if (file.type === 'text/plain' || file.type === 'text/markdown') {
+                const fileExt = file.name.split('.').pop()?.toLowerCase();
+                const fileName = file.name.toLowerCase();
+                
+                // 文本文件
+                if (file.type === 'text/plain' || fileExt === 'txt') {
                     content = await this.readTextFile(file);
-                } else if (file.type === 'application/pdf') {
+                }
+                // Markdown文件
+                else if (file.type === 'text/markdown' || fileExt === 'md' || fileExt === 'markdown') {
+                    content = await this.readTextFile(file);
+                }
+                // PDF文件
+                else if (file.type === 'application/pdf' || fileExt === 'pdf') {
                     content = await this.parsePDF(file);
-                } else if (file.type.includes('word') || file.type.includes('document')) {
+                }
+                // Word文档
+                else if (file.type.includes('word') || file.type.includes('document') || 
+                         fileExt === 'doc' || fileExt === 'docx') {
                     content = await this.parseDOC(file);
-                } else if (file.type === 'text/html' || file.name.endsWith('.html')) {
+                }
+                // PowerPoint文档
+                else if (file.type.includes('presentation') || file.type.includes('powerpoint') ||
+                         fileExt === 'ppt' || fileExt === 'pptx') {
+                    content = await this.parsePPT(file);
+                }
+                // Excel/电子表格
+                else if (file.type.includes('sheet') || file.type.includes('excel') ||
+                         fileExt === 'xlsx' || fileExt === 'xls') {
+                    content = await this.parseExcel(file);
+                }
+                // CSV文件
+                else if (file.type === 'text/csv' || fileExt === 'csv') {
+                    content = await this.parseCSV(file);
+                }
+                // HTML/H5文件
+                else if (file.type === 'text/html' || fileExt === 'html' || fileExt === 'htm' || fileExt === 'h5') {
                     content = await this.parseHTML(file);
-                } else {
-                    throw new Error('不支持的文件类型: ' + file.type);
+                }
+                // 图片文件
+                else if (file.type.startsWith('image/')) {
+                    content = await this.parseImage(file);
+                }
+                // URL（如果传入的是URL字符串）
+                else if (typeof file === 'string' && (file.startsWith('http://') || file.startsWith('https://'))) {
+                    return await this.parseURL(file);
+                }
+                else {
+                    throw new Error(`不支持的文件类型: ${file.type || '未知'} (${file.name})`);
                 }
 
-                // 分块处理
-                docInfo.chunks = this.chunkContent(content, chunkSize, overlap);
-                docInfo.metadata = this.extractMetadata(content);
-                docInfo.status = 'parsed';
+                // 检查内容是否有效（不是降级方案的占位符）
+                const isPlaceholder = content.includes('[PDF文档:') || 
+                                     content.includes('[Word文档:') ||
+                                     content.includes('[PowerPoint文档:') ||
+                                     content.includes('[电子表格:') ||
+                                     content.includes('[图片:') ||
+                                     content.includes('(注意：') ||
+                                     content.includes('文件大小:');
+                
+                // 如果内容太短或只是占位符，标记为无效但仍然保存
+                const isValidContent = !isPlaceholder && content.length > 50;
+                
+                if (isValidContent) {
+                    // 分块处理
+                    docInfo.chunks = this.chunkContent(content, chunkSize, overlap);
+                    docInfo.metadata = this.extractMetadata(content);
+                    docInfo.status = 'parsed';
+                    docInfo.vectorized = true;
 
-                // 生成向量
-                await this.generateVectors(docId, docInfo.chunks);
+                    // 生成向量
+                    await this.generateVectors(docId, docInfo.chunks);
+                    window.Logger?.info(`文档向量化完成: ${file.name}, ${docInfo.chunks.length} 个chunks`);
+                } else {
+                    // 内容无效，标记但保存基本信息
+                    docInfo.chunks = [];
+                    docInfo.metadata = { 
+                        ...this.extractMetadata(content),
+                        isValid: false,
+                        reason: isPlaceholder ? 'placeholder' : 'too_short'
+                    };
+                    docInfo.status = 'parsed';
+                    docInfo.vectorized = false;
+                    window.Logger?.warn(`文档内容无效，跳过向量化: ${file.name}, 原因: ${isPlaceholder ? '占位符' : '内容太短'}`);
+                }
 
             } catch (error) {
-                console.error('文档解析失败:', error);
+                window.Logger?.error('文档解析失败:', error);
                 docInfo.status = 'error';
                 docInfo.error = error.message;
             }
 
             this.documents.push(docInfo);
             this.saveDocuments();
+            
+            // 记录文档统计
+            const stats = this.getDocumentStats();
+            window.Logger?.info(`文档解析完成: ${file.name}, 状态: ${docInfo.status}, 向量化: ${docInfo.vectorized ? '是' : '否'}, 总文档数: ${stats.total}, 已解析: ${stats.parsed}`);
             
             return docInfo;
         },
@@ -112,18 +190,294 @@
             });
         },
 
-        // 解析PDF（简化版，实际项目需要PDF.js等库）
+        // 获取Jina AI API密钥
+        getJinaAIKey() {
+            if (window.AIAgentApp && typeof window.AIAgentApp.getJinaAIKey === 'function') {
+                return window.AIAgentApp.getJinaAIKey();
+            }
+            return '';
+        },
+
+        // 检查Jina AI是否可用
+        isJinaAIAvailable() {
+            if (window.AIAgentApp && typeof window.AIAgentApp.isJinaAIEnabled === 'function') {
+                return window.AIAgentApp.isJinaAIEnabled() && window.AIAgentApp.hasJinaAIKey();
+            }
+            // 如果没有配置，尝试使用（Jina AI可能支持无密钥的免费使用）
+            return true;
+        },
+
+        // 解析PDF（使用Jina AI Reader API）
         async parsePDF(file) {
-            // 返回文件基本信息，实际解析需要PDF.js
-            return `[PDF文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：PDF解析需要后端服务或PDF.js库支持)`;
+            // 检查Jina AI是否可用
+            if (!this.isJinaAIAvailable()) {
+                window.Logger?.warn('Jina AI未配置或已禁用，PDF解析将使用降级方案');
+                return `[PDF文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：请配置Jina AI API密钥以启用PDF内容解析。获取密钥: https://jina.ai/)`;
+            }
+
+            try {
+                const apiKey = this.getJinaAIKey();
+                const headers = {
+                    'Content-Type': 'application/pdf',
+                    'X-Return-Format': 'text'
+                };
+                
+                // 如果配置了API密钥，添加到请求头
+                if (apiKey) {
+                    headers['Authorization'] = `Bearer ${apiKey}`;
+                }
+                
+                // 使用Jina AI Reader API解析PDF
+                const response = await fetch('https://r.jina.ai/', {
+                    method: 'POST',
+                    headers: headers,
+                    body: await file.arrayBuffer()
+                });
+                
+                if (response.ok) {
+                    const content = await response.text();
+                    window.Logger?.info(`PDF解析成功: ${file.name}, 内容长度: ${content.length}`);
+                    return content;
+                } else {
+                    const errorText = await response.text().catch(() => '');
+                    if (response.status === 401 || response.status === 403) {
+                        throw new Error(`Jina AI API密钥无效或已过期。请检查设置中的Jina AI API密钥配置。`);
+                    } else if (response.status === 429) {
+                        throw new Error(`Jina AI API请求频率限制。请稍后重试。`);
+                    } else {
+                        throw new Error(`PDF解析失败: ${response.status} ${errorText.substring(0, 100)}`);
+                    }
+                }
+            } catch (error) {
+                window.Logger?.warn(`PDF解析失败，使用降级方案: ${error.message}`);
+                // 降级方案：返回基本信息
+                return `[PDF文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：PDF内容解析失败 - ${error.message})`;
+            }
         },
 
-        // 解析DOC（简化版）
+        // 解析DOC/DOCX（使用Jina AI Reader API）
         async parseDOC(file) {
-            return `[Word文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：DOC解析需要后端服务支持)`;
+            if (!this.isJinaAIAvailable()) {
+                window.Logger?.warn('Jina AI未配置或已禁用，Word文档解析将使用降级方案');
+                return `[Word文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：请配置Jina AI API密钥以启用Word文档内容解析。获取密钥: https://jina.ai/)`;
+            }
+
+            try {
+                const apiKey = this.getJinaAIKey();
+                const headers = {
+                    'Content-Type': file.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'X-Return-Format': 'text'
+                };
+                
+                if (apiKey) {
+                    headers['Authorization'] = `Bearer ${apiKey}`;
+                }
+                
+                const response = await fetch('https://r.jina.ai/', {
+                    method: 'POST',
+                    headers: headers,
+                    body: await file.arrayBuffer()
+                });
+                
+                if (response.ok) {
+                    const content = await response.text();
+                    window.Logger?.info(`Word文档解析成功: ${file.name}, 内容长度: ${content.length}`);
+                    return content;
+                } else {
+                    const errorText = await response.text().catch(() => '');
+                    if (response.status === 401 || response.status === 403) {
+                        throw new Error(`Jina AI API密钥无效或已过期。请检查设置中的Jina AI API密钥配置。`);
+                    } else if (response.status === 429) {
+                        throw new Error(`Jina AI API请求频率限制。请稍后重试。`);
+                    } else {
+                        throw new Error(`Word文档解析失败: ${response.status} ${errorText.substring(0, 100)}`);
+                    }
+                }
+            } catch (error) {
+                window.Logger?.warn(`Word文档解析失败，使用降级方案: ${error.message}`);
+                return `[Word文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：Word文档内容解析失败 - ${error.message})`;
+            }
         },
 
-        // 解析HTML
+        // 解析PPT/PPTX（使用Jina AI Reader API）
+        async parsePPT(file) {
+            if (!this.isJinaAIAvailable()) {
+                window.Logger?.warn('Jina AI未配置或已禁用，PPT解析将使用降级方案');
+                return `[PowerPoint文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：请配置Jina AI API密钥以启用PPT内容解析。获取密钥: https://jina.ai/)`;
+            }
+
+            try {
+                const apiKey = this.getJinaAIKey();
+                const headers = {
+                    'Content-Type': file.type || 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                    'X-Return-Format': 'text'
+                };
+                
+                if (apiKey) {
+                    headers['Authorization'] = `Bearer ${apiKey}`;
+                }
+                
+                const response = await fetch('https://r.jina.ai/', {
+                    method: 'POST',
+                    headers: headers,
+                    body: await file.arrayBuffer()
+                });
+                
+                if (response.ok) {
+                    const content = await response.text();
+                    window.Logger?.info(`PPT解析成功: ${file.name}, 内容长度: ${content.length}`);
+                    return content;
+                } else {
+                    const errorText = await response.text().catch(() => '');
+                    if (response.status === 401 || response.status === 403) {
+                        throw new Error(`Jina AI API密钥无效或已过期。请检查设置中的Jina AI API密钥配置。`);
+                    } else if (response.status === 429) {
+                        throw new Error(`Jina AI API请求频率限制。请稍后重试。`);
+                    } else {
+                        throw new Error(`PPT解析失败: ${response.status} ${errorText.substring(0, 100)}`);
+                    }
+                }
+            } catch (error) {
+                window.Logger?.warn(`PPT解析失败，使用降级方案: ${error.message}`);
+                return `[PowerPoint文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：PPT内容解析失败 - ${error.message})`;
+            }
+        },
+
+        // 解析Excel/电子表格（使用Jina AI Reader API）
+        async parseExcel(file) {
+            if (!this.isJinaAIAvailable()) {
+                window.Logger?.warn('Jina AI未配置或已禁用，Excel解析将使用降级方案');
+                // 降级方案：尝试读取为CSV（如果是简单格式）
+                try {
+                    const text = await this.readTextFile(file);
+                    return text;
+                } catch (e) {
+                    return `[电子表格: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：请配置Jina AI API密钥以启用Excel内容解析。获取密钥: https://jina.ai/)`;
+                }
+            }
+
+            try {
+                const apiKey = this.getJinaAIKey();
+                const headers = {
+                    'Content-Type': file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'X-Return-Format': 'text'
+                };
+                
+                if (apiKey) {
+                    headers['Authorization'] = `Bearer ${apiKey}`;
+                }
+                
+                const response = await fetch('https://r.jina.ai/', {
+                    method: 'POST',
+                    headers: headers,
+                    body: await file.arrayBuffer()
+                });
+                
+                if (response.ok) {
+                    const content = await response.text();
+                    window.Logger?.info(`Excel解析成功: ${file.name}, 内容长度: ${content.length}`);
+                    return content;
+                } else {
+                    const errorText = await response.text().catch(() => '');
+                    if (response.status === 401 || response.status === 403) {
+                        throw new Error(`Jina AI API密钥无效或已过期。请检查设置中的Jina AI API密钥配置。`);
+                    } else if (response.status === 429) {
+                        throw new Error(`Jina AI API请求频率限制。请稍后重试。`);
+                    } else {
+                        throw new Error(`Excel解析失败: ${response.status} ${errorText.substring(0, 100)}`);
+                    }
+                }
+            } catch (error) {
+                window.Logger?.warn(`Excel解析失败，使用降级方案: ${error.message}`);
+                // 降级方案：尝试读取为CSV（如果是简单格式）
+                try {
+                    const text = await this.readTextFile(file);
+                    return text;
+                } catch (e) {
+                    return `[电子表格: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：Excel内容解析失败 - ${error.message})`;
+                }
+            }
+        },
+
+        // 解析CSV文件
+        async parseCSV(file) {
+            try {
+                const text = await this.readTextFile(file);
+                // CSV文件可以直接读取，但可以格式化一下
+                const lines = text.split('\n');
+                const formattedLines = lines.map((line, index) => {
+                    if (index === 0) {
+                        return `表头: ${line}`;
+                    }
+                    return line;
+                });
+                return formattedLines.join('\n');
+            } catch (error) {
+                window.Logger?.error('CSV解析失败:', error);
+                throw error;
+            }
+        },
+
+        // 解析图片（使用OCR或图片描述API）
+        async parseImage(file) {
+            if (!this.isJinaAIAvailable()) {
+                window.Logger?.warn('Jina AI未配置或已禁用，图片解析将使用降级方案');
+                return `[图片: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n文件类型: ${file.type}\n\n(注意：请配置Jina AI API密钥以启用图片OCR和描述功能。获取密钥: https://jina.ai/)`;
+            }
+
+            try {
+                // 使用Jina AI Reader API解析图片
+                const apiKey = this.getJinaAIKey();
+                const headers = {
+                    'Content-Type': file.type,
+                    'X-Return-Format': 'text'
+                };
+                
+                if (apiKey) {
+                    headers['Authorization'] = `Bearer ${apiKey}`;
+                }
+                
+                const response = await fetch('https://r.jina.ai/', {
+                    method: 'POST',
+                    headers: headers,
+                    body: await file.arrayBuffer()
+                });
+                
+                if (response.ok) {
+                    const content = await response.text();
+                    window.Logger?.info(`图片解析成功: ${file.name}`);
+                    return `[图片: ${file.name}]\n${content}`;
+                } else {
+                    const errorText = await response.text().catch(() => '');
+                    if (response.status === 401 || response.status === 403) {
+                        throw new Error(`Jina AI API密钥无效或已过期。请检查设置中的Jina AI API密钥配置。`);
+                    } else if (response.status === 429) {
+                        throw new Error(`Jina AI API请求频率限制。请稍后重试。`);
+                    } else {
+                        throw new Error(`图片解析失败: ${response.status} ${errorText.substring(0, 100)}`);
+                    }
+                }
+            } catch (error) {
+                window.Logger?.warn(`图片解析失败，使用降级方案: ${error.message}`);
+                // 降级方案：返回图片基本信息
+                return `[图片: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n文件类型: ${file.type}\n\n(注意：图片内容解析失败 - ${error.message})`;
+            }
+        },
+
+        // 文件转Base64
+        fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64 = reader.result.split(',')[1]; // 移除data:type;base64,前缀
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        },
+
+        // 解析HTML/H5
         async parseHTML(file) {
             const html = await this.readTextFile(file);
             const parser = new DOMParser();
@@ -134,15 +488,54 @@
             
             // 提取正文
             const mainContent = doc.querySelector('main, article, .content, #content') || doc.body;
-            return mainContent.textContent.trim();
+            
+            // 提取标题
+            const title = doc.querySelector('title')?.textContent || '';
+            
+            // 提取meta描述
+            const metaDesc = doc.querySelector('meta[name="description"]')?.getAttribute('content') || '';
+            
+            // 组合内容
+            let content = '';
+            if (title) content += `标题: ${title}\n\n`;
+            if (metaDesc) content += `描述: ${metaDesc}\n\n`;
+            content += mainContent.textContent.trim();
+            
+            return content;
         },
 
         // 解析网页URL
         async parseURL(url) {
+            if (!this.isJinaAIAvailable()) {
+                window.Logger?.warn('Jina AI未配置或已禁用，URL解析将使用降级方案');
+                return `[网页: ${url}]\n\n(注意：请配置Jina AI API密钥以启用网页内容解析。获取密钥: https://jina.ai/)`;
+            }
+
             try {
-                // 使用fetch获取网页内容（需要CORS支持）
-                const response = await fetch(`https://r.jina.ai/http://${url.replace(/^https?:\/\//, '')}`);
-                if (!response.ok) throw new Error('获取网页失败');
+                const apiKey = this.getJinaAIKey();
+                const headers = {
+                    'X-Return-Format': 'text'
+                };
+                
+                if (apiKey) {
+                    headers['Authorization'] = `Bearer ${apiKey}`;
+                }
+                
+                // 使用Jina AI Reader API获取网页内容
+                const response = await fetch(`https://r.jina.ai/http://${url.replace(/^https?:\/\//, '')}`, {
+                    headers: headers
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text().catch(() => '');
+                    if (response.status === 401 || response.status === 403) {
+                        throw new Error(`Jina AI API密钥无效或已过期。请检查设置中的Jina AI API密钥配置。`);
+                    } else if (response.status === 429) {
+                        throw new Error(`Jina AI API请求频率限制。请稍后重试。`);
+                    } else {
+                        throw new Error(`获取网页失败: ${response.status} ${errorText.substring(0, 100)}`);
+                    }
+                }
                 
                 const content = await response.text();
                 
@@ -165,7 +558,7 @@
                 
                 return docInfo;
             } catch (error) {
-                console.error('URL解析失败:', error);
+                window.Logger?.error('URL解析失败:', error);
                 throw error;
             }
         },
@@ -249,76 +642,235 @@
                 .map(([word]) => word);
         },
 
-        // ==================== 向量生成（简化版） ====================
+        // ==================== 向量生成（优化版） ====================
         async generateVectors(docId, chunks) {
-            // 简化的向量生成：使用词袋模型
-            // 实际项目应该调用Embedding API（如OpenAI、智谱等）
-            const vectors = chunks.map(chunk => ({
-                chunkId: chunk.id,
-                vector: this.simpleEmbedding(chunk.text),
-                text: chunk.text
-            }));
+            // 优化的向量生成：使用改进的TF-IDF + 语义哈希
+            const vectors = [];
+            
+            // 批量处理以提高性能
+            const batchSize = 10;
+            for (let i = 0; i < chunks.length; i += batchSize) {
+                const batch = chunks.slice(i, i + batchSize);
+                const batchVectors = await Promise.all(
+                    batch.map(chunk => this.enhancedEmbedding(chunk.text, chunks))
+                );
+                
+                batch.forEach((chunk, idx) => {
+                    vectors.push({
+                        chunkId: chunk.id,
+                        vector: batchVectors[idx],
+                        text: chunk.text,
+                        index: chunk.index
+                    });
+                });
+            }
             
             this.vectors.set(docId, vectors);
             this.saveVectors();
+            
+            window.Logger?.info(`已为文档 ${docId} 生成 ${vectors.length} 个向量`);
         },
 
-        // 简化的词袋嵌入
-        simpleEmbedding(text) {
-            // 创建一个简单的哈希向量
-            const vector = new Array(128).fill(0);
-            const words = text.toLowerCase().split(/\s+/);
+        // 优化的嵌入算法：TF-IDF + 语义哈希 + 字符级特征
+        enhancedEmbedding(text, allChunks = []) {
+            // 使用256维向量以获得更好的语义表示
+            const vector = new Array(256).fill(0);
+            const textLower = text.toLowerCase();
             
-            words.forEach((word, i) => {
-                for (let j = 0; j < word.length; j++) {
-                    const charCode = word.charCodeAt(j);
-                    vector[charCode % 128] += 1;
+            // 1. 字符级特征（保留更多语义信息）
+            for (let i = 0; i < text.length; i++) {
+                const charCode = textLower.charCodeAt(i);
+                vector[charCode % 256] += 1;
+            }
+            
+            // 2. 词级特征（中文和英文）
+            const words = this.tokenize(textLower);
+            const wordFreq = {};
+            words.forEach(w => {
+                if (w.length > 0) {
+                    wordFreq[w] = (wordFreq[w] || 0) + 1;
                 }
             });
             
-            // 归一化
+            // 3. TF-IDF权重（如果提供了所有chunks）
+            if (allChunks.length > 0) {
+                const docFreq = {};
+                allChunks.forEach(chunk => {
+                    const chunkWords = new Set(this.tokenize(chunk.text.toLowerCase()));
+                    chunkWords.forEach(w => {
+                        docFreq[w] = (docFreq[w] || 0) + 1;
+                    });
+                });
+                
+                const totalDocs = allChunks.length;
+                words.forEach((word, idx) => {
+                    if (word.length > 0) {
+                        const tf = wordFreq[word] / words.length;
+                        const idf = Math.log(totalDocs / (docFreq[word] || 1));
+                        const tfidf = tf * idf;
+                        
+                        // 将TF-IDF权重映射到向量
+                        for (let j = 0; j < word.length; j++) {
+                            const charCode = word.charCodeAt(j);
+                            vector[charCode % 256] += tfidf;
+                        }
+                    }
+                });
+            } else {
+                // 没有其他chunks时，使用简单的词频
+                words.forEach((word, idx) => {
+                    if (word.length > 0) {
+                        const weight = wordFreq[word] / words.length;
+                        for (let j = 0; j < word.length; j++) {
+                            const charCode = word.charCodeAt(j);
+                            vector[charCode % 256] += weight;
+                        }
+                    }
+                });
+            }
+            
+            // 4. 归一化
             const magnitude = Math.sqrt(vector.reduce((sum, v) => sum + v * v, 0));
             return magnitude > 0 ? vector.map(v => v / magnitude) : vector;
         },
 
-        // ==================== 语义检索 ====================
+        // 分词函数（支持中文和英文）
+        tokenize(text) {
+            // 中文：按字符分割
+            // 英文：按单词分割
+            const tokens = [];
+            let currentWord = '';
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const charCode = char.charCodeAt(0);
+                
+                // 中文字符（Unicode范围：0x4E00-0x9FFF）
+                if (charCode >= 0x4E00 && charCode <= 0x9FFF) {
+                    if (currentWord) {
+                        tokens.push(currentWord);
+                        currentWord = '';
+                    }
+                    tokens.push(char);
+                }
+                // 英文字母或数字
+                else if ((charCode >= 65 && charCode <= 90) || 
+                         (charCode >= 97 && charCode <= 122) ||
+                         (charCode >= 48 && charCode <= 57)) {
+                    currentWord += char;
+                }
+                // 其他字符（标点、空格等）
+                else {
+                    if (currentWord) {
+                        tokens.push(currentWord);
+                        currentWord = '';
+                    }
+                }
+            }
+            
+            if (currentWord) {
+                tokens.push(currentWord);
+            }
+            
+            return tokens.filter(t => t.length > 0);
+        },
+
+        // ==================== 语义检索（优化版） ====================
         async search(query, options = {}) {
             const {
                 topK = 5,
                 docIds = null, // 指定文档ID列表，null表示搜索所有
-                minScore = 0.5
+                minScore = 0.3, // 降低阈值以获得更多结果
+                useCache = true
             } = options;
 
-            const queryVector = this.simpleEmbedding(query);
+            // 查询缓存
+            const cacheKey = `search_${query}_${topK}_${minScore}`;
+            if (useCache && this.searchCache && this.searchCache.has(cacheKey)) {
+                window.Logger?.debug('使用RAG搜索结果缓存');
+                return this.searchCache.get(cacheKey);
+            }
+
+            const startTime = performance.now();
+            
+            // 使用优化的embedding算法
+            const queryVector = this.enhancedEmbedding(query);
             const results = [];
 
+            // 如果没有指定docIds，搜索所有已向量化的文档
             const targetDocIds = docIds || Array.from(this.vectors.keys());
+            
+            // 过滤掉没有向量的文档（可能解析失败或内容无效）
+            const validDocIds = targetDocIds.filter(docId => {
+                const vectors = this.vectors.get(docId);
+                return vectors && vectors.length > 0;
+            });
+            
+            if (validDocIds.length === 0) {
+                window.Logger?.debug('RAG搜索: 没有有效的向量化文档');
+                return [];
+            }
 
-            for (const docId of targetDocIds) {
+            // 并行处理多个文档以提高性能
+            const searchPromises = targetDocIds.map(async (docId) => {
                 const docVectors = this.vectors.get(docId);
-                if (!docVectors) continue;
+                if (!docVectors) return [];
 
                 const doc = this.documents.find(d => d.id === docId);
-                if (!doc) continue;
+                if (!doc) return [];
 
+                const docResults = [];
+                
+                // 批量计算相似度
                 for (const item of docVectors) {
                     const score = this.cosineSimilarity(queryVector, item.vector);
                     if (score >= minScore) {
-                        results.push({
+                        docResults.push({
                             docId,
                             docName: doc.name,
                             chunkId: item.chunkId,
                             text: item.text,
-                            score
+                            score,
+                            index: item.index || 0
                         });
                     }
                 }
-            }
+                
+                return docResults;
+            });
+
+            const allResults = await Promise.all(searchPromises);
+            results.push(...allResults.flat());
 
             // 按相似度排序
             results.sort((a, b) => b.score - a.score);
             
-            return results.slice(0, topK);
+            const finalResults = results.slice(0, topK);
+            
+            // 缓存结果
+            if (useCache) {
+                if (!this.searchCache) {
+                    this.searchCache = new Map();
+                    // 限制缓存大小
+                    this.searchCacheMaxSize = 100;
+                }
+                if (this.searchCache.size >= this.searchCacheMaxSize) {
+                    // 删除最旧的缓存项
+                    const firstKey = this.searchCache.keys().next().value;
+                    this.searchCache.delete(firstKey);
+                }
+                this.searchCache.set(cacheKey, finalResults);
+            }
+            
+            const endTime = performance.now();
+            window.Logger?.info(`RAG搜索完成: ${finalResults.length} 个结果，耗时 ${(endTime - startTime).toFixed(2)}ms`);
+            
+            return finalResults;
+        },
+
+        // query函数（search的别名，用于兼容性）
+        async query(query, options = {}) {
+            return await this.search(query, options);
         },
 
         // 余弦相似度
@@ -336,11 +888,12 @@
             return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB) + 1e-10);
         },
 
-        // ==================== 构建RAG上下文 ====================
+        // ==================== 构建RAG上下文（优化版） ====================
         async buildRAGContext(query, ragConfigs) {
             const contexts = [];
             
-            for (const config of ragConfigs) {
+            // 并行处理多个RAG配置以提高性能
+            const contextPromises = ragConfigs.map(async (config) => {
                 if (config.type === 'document') {
                     // 搜索上传的文档
                     const docResults = await this.search(query, {
@@ -349,26 +902,231 @@
                     });
                     
                     if (docResults.length > 0) {
-                        contexts.push({
+                        return {
                             source: config.name,
                             type: 'document',
-                            content: docResults.map(r => r.text).join('\n\n')
-                        });
+                            content: docResults.map(r => r.text).join('\n\n'),
+                            results: docResults
+                        };
                     }
                 } else if (config.type === 'web') {
                     // 网页知识库（简化版）
-                    contexts.push({
+                    return {
                         source: config.name,
                         type: 'web',
                         content: `[网页知识库: ${config.name}]`
-                    });
+                    };
                 }
-            }
+                return null;
+            });
+            
+            const results = await Promise.all(contextPromises);
+            contexts.push(...results.filter(r => r !== null));
             
             return contexts;
         },
 
+        // 查询RAG知识库（用于SubAgent调用）
+        async queryRAGKnowledgeBase(query, ragList) {
+            if (!ragList || ragList.length === 0) {
+                window.Logger?.debug('RAG查询: 无RAG知识库配置');
+                return '';
+            }
+
+            const startTime = performance.now();
+            let context = '';
+            const contextParts = [];
+            const usageStats = {
+                totalRAGs: ragList.length,
+                matchedRAGs: 0,
+                documentMatches: 0,
+                builtinMatches: 0,
+                externalMatches: 0,
+                totalResults: 0
+            };
+
+            // 并行查询所有RAG知识库
+            const ragPromises = ragList.map(async (rag) => {
+                // 1. 检查是否有上传的文档（优先使用RAGManager.documents中的文档）
+                // 首先检查rag.documents中引用的文档ID
+                let docIds = [];
+                if (rag.documents && rag.documents.length > 0) {
+                    docIds = rag.documents.map(d => d.id).filter(id => id);
+                }
+                
+                // 如果没有rag.documents，检查RAGManager.documents中是否有相关文档
+                // 这里可以根据ragId或其他标识来匹配，暂时搜索所有文档
+                if (docIds.length === 0 && window.RAGManager && window.RAGManager.documents) {
+                    // 如果没有指定文档，搜索所有已向量化的文档
+                    const allDocIds = Array.from(window.RAGManager.vectors.keys());
+                    docIds = allDocIds;
+                }
+                
+                if (docIds.length > 0) {
+                    const searchResults = await window.RAGManager?.search(query, {
+                        topK: 3,
+                        minScore: 0.3,
+                        docIds: docIds.length > 0 ? docIds : null
+                    });
+
+                    if (searchResults && searchResults.length > 0) {
+                        usageStats.matchedRAGs++;
+                        usageStats.documentMatches++;
+                        usageStats.totalResults += searchResults.length;
+                        return {
+                            source: rag.name,
+                            type: 'document',
+                            content: searchResults.map(r => r.text).join('\n\n'),
+                            results: searchResults
+                        };
+                    }
+                }
+
+                // 2. 检查是否有defaultContent（内置知识库内容）
+                if (rag.defaultContent) {
+                    // 对defaultContent进行简单的关键词匹配
+                    const queryKeywords = this.extractKeywords(query, 5);
+                    const contentKeywords = this.extractKeywords(rag.defaultContent, 20);
+                    const matchScore = this.calculateKeywordMatch(queryKeywords, contentKeywords);
+                    
+                    if (matchScore > 0.2) {
+                        usageStats.matchedRAGs++;
+                        usageStats.builtinMatches++;
+                        usageStats.totalResults++;
+                        return {
+                            source: rag.name,
+                            type: 'builtin',
+                            content: rag.defaultContent,
+                            matchScore: matchScore
+                        };
+                    }
+                }
+
+                // 3. 检查外部数据源
+                if (rag.externalSources && rag.externalSources.length > 0) {
+                    const enabledSources = rag.externalSources.filter(s => s.enabled !== false);
+                    if (enabledSources.length > 0) {
+                        try {
+                            const externalResults = await window.RAGManager?.searchExternalSources(query, rag.id, {
+                                topK: 2,
+                                minScore: 0.3
+                            });
+                            
+                            if (externalResults && externalResults.length > 0) {
+                                usageStats.matchedRAGs++;
+                                usageStats.externalMatches++;
+                                usageStats.totalResults += externalResults.length;
+                                return {
+                                    source: rag.name,
+                                    type: 'external',
+                                    content: externalResults.map(r => r.text).join('\n\n'),
+                                    results: externalResults
+                                };
+                            }
+                        } catch (error) {
+                            window.Logger?.warn(`查询外部数据源失败 (${rag.name}):`, error);
+                        }
+                    }
+                }
+
+                return null;
+            });
+
+            const ragResults = await Promise.all(ragPromises);
+            
+            // 按相关性排序并构建上下文
+            ragResults
+                .filter(r => r !== null)
+                .sort((a, b) => (b.matchScore || 1) - (a.matchScore || 1))
+                .forEach(result => {
+                    contextParts.push(`\n【${result.source}】\n${result.content}\n`);
+                });
+
+            context = contextParts.join('\n');
+
+            const endTime = performance.now();
+            const matchedCount = ragResults.filter(r => r !== null).length;
+            
+            // 记录使用统计
+            window.Logger?.info(`RAG查询完成:`, {
+                query: query.substring(0, 50) + (query.length > 50 ? '...' : ''),
+                totalRAGs: usageStats.totalRAGs,
+                matchedRAGs: matchedCount,
+                documentMatches: usageStats.documentMatches,
+                builtinMatches: usageStats.builtinMatches,
+                externalMatches: usageStats.externalMatches,
+                totalResults: usageStats.totalResults,
+                contextLength: context.length,
+                duration: `${(endTime - startTime).toFixed(2)}ms`
+            });
+
+            // 更新使用统计（可选：用于分析）
+            if (!this.usageStats) {
+                this.usageStats = {
+                    totalQueries: 0,
+                    totalMatches: 0,
+                    avgDuration: 0
+                };
+            }
+            this.usageStats.totalQueries++;
+            this.usageStats.totalMatches += matchedCount;
+            this.usageStats.avgDuration = (this.usageStats.avgDuration * (this.usageStats.totalQueries - 1) + (endTime - startTime)) / this.usageStats.totalQueries;
+
+            return context;
+        },
+
+        // 计算关键词匹配度
+        calculateKeywordMatch(queryKeywords, contentKeywords) {
+            if (!queryKeywords || !contentKeywords || queryKeywords.length === 0) {
+                return 0;
+            }
+
+            const matched = queryKeywords.filter(k => contentKeywords.includes(k)).length;
+            return matched / queryKeywords.length;
+        },
+
         // ==================== 文档管理 ====================
+        // 添加文档（简化版，接受文档对象或文件）
+        async addDocument(docOrFile) {
+            try {
+                // 如果传入的是文件对象，使用parseDocument
+                if (docOrFile instanceof File || docOrFile instanceof Blob) {
+                    return await this.parseDocument(docOrFile);
+                }
+                
+                // 如果传入的是文档对象
+                if (docOrFile && typeof docOrFile === 'object') {
+                    const docId = docOrFile.id || 'doc_' + Date.now();
+                    const docInfo = {
+                        id: docId,
+                        name: docOrFile.name || '未命名文档',
+                        type: docOrFile.type || 'text/plain',
+                        content: docOrFile.content || docOrFile.text || '',
+                        uploadedAt: docOrFile.uploadedAt || Date.now(),
+                        status: 'parsed',
+                        chunks: [],
+                        metadata: docOrFile.metadata || {}
+                    };
+                    
+                    // 如果有内容，进行分块和向量化
+                    if (docInfo.content) {
+                        docInfo.chunks = this.chunkContent(docInfo.content, 500, 50);
+                        await this.generateVectors(docId, docInfo.chunks);
+                    }
+                    
+                    this.documents.push(docInfo);
+                    this.saveDocuments();
+                    
+                    return docInfo;
+                }
+                
+                throw new Error('无效的文档参数');
+            } catch (error) {
+                window.Logger?.error('添加文档失败:', error);
+                throw error;
+            }
+        },
+
         getDocument(docId) {
             return this.documents.find(d => d.id === docId);
         },
@@ -443,7 +1201,7 @@
                 try {
                     this.externalSources = JSON.parse(saved);
                 } catch (e) {
-                    console.error('加载外部数据源失败:', e);
+                    window.Logger?.error('加载外部数据源失败:', e);
                     this.externalSources = [];
                 }
             }
@@ -460,9 +1218,30 @@
                 let content = '';
                 
                 if (source.type === 'website') {
-                    // 使用jina.ai摘要服务获取网页内容
-                    const response = await fetch(`https://r.jina.ai/http://${source.url.replace(/^https?:\/\//, '')}`);
-                    if (!response.ok) throw new Error('获取网页失败');
+                    // 使用Jina AI Reader API获取网页内容
+                    const apiKey = this.getJinaAIKey();
+                    const headers = {
+                        'X-Return-Format': 'text'
+                    };
+                    
+                    if (apiKey) {
+                        headers['Authorization'] = `Bearer ${apiKey}`;
+                    }
+                    
+                    const response = await fetch(`https://r.jina.ai/http://${source.url.replace(/^https?:\/\//, '')}`, {
+                        headers: headers
+                    });
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text().catch(() => '');
+                        if (response.status === 401 || response.status === 403) {
+                            throw new Error(`Jina AI API密钥无效或已过期。请检查设置中的Jina AI API密钥配置。`);
+                        } else if (response.status === 429) {
+                            throw new Error(`Jina AI API请求频率限制。请稍后重试。`);
+                        } else {
+                            throw new Error(`获取网页失败: ${response.status} ${errorText.substring(0, 100)}`);
+                        }
+                    }
                     content = await response.text();
                 } else if (source.type === 'api') {
                     // API数据源
@@ -509,7 +1288,11 @@
                 
                 return docInfo;
             } catch (error) {
-                console.error('同步外部数据源失败:', error);
+                window.ErrorHandler?.handle(error, {
+                    type: window.ErrorType?.NETWORK,
+                    showToast: true,
+                    logError: true
+                });
                 source.syncStatus = 'error';
                 source.error = error.message;
                 this.saveExternalSources();

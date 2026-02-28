@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v5.0.0 - UI渲染模块
+ * AI Agent Pro v8.0.0 - UI渲染模块
  * 未来科技感UI
  */
 
@@ -171,24 +171,24 @@
             contentHtml = escapeHtml(msg.content).replace(/\n/g, '<br>');
         }
 
-        // 左下角操作按钮（复制、下载）
+        // 左下角操作按钮（复制、下载）- 使用data属性而不是onclick
         const leftActions = `
-            <button class="msg-action-btn" title="复制" onclick="AIAgentUI.copyMessage('${msg.id}')">
+            <button class="msg-action-btn" data-action="copy" data-message-id="${msg.id}" title="复制">
                 <i class="fas fa-copy"></i>
             </button>
-            <button class="msg-action-btn" title="下载" onclick="AIAgentUI.downloadMessage('${msg.id}')">
+            <button class="msg-action-btn" data-action="download" data-message-id="${msg.id}" title="下载">
                 <i class="fas fa-download"></i>
             </button>
         `;
         
-        // 右侧操作按钮
+        // 右侧操作按钮 - 使用data属性而不是onclick
         const rightActions = `
-            ${!isUser ? `<button class="msg-action-btn" title="语音播放" onclick="AIAgentUI.speakMessage('${msg.id}')"><i class="fas fa-volume-up"></i></button>` : ''}
-            ${!isUser ? `<button class="msg-action-btn" title="重新生成" onclick="AIAgentUI.regenerateMessage('${msg.id}')"><i class="fas fa-redo"></i></button>` : ''}
-            <button class="msg-action-btn" title="编辑" onclick="AIAgentUI.editMessage('${msg.id}')">
+            ${!isUser ? `<button class="msg-action-btn" data-action="speak" data-message-id="${msg.id}" title="语音播放"><i class="fas fa-volume-up"></i></button>` : ''}
+            ${!isUser ? `<button class="msg-action-btn" data-action="regenerate" data-message-id="${msg.id}" title="重新生成"><i class="fas fa-redo"></i></button>` : ''}
+            <button class="msg-action-btn" data-action="edit" data-message-id="${msg.id}" title="编辑">
                 <i class="fas fa-edit"></i>
             </button>
-            <button class="msg-action-btn" title="删除" onclick="AIAgentUI.deleteMessage('${msg.id}')">
+            <button class="msg-action-btn" data-action="delete" data-message-id="${msg.id}" title="删除">
                 <i class="fas fa-trash"></i>
             </button>
         `;
@@ -265,13 +265,13 @@
         scrollToBottom();
     }
 
-    function finalizeStreamMessage(finalContent, thinking = '') {
-        if (!currentStreamMessageEl) return;
+    function finalizeStreamMessage(finalContent, thinking = '', messageId = null) {
+        if (!currentStreamMessageEl) return null;
 
         currentStreamMessageEl.classList.remove('streaming');
         
-        // 生成消息ID
-        const msgId = 'msg_' + Date.now();
+        // 使用传入的消息ID，如果没有则生成新的
+        const msgId = messageId || 'msg_' + Date.now();
         currentStreamMessageEl.dataset.messageId = msgId;
 
         const messageBody = currentStreamMessageEl.querySelector('.message-body');
@@ -294,23 +294,23 @@
             const outputFormat = detectOutputFormat(finalContent);
             const contentHtml = renderContentByFormat(renderMarkdown(finalContent), outputFormat);
             
-            // 添加操作按钮
+            // 添加操作按钮 - 使用data属性而不是onclick
             const leftActions = `
-                <button class="msg-action-btn" title="复制" onclick="AIAgentUI.copyMessage('${msgId}')">
+                <button class="msg-action-btn" data-action="copy" data-message-id="${msgId}" title="复制">
                     <i class="fas fa-copy"></i>
                 </button>
-                <button class="msg-action-btn" title="下载" onclick="AIAgentUI.downloadMessage('${msgId}')">
+                <button class="msg-action-btn" data-action="download" data-message-id="${msgId}" title="下载">
                     <i class="fas fa-download"></i>
                 </button>
             `;
             
             const rightActions = `
-                <button class="msg-action-btn" title="语音播放" onclick="AIAgentUI.speakMessage('${msgId}')"><i class="fas fa-volume-up"></i></button>
-                <button class="msg-action-btn" title="重新生成" onclick="AIAgentUI.regenerateMessage('${msgId}')"><i class="fas fa-redo"></i></button>
-                <button class="msg-action-btn" title="编辑" onclick="AIAgentUI.editMessage('${msgId}')">
+                <button class="msg-action-btn" data-action="speak" data-message-id="${msgId}" title="语音播放"><i class="fas fa-volume-up"></i></button>
+                <button class="msg-action-btn" data-action="regenerate" data-message-id="${msgId}" title="重新生成"><i class="fas fa-redo"></i></button>
+                <button class="msg-action-btn" data-action="edit" data-message-id="${msgId}" title="编辑">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="msg-action-btn" title="删除" onclick="AIAgentUI.deleteMessage('${msgId}')">
+                <button class="msg-action-btn" data-action="delete" data-message-id="${msgId}" title="删除">
                     <i class="fas fa-trash"></i>
                 </button>
             `;
@@ -331,6 +331,9 @@
         currentStreamContentEl = null;
 
         scrollToBottom();
+        
+        // 返回消息ID，供调用者使用
+        return msgId;
     }
 
     // ==================== Markdown渲染 ====================
@@ -623,7 +626,7 @@
             
             return `<div class="chart-container" style="height: 300px; margin: 16px 0;"><canvas id="${chartId}"></canvas></div>`;
         } catch (e) {
-            console.error('Chart render error:', e);
+            window.Logger?.error('Chart render error:', e);
             return null;
         }
     }
@@ -675,7 +678,7 @@
             html += '</div>';
             return html;
         } catch (e) {
-            console.error('Decision matrix render error:', e);
+            window.Logger?.error('Decision matrix render error:', e);
             return null;
         }
     }
@@ -733,7 +736,7 @@
             
             return `<div class="chart-container" style="height: 300px; margin: 16px 0;"><canvas id="${chartId}"></canvas></div>`;
         } catch (e) {
-            console.error('Probability render error:', e);
+            window.Logger?.error('Probability render error:', e);
             return null;
         }
     }
@@ -777,7 +780,7 @@
             html += '</div></div>';
             return html;
         } catch (e) {
-            console.error('Decision chain render error:', e);
+            window.Logger?.error('Decision chain render error:', e);
             return null;
         }
     }
@@ -852,22 +855,22 @@
                                 nodes: [element],
                                 suppressErrors: true
                             }).catch(err => {
-                                console.error('Mermaid run error:', err);
+                                window.Logger?.error('Mermaid run error:', err);
                                 element.innerHTML = '<div class="mermaid-error"><i class="fas fa-exclamation-triangle"></i> 图表渲染失败，请检查语法</div>';
                             });
                         } catch (e) {
-                            console.error('Mermaid render error:', e);
+                            window.Logger?.error('Mermaid render error:', e);
                             element.innerHTML = '<div class="mermaid-error"><i class="fas fa-exclamation-triangle"></i> 图表渲染失败</div>';
                         }
                     }
                 } else {
-                    console.warn('Mermaid library not loaded');
+                    window.Logger?.warn('Mermaid library not loaded');
                 }
             }, 200);
             
             return `<div class="mermaid-container"><div id="${mermaidId}" class="mermaid-wrapper">正在加载图表...</div></div>`;
         } catch (e) {
-            console.error('Mermaid parse error:', e);
+            window.Logger?.error('Mermaid parse error:', e);
             return null;
         }
     }
@@ -1095,10 +1098,10 @@
             <div class="h5-output-header">
                 <span class="h5-output-label"><i class="fas fa-mobile-alt"></i> H5 网页</span>
                 <div class="h5-output-actions">
-                    <button class="btn-icon" onclick="AIAgentUI.previewH5(this)" title="预览">
+                    <button class="btn-icon h5-preview-btn" title="预览">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn-icon" onclick="AIAgentUI.downloadH5(this)" title="下载HTML">
+                    <button class="btn-icon h5-download-btn" title="下载HTML">
                         <i class="fas fa-download"></i>
                     </button>
                 </div>
@@ -1114,11 +1117,18 @@
         // 提取PDF内容（通常是Markdown格式）
         const pdfContent = content.replace(/^(PDF|pdf|【PDF】)\s*/im, '').trim();
 
+        // 生成唯一ID用于存储PDF内容
+        const pdfId = 'pdf_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        
+        // 将PDF内容存储到临时存储中
+        if (!window._tempPDFContent) window._tempPDFContent = {};
+        window._tempPDFContent[pdfId] = pdfContent;
+        
         return `<div class="pdf-output-container">
             <div class="pdf-output-header">
                 <span class="pdf-output-label"><i class="fas fa-file-pdf"></i> PDF 文档</span>
                 <div class="pdf-output-actions">
-                    <button class="btn-icon" onclick="AIAgentUI.downloadAsPDF('${escapeHtml(pdfContent.substring(0, 100))}')" title="下载PDF">
+                    <button class="btn-icon pdf-download-btn" data-pdf-id="${pdfId}" title="下载PDF">
                         <i class="fas fa-download"></i>
                     </button>
                 </div>
@@ -1136,11 +1146,18 @@
         // 提取文档内容
         const docContent = content.replace(/^(Word|DOC|文档|【DOC】)\s*/im, '').trim();
 
+        // 生成唯一ID用于存储DOC内容
+        const docId = 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        
+        // 将DOC内容存储到临时存储中
+        if (!window._tempDOCContent) window._tempDOCContent = {};
+        window._tempDOCContent[docId] = docContent;
+        
         return `<div class="doc-output-container">
             <div class="doc-output-header">
                 <span class="doc-output-label"><i class="fas fa-file-word"></i> Word 文档</span>
                 <div class="doc-output-actions">
-                    <button class="btn-icon" onclick="AIAgentUI.downloadAsDOC('${escapeHtml(docContent.substring(0, 100))}')" title="下载DOC">
+                    <button class="btn-icon doc-download-btn" data-doc-id="${docId}" title="下载DOC">
                         <i class="fas fa-download"></i>
                     </button>
                 </div>
@@ -1160,7 +1177,7 @@
         html += '<div class="spreadsheet-output-header">';
         html += '<span class="spreadsheet-output-label"><i class="fas fa-file-excel"></i> 电子表格</span>';
         html += '<div class="spreadsheet-output-actions">';
-        html += '<button class="btn-icon" onclick="AIAgentUI.downloadAsCSV(this)" title="下载CSV"><i class="fas fa-download"></i></button>';
+        html += '<button class="btn-icon csv-download-btn" title="下载CSV"><i class="fas fa-download"></i></button>';
         html += '</div>';
         html += '</div>';
         html += '<div class="spreadsheet-preview">';
@@ -1271,7 +1288,29 @@
         showToast('HTML文件已下载', 'success');
     }
 
-    function downloadAsPDF(content) {
+    function downloadAsPDF(contentOrId) {
+        let content = contentOrId;
+        
+        // 如果传入的是ID，从临时存储中获取内容
+        if (typeof contentOrId === 'string' && contentOrId.startsWith('pdf_')) {
+            content = window._tempPDFContent?.[contentOrId] || '';
+            if (!content) {
+                // 如果临时存储中没有，尝试从DOM中获取
+                const container = document.querySelector(`[data-pdf-id="${contentOrId}"]`)?.closest('.pdf-output-container');
+                if (container) {
+                    const pdfPage = container.querySelector('.pdf-page');
+                    if (pdfPage) {
+                        content = pdfPage.innerText || pdfPage.textContent || '';
+                    }
+                }
+            }
+        }
+        
+        if (!content) {
+            showToast('PDF内容为空', 'error');
+            return;
+        }
+        
         // 由于浏览器无法直接生成PDF，我们生成一个HTML文件，用户可以使用浏览器的打印功能保存为PDF
         const htmlContent = `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -1286,7 +1325,7 @@
         code { font-family: 'Consolas', monospace; }
     </style>
 </head>
-<body>${content}</body>
+<body>${escapeHtml(content)}</body>
 </html>`;
 
         const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
@@ -1296,7 +1335,29 @@
         showToast('请在打开的页面中使用 Ctrl+P 保存为PDF', 'info');
     }
 
-    function downloadAsDOC(content) {
+    function downloadAsDOC(contentOrId) {
+        let content = contentOrId;
+        
+        // 如果传入的是ID，从临时存储中获取内容
+        if (typeof contentOrId === 'string' && contentOrId.startsWith('doc_')) {
+            content = window._tempDOCContent?.[contentOrId] || '';
+            if (!content) {
+                // 如果临时存储中没有，尝试从DOM中获取
+                const container = document.querySelector(`[data-doc-id="${contentOrId}"]`)?.closest('.doc-output-container');
+                if (container) {
+                    const docPreview = container.querySelector('.doc-preview');
+                    if (docPreview) {
+                        content = docPreview.innerText || docPreview.textContent || '';
+                    }
+                }
+            }
+        }
+        
+        if (!content) {
+            showToast('文档内容为空', 'error');
+            return;
+        }
+        
         // 生成一个HTML文件，可以被Word打开
         const htmlContent = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
 <head>
@@ -1311,7 +1372,7 @@
         code { font-family: 'Courier New', monospace; background: #f5f5f5; }
     </style>
 </head>
-<body>${content}</body>
+<body>${escapeHtml(content)}</body>
 </html>`;
 
         const blob = new Blob([htmlContent], { type: 'application/msword;charset=utf-8' });
@@ -1323,6 +1384,7 @@
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+        showToast('Word文档已下载', 'success');
 
         showToast('Word文档已下载', 'success');
     }
@@ -1361,14 +1423,84 @@
 
     // ==================== 消息操作 ====================
     function copyMessage(messageId) {
-        const msg = (window.AppState.messages || []).find(m => m.id === messageId);
-        if (!msg) return;
+        if (!messageId) {
+            showToast('消息ID无效', 'error');
+            return;
+        }
+        
+        // 尝试从AppState.messages中查找
+        let msg = (window.AppState.messages || []).find(m => m.id === messageId);
+        
+        // 如果找不到，尝试从DOM元素中获取消息内容（降级方案）
+        if (!msg) {
+            const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (messageEl) {
+                const messageBody = messageEl.querySelector('.message-body');
+                if (messageBody) {
+                    // 从DOM中提取文本内容
+                    const textToCopy = messageBody.innerText || messageBody.textContent || '';
+                    if (textToCopy.trim()) {
+                        // 使用降级方案复制
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(textToCopy).then(() => {
+                                showToast('已复制到剪贴板', 'success');
+                            }).catch(() => {
+                                fallbackCopyText(textToCopy);
+                            });
+                        } else {
+                            fallbackCopyText(textToCopy);
+                        }
+                        return;
+                    }
+                }
+            }
+            showToast('消息不存在', 'error');
+            window.Logger?.warn('复制消息失败，消息ID:', messageId, '可用消息:', window.AppState.messages?.map(m => m.id));
+            return;
+        }
 
-        navigator.clipboard.writeText(msg.content).then(() => {
-            showToast('已复制到剪贴板', 'success');
-        }).catch(() => {
-            showToast('复制失败', 'error');
-        });
+        const textToCopy = msg.content || '';
+
+        // 优先使用现代剪贴板API
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showToast('已复制到剪贴板', 'success');
+            }).catch((err) => {
+                window.Logger?.warn('剪贴板API失败，尝试fallback方法:', err);
+                // 降级到传统方法
+                fallbackCopyText(textToCopy);
+            });
+        } else {
+            // 使用传统方法
+            fallbackCopyText(textToCopy);
+        }
+    }
+
+    // 降级复制方法
+    function fallbackCopyText(text) {
+        try {
+            // 创建临时textarea元素
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-999999px';
+            textarea.style.top = '-999999px';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textarea);
+            
+            if (successful) {
+                showToast('已复制到剪贴板', 'success');
+            } else {
+                showToast('复制失败，请手动选择文本复制', 'error');
+            }
+        } catch (err) {
+            window.Logger?.error('复制失败:', err);
+            showToast('复制失败，请手动选择文本复制', 'error');
+        }
     }
 
     function downloadMessage(messageId) {
@@ -1955,7 +2087,7 @@
     }
 
     // ==================== SKILL.md 范式支持 ====================
-    function parseSkillMD(content) {
+    const parseSkillMD = window.AIAgentUIUtils?.parseSkillMD || function(content) {
         const skill = {
             name: '',
             description: '',
@@ -2004,9 +2136,9 @@
         }
 
         return skill;
-    }
+    };
 
-    function generateSkillMD(skill) {
+    const generateSkillMD = window.AIAgentUIUtils?.generateSkillMD || function(skill) {
         return `# ${skill.name || '未命名技能'}
 
 \`\`\`yaml
@@ -2039,7 +2171,7 @@ ${ex.content}`).join('\n\n')}
 2. AI助手将根据提示词执行相应任务
 3. 可以结合其他技能使用
 `;
-    }
+    };
 
     function showResourceDetail(type, itemId) {
         const items = (window.AppState.resources || {})[type] || [];
@@ -3212,8 +3344,11 @@ ${ex.content}`).join('\n\n')}
                 showToast(`计划创建成功，包含 ${todos.length} 个任务`, 'success');
                 showPlanDetail(plan.id);
             } catch (error) {
-                console.error('创建计划失败:', error);
-                showToast('创建计划失败: ' + error.message, 'error');
+                window.ErrorHandler?.handle(error, {
+                    type: window.ErrorType?.API,
+                    showToast: true,
+                    logError: true
+                });
             }
         });
     }
@@ -3298,8 +3433,11 @@ ${ex.content}`).join('\n\n')}
             showPlanDetail(planId);
             renderPlanManager();
         } catch (error) {
-            console.error('执行任务失败:', error);
-            showToast('执行任务失败: ' + error.message, 'error');
+            window.ErrorHandler?.handle(error, {
+                type: window.ErrorType?.API,
+                showToast: true,
+                logError: true
+            });
         }
     }
 
@@ -3366,7 +3504,8 @@ ${ex.content}`).join('\n\n')}
     }
 
     // ==================== 工具函数 ====================
-    function formatTime(timestamp) {
+    // 优先使用工具模块中的函数，如果未加载则使用本地实现
+    const formatTime = window.AIAgentUIUtils?.formatTime || function(timestamp) {
         if (!timestamp) return '';
         const date = new Date(timestamp);
         const now = new Date();
@@ -3378,33 +3517,38 @@ ${ex.content}`).join('\n\n')}
         if (diff < 604800000) return Math.floor(diff / 86400000) + '天前';
 
         return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
-    }
+    };
 
-    function escapeHtml(text) {
+    const escapeHtml = window.AIAgentUIUtils?.escapeHtml || function(text) {
         if (!text) return '';
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
-    }
+    };
 
-    function scrollToBottom() {
+    const scrollToBottom = window.AIAgentUIUtils?.scrollToBottom || function() {
         const container = document.getElementById('messages-container');
         if (container) {
             container.scrollTop = container.scrollHeight;
         }
-    }
+    };
 
-    function showToast(message, type = 'info') {
+    const showToast = window.AIAgentUIUtils?.showToast || function(message, type = 'info') {
         const container = document.getElementById('toast-container');
         if (!container) return;
 
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
-        toast.innerHTML = `
-            <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
-            <span>${message}</span>
-        `;
-
+        
+        // 安全修复：使用textContent避免XSS攻击
+        const icon = document.createElement('i');
+        icon.className = `fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}`;
+        
+        const span = document.createElement('span');
+        span.textContent = message; // 使用textContent自动转义
+        
+        toast.appendChild(icon);
+        toast.appendChild(span);
         container.appendChild(toast);
 
         requestAnimationFrame(() => {
@@ -3417,15 +3561,15 @@ ${ex.content}`).join('\n\n')}
             toast.style.transform = 'translateY(20px)';
             setTimeout(() => toast.remove(), 300);
         }, 3000);
-    }
+    };
 
-    function previewImage(src) {
+    const previewImage = window.AIAgentUIUtils?.previewImage || function(src) {
         const img = document.getElementById('preview-image');
         if (img) {
             img.src = src;
             openModal('image-preview-modal');
         }
-    }
+    };
 
     // ==================== 设置事件绑定 ====================
     function initSettingsEvents() {
@@ -3534,6 +3678,9 @@ ${ex.content}`).join('\n\n')}
         downloadH5,
         downloadAsPDF,
         downloadAsDOC,
-        downloadAsCSV
+        downloadAsCSV,
+        // 输出格式相关
+        detectOutputFormat,
+        renderContentByFormat
     };
 })();

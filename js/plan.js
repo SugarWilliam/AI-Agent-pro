@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v6.0.0 - 计划模式模块
+ * AI Agent Pro v8.0.0 - 计划模式模块
  * TODO制定与执行跟踪
  */
 
@@ -21,7 +21,7 @@
                 try {
                     this.plans = JSON.parse(saved);
                 } catch (e) {
-                    console.error('加载计划失败:', e);
+                    window.Logger?.error('加载计划失败:', e);
                     this.plans = [];
                 }
             }
@@ -153,7 +153,7 @@
                     }));
                 }
             } catch (e) {
-                console.error('解析TODO列表失败:', e);
+                window.Logger?.error('解析TODO列表失败:', e);
             }
             return [];
         },

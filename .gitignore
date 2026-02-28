@@ -1,0 +1,61 @@
+# 操作系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# 编辑器配置
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# 日志文件
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 依赖目录
+node_modules/
+bower_components/
+
+# 构建输出
+dist/
+build/
+*.min.js
+*.min.css
+
+# 临时文件
+*.tmp
+*.temp
+.cache/
+
+# 环境变量文件
+.env
+.env.local
+.env.*.local
+
+# 测试覆盖率
+coverage/
+.nyc_output/
+
+# 其他
+*.bak
+*.backup
+*.orig
+
+# 项目特定
+docs/archive/
+test/*.md
+!test/README.md
+!test/comprehensive-test.html
+!test/browser-test.html

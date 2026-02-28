@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v5.0.0 - 未来科技风格样式
+ * AI Agent Pro v8.0.0 - 未来科技风格样式
  * AI时代智能化界面设计
  */
 
@@ -4120,11 +4120,36 @@ body {
 }
 
 /* ==================== 文件附件显示样式 ==================== */
+.file-attachments-container {
+    padding: 8px 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    max-height: 120px;
+    overflow-y: auto;
+    display: none; /* 默认隐藏，有附件时显示 */
+}
+
+.file-attachments-container:has(.file-attachment-item),
+.file-attachments-container.has-attachments {
+    display: block;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+    .file-attachments-container {
+        padding: 8px 12px;
+        max-height: 100px;
+    }
+    
+    .file-attachment-item .file-name {
+        max-width: 120px;
+    }
+}
+
 .file-attachments {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    padding: 8px 0;
     min-height: 0;
 }
 
