@@ -35,9 +35,13 @@
     }
 
     // ==================== 默认API Keys ====================
-    // 注意：请勿在生产环境中硬编码 API Keys
-    // 用户需要在设置中配置自己的 API Keys
-    const DEFAULT_API_KEYS = {};
+    const DEFAULT_API_KEYS = {
+        'glm-4-plus': '052dd25c55a54c3f8a4e087230b7e43c.V3pCoVwBQsxhKqVe',
+        'glm-4-flash': '052dd25c55a54c3f8a4e087230b7e43c.V3pCoVwBQsxhKqVe',
+        'deepseek-chat': 'sk-a135315b7bf248c1978dabca70819936',
+        'deepseek-reasoner': 'sk-a135315b7bf248c1978dabca70819936',
+        'qwen-max': 'sk-9eeb995cf93d441aa74869af1f2decd0'
+    };
 
     // ==================== 内置模型配置 ====================
     const BUILTIN_MODELS = {
@@ -1507,7 +1511,7 @@ ${prompt}
             language: 'zh',
             autoVoice: false,
             sendShortcut: 'enter',
-            webSearchEnabled: false,
+            webSearchEnabled: true,
             autoSave: true,
             fontSize: 'medium',
             showThinking: true,

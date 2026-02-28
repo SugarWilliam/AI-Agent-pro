@@ -673,8 +673,93 @@
 
         // ==================== 网络搜索 ====================
         async performWebSearch(query) {
-            // 模拟搜索结果
-            return [];
+            try {
+                // 使用 Jina AI 进行网络搜索
+                const searchUrl = `https://r.jina.ai/http://www.google.com/search?q=${encodeURIComponent(query)}`;
+                const response = await fetch(searchUrl);
+                
+                if (!response.ok) {
+                    console.error('网络搜索失败:', response.status);
+                    return [];
+                }
+                
+                const html = await response.text();
+                
+                // 解析搜索结果（简化版）
+                const results = this.parseGoogleSearchResults(html);
+                
+                return results.slice(0, 5); // 限制返回前5个结果
+            } catch (error) {
+                console.error('网络搜索异常:', error);
+                return [];
+            }
+        },
+
+        parseGoogleSearchResults(html) {
+            const results = [];
+            
+            // 简单的HTML解析，提取搜索结果
+            const titleRegex = /<h3[^>]*>(.*?)<\/h3>/gi;
+            const linkRegex = /<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi;
+            const snippetRegex = /<div[^>]*class="[^"]*st[^"]*"[^>]*>(.*?)<\/div>/gi;
+            
+            let titleMatch;
+            const titles = [];
+            while ((titleMatch = titleRegex.exec(html)) !== null) {
+                titles.push(this.stripHtmlTags(titleMatch[1]));
+            }
+            
+            let linkMatch;
+            const links = [];
+            while ((linkMatch = linkRegex.exec(html)) !== null) {
+                links.push({
+                    url: linkMatch[1],
+                    title: this.stripHtmlTags(linkMatch[2])
+                });
+            }
+            
+            // 组合结果
+            for (let i = 0; i < Math.min(titles.length, links.length); i++) {
+                results.push({
+                    title: titles[i] || links[i].title,
+                    url: links[i].url,
+                    snippet: titles[i] || ''
+                });
+            }
+            
+            return results;
+        },
+
+        stripHtmlTags(html) {
+            return html.replace(/<[^>]*>/g, '').trim();
+        },
+
+        async fetchWebPage(url) {
+            try {
+                // 使用 Jina AI 抓取网页内容
+                const fetchUrl = `https://r.jina.ai/http://${url.replace(/^https?:\/\//, '')}`;
+                const response = await fetch(fetchUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`抓取网页失败: ${response.status}`);
+                }
+                
+                const content = await response.text();
+                
+                return {
+                    url: url,
+                    title: this.extractTitle(content),
+                    content: this.stripHtmlTags(content).substring(0, 5000) // 限制内容长度
+                };
+            } catch (error) {
+                console.error('抓取网页异常:', error);
+                throw error;
+            }
+        },
+
+        extractTitle(html) {
+            const titleMatch = html.match(/<title>(.*?)<\/title>/i);
+            return titleMatch ? titleMatch[1].trim() : '未知标题';
         },
 
         formatSearchResults(results) {
