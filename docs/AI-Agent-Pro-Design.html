@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent Pro - 详细设计文档</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f5f7;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #00D4FF, #B829F7);
+            color: white;
+            padding: 60px 40px;
+            border-radius: 20px;
+            margin-bottom: 40px;
+        }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header p { font-size: 1.2em; opacity: 0.9; }
+        .section {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+        }
+        .section h2 {
+            color: #1a1a1a;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #00D4FF;
+        }
+        .section h3 {
+            color: #333;
+            font-size: 1.4em;
+            margin: 25px 0 15px;
+        }
+        .section h4 {
+            color: #555;
+            font-size: 1.2em;
+            margin: 20px 0 10px;
+        }
+        .section p { margin-bottom: 15px; color: #555; }
+        .section ul, .section ol {
+            margin-left: 25px;
+            margin-bottom: 15px;
+        }
+        .section li { margin-bottom: 8px; color: #555; }
+        .code-block {
+            background: #1a1a2e;
+            color: #00D4FF;
+            padding: 20px;
+            border-radius: 12px;
+            overflow-x: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 14px;
+            margin: 15px 0;
+        }
+        .info-box {
+            background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(184,41,247,0.1));
+            border-left: 4px solid #00D4FF;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .warning-box {
+            background: rgba(255,214,0,0.1);
+            border-left: 4px solid #FFD600;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        .nav {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            max-width: 200px;
+        }
+        .nav a {
+            display: block;
+            padding: 8px 0;
+            color: #555;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .nav a:hover { color: #00D4FF; }
+        @media (max-width: 1400px) {
+            .nav { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <strong>目录</strong>
+        <a href="#overview">系统概述</a>
+        <a href="#architecture">架构设计</a>
+        <a href="#modules">模块设计</a>
+        <a href="#data">数据设计</a>
+        <a href="#api">API设计</a>
+        <a href="#ui">UI/UX设计</a>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>AI Agent Pro</h1>
+            <p>详细设计文档 v8.0.0</p>
+        </div>
+
+        <div class="section" id="overview">
+            <h2>1. 系统概述</h2>
+            <h3>1.1 设计目标</h3>
+            <p>AI Agent Pro 是一款基于多模态AI的智能助手应用，旨在提供：</p>
+            <ul>
+                <li>统一的AI对话界面，支持多种大语言模型</li>
+                <li>可扩展的SubAgent系统，满足不同场景需求</li>
+                <li>完整的任务和计划管理能力</li>
+                <li>RAG知识库增强的上下文理解</li>
+            </ul>
+
+            <h3>1.2 技术栈</h3>
+            <table>
+                <tr><th>层级</th><th>技术</th></tr>
+                <tr><td>前端框架</td><td>原生JavaScript (ES6+)</td></tr>
+                <tr><td>样式</td><td>CSS3 + CSS Variables</td></tr>
+                <tr><td>UI组件</td><td>Font Awesome Icons</td></tr>
+                <tr><td>图表</td><td>Chart.js</td></tr>
+                <tr><td>存储</td><td>LocalStorage</td></tr>
+            </table>
+        </div>
+
+        <div class="section" id="architecture">
+            <h2>2. 架构设计</h2>
+            <h3>2.1 整体架构</h3>
+            <div class="code-block">
+AI Agent Pro Architecture
+├── UI Layer (ui.js)
+│   ├── 消息渲染
+│   ├── 模态框管理
+│   └── 图表渲染
+├── Application Layer (app.js)
+│   ├── 状态管理 (AppState)
+│   ├── 模型管理
+│   ├── 资源管理
+│   └── 设置管理
+├── Service Layer (llm.js)
+│   ├── LLM调用
+│   ├── 多模态处理
+│   └── 流式响应
+├── Data Layer
+│   ├── LocalStorage持久化
+│   └── 内存状态
+└── External APIs
+    ├── DeepSeek API
+    ├── GLM API
+    ├── Kimi API
+    ├── Qwen API
+    └── OpenAI API
+            </div>
+
+            <h3>2.2 状态管理</h3>
+            <div class="code-block">
+AppState Structure:
+{
+    currentModel: string,      // 当前模型ID
+    currentSubAgent: string,   // 当前助手ID
+    currentMode: string,       // 当前模式
+    messages: Array,           // 消息列表
+    chats: Array,              // 对话历史
+    settings: Object,          // 用户设置
+    resources: Object,         // 资源库
+    subAgents: Object          // 助手库
+}
+            </div>
+        </div>
+
+        <div class="section" id="modules">
+            <h2>3. 模块设计</h2>
+            
+            <h3>3.1 对话模块</h3>
+            <h4>消息结构</h4>
+            <div class="code-block">
+Message = {
+    id: string,           // 唯一标识
+    role: 'user'|'assistant',
+    content: string,      // 消息内容
+    thinking: string,     // 思考过程
+    timestamp: number,    // 时间戳
+    attachments: Array,   // 附件
+    outputFormat: string  // 输出格式
+}
+            </div>
+
+            <h4>消息渲染流程</h4>
+            <ol>
+                <li>接收消息数据</li>
+                <li>检测输出格式</li>
+                <li>应用对应的渲染器</li>
+                <li>处理Markdown/代码块/图表</li>
+                <li>插入DOM并滚动</li>
+            </ol>
+
+            <h3>3.2 SubAgent模块</h3>
+            <h4>助手结构</h4>
+            <div class="code-block">
+SubAgent = {
+    id: string,
+    name: string,
+    description: string,
+    icon: string,
+    systemPrompt: string,
+    capabilities: Array,
+    skills: Array,      // 关联技能ID
+    rules: Array,       // 关联规则ID
+    mcp: Array,         // 关联MCP ID
+    rag: Array          // 关联RAG ID
+}
+            </div>
+
+            <h4>系统提示词构建</h4>
+            <div class="code-block">
+buildSystemPrompt(subAgent) {
+    return `
+        ${subAgent.systemPrompt}
+        
+        Skills: ${getSkillsContent(subAgent.skills)}
+        Rules: ${getRulesContent(subAgent.rules)}
+        MCP: ${getMCPInfo(subAgent.mcp)}
+        RAG: ${getRAGContext(subAgent.rag)}
+    `;
+}
+            </div>
+
+            <h3>3.3 LLM调用模块</h3>
+            <h4>流式响应处理</h4>
+            <div class="code-block">
+async callLLMStream(messages, model, onStream) {
+    const response = await fetch(model.url, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${model.apiKey}` },
+        body: JSON.stringify({ messages, stream: true })
+    });
+    
+    const reader = response.body.getReader();
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value);
+        const content = parseStreamChunk(chunk);
+        onStream(content);
+    }
+}
+            </div>
+
+            <h3>3.4 资源管理模块</h3>
+            <h4>资源类型</h4>
+            <table>
+                <tr><th>类型</th><th>用途</th><th>结构</th></tr>
+                <tr><td>Skills</td><td>专业能力</td><td>{id, name, prompt, outputFormat}</td></tr>
+                <tr><td>Rules</td><td>行为规范</td><td>{id, name, content, priority}</td></tr>
+                <tr><td>MCP</td><td>工具服务</td><td>{id, name, url, capabilities}</td></tr>
+                <tr><td>RAG</td><td>知识库</td><td>{id, name, documents, externalSources}</td></tr>
+            </table>
+        </div>
+
+        <div class="section" id="data">
+            <h2>4. 数据设计</h2>
+            
+            <h3>4.1 存储方案</h3>
+            <table>
+                <tr><th>存储项</th><th>Key</th><th>内容</th></tr>
+                <tr><td>应用状态</td><td>ai_agent_state_v6</td><td>chats, settings, tasks</td></tr>
+                <tr><td>自定义模型</td><td>ai_agent_custom_models_v6</td><td>用户添加的模型</td></tr>
+                <tr><td>自定义助手</td><td>ai_agent_custom_subagents_v6</td><td>用户添加的SubAgent</td></tr>
+                <tr><td>同步配置</td><td>ai_agent_sync_config_v6</td><td>同步服务器配置</td></tr>
+                <tr><td>RAG向量</td><td>ai_agent_rag_vectors_v6</td><td>文档向量数据</td></tr>
+            </table>
+
+            <h3>4.2 数据流</h3>
+            <div class="code-block">
+User Action → Update AppState → Save to LocalStorage
+                                    ↓
+                              Trigger UI Update
+                                    ↓
+                              Re-render Components
+            </div>
+        </div>
+
+        <div class="section" id="api">
+            <h2>5. API设计</h2>
+            
+            <h3>5.1 内部API</h3>
+            <table>
+                <tr><th>API</th><th>功能</th><th>参数</th></tr>
+                <tr><td>AIAgentApp.applyTheme(theme)</td><td>应用主题</td><td>theme: 'dark'|'light'|'auto'</td></tr>
+                <tr><td>AIAgentApp.applyLanguage(lang)</td><td>应用语言</td><td>lang: 'zh'|'en'</td></tr>
+                <tr><td>AIAgentApp.applyFontSize(size)</td><td>应用字体大小</td><td>size: 'small'|'medium'|'large'</td></tr>
+                <tr><td>AIAgentApp.setAPIKey(modelId, key)</td><td>设置API Key</td><td>modelId, apiKey</td></tr>
+                <tr><td>AIAgentApp.saveState()</td><td>保存状态</td><td>无</td></tr>
+                <tr><td>AIAgentApp.exportData()</td><td>导出数据</td><td>无</td></tr>
+                <tr><td>AIAgentApp.importData(data)</td><td>导入数据</td><td>JSON数据</td></tr>
+            </table>
+
+            <h3>5.2 LLM API调用</h3>
+            <div class="code-block">
+// OpenAI兼容格式
+POST /v1/chat/completions
+Headers:
+  Authorization: Bearer {api_key}
+  Content-Type: application/json
+
+Body:
+{
+    "model": "model-id",
+    "messages": [
+        {"role": "system", "content": "..."},
+        {"role": "user", "content": "..."}
+    ],
+    "stream": true,
+    "temperature": 0.7,
+    "max_tokens": 4096
+}
+            </div>
+        </div>
+
+        <div class="section" id="ui">
+            <h2>6. UI/UX设计</h2>
+            
+            <h3>6.1 设计原则</h3>
+            <ul>
+                <li><strong>一致性</strong>: 统一的颜色、间距、圆角</li>
+                <li><strong>反馈性</strong>: 操作有即时视觉反馈</li>
+                <li><strong>可访问性</strong>: 支持键盘操作、屏幕阅读器</li>
+                <li><strong>响应式</strong>: 适配桌面和移动设备</li>
+            </ul>
+
+            <h3>6.2 颜色系统</h3>
+            <div class="code-block">
+CSS Variables:
+--primary: #00D4FF          // 主色调
+--secondary: #B829F7        // 辅助色
+--success: #00E676          // 成功色
+--warning: #FFD600          // 警告色
+--error: #FF1744            // 错误色
+--bg-primary: #0A0A0F       // 主背景
+--bg-secondary: #12121A     // 次背景
+--text-primary: #FFFFFF     // 主文字
+--text-secondary: rgba(255,255,255,0.7) // 次文字
+            </div>
+
+            <h3>6.3 布局结构</h3>
+            <div class="code-block">
+App Layout:
+┌─────────────────────────────────────────┐
+│  Sidebar    │  Header                   │
+│  (280px)    │  (56px)                   │
+│             ├───────────────────────────┤
+│  - Brand    │                           │
+│  - User     │    Messages Container     │
+│  - Features │                           │
+│  - History  │                           │
+│             │                           │
+│             ├───────────────────────────┤
+│             │  Input Area               │
+│             │  - Mode Selector          │
+│             │  - Toolbar                │
+│             │  - Input Box              │
+└─────────────┴───────────────────────────┘
+            </div>
+
+            <h3>6.4 交互设计</h3>
+            <h4>消息操作</h4>
+            <ul>
+                <li>悬停显示操作按钮</li>
+                <li>点击复制立即反馈</li>
+                <li>删除前确认对话框</li>
+            </ul>
+
+            <h4>设置面板</h4>
+            <ul>
+                <li>左侧菜单，右侧内容</li>
+                <li>设置即时生效</li>
+                <li>自动保存到本地存储</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>7. 安全设计</h2>
+            <ul>
+                <li>API Key存储在本地，不上传服务器</li>
+                <li>数据导出加密选项</li>
+                <li>XSS防护（内容转义）</li>
+                <li>CSP策略支持</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>8. 性能优化</h2>
+            <ul>
+                <li>虚拟滚动（长消息列表）</li>
+                <li>懒加载（图片、图表）</li>
+                <li>防抖节流（搜索、输入）</li>
+                <li>本地缓存（减少API调用）</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
