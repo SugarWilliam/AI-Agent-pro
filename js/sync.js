@@ -243,5 +243,4 @@
 
     // 暴露到全局
     window.SyncService = SyncService;
-    console.log('AI Agent Pro v5.0.0 云同步服务已加载');
 })();

@@ -98,15 +98,12 @@
 
             // 1. 分析任务类型
             const taskAnalysis = this.analyzeTaskType(messages, taskType);
-            console.log('任务分析:', taskAnalysis);
 
             // 2. 智能选择模型
             const actualModelId = modelId === 'auto' 
                 ? window.AIAgentApp.autoSelectModel(messages, taskAnalysis.type)
                 : modelId;
             
-            console.log('选择模型:', actualModelId);
-
             // 3. 获取Sub Agent资源
             const subAgent = window.AIAgentApp.getCurrentSubAgent();
             const resources = window.AIAgentApp.getSubAgentResources(subAgent.id);
@@ -355,7 +352,9 @@
                                     if (onStream) onStream(content);
                                 }
                             }
-                        } catch (e) {}
+                        } catch (e) {
+                            console.error('解析流数据失败:', e);
+                        }
                     }
                 }
             }
@@ -407,7 +406,9 @@
                                 content += delta;
                                 if (onStream) onStream(content);
                             }
-                        } catch (e) {}
+                        } catch (e) {
+                            console.error('解析 GLM 流数据失败:', e);
+                        }
                     }
                 }
             }
@@ -458,7 +459,9 @@
                                 content += delta;
                                 if (onStream) onStream(content);
                             }
-                        } catch (e) {}
+                        } catch (e) {
+                            console.error('解析 Kimi 流数据失败:', e);
+                        }
                     }
                 }
             }
@@ -521,7 +524,9 @@
                                     if (onStream) onStream(content);
                                 }
                             }
-                        } catch (e) {}
+                        } catch (e) {
+                            console.error('解析 Qwen 流数据失败:', e);
+                        }
                     }
                 }
             }
@@ -573,7 +578,9 @@
                                 content += delta;
                                 if (onStream) onStream(content);
                             }
-                        } catch (e) {}
+                        } catch (e) {
+                            console.error('解析 OpenAI 流数据失败:', e);
+                        }
                     }
                 }
             }
@@ -654,7 +661,9 @@
                                 content += delta;
                                 if (onStream) onStream(content);
                             }
-                        } catch (e) {}
+                        } catch (e) {
+                            console.error('解析自定义模型流数据失败:', e);
+                        }
                     }
                 }
             }
@@ -758,5 +767,4 @@
 
     // 暴露到全局
     window.LLMService = LLMService;
-    console.log('AI Agent Pro v6.0.0 LLM服务已加载');
 })();

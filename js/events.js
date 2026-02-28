@@ -484,77 +484,86 @@
 
     // ==================== 文件上传 ====================
     async function handleFileUpload(e) {
-        const file = e.target.files[0];
-        if (!file) return;
+        const files = Array.from(e.target.files);
+        if (!files || files.length === 0) return;
 
         // 创建新对话（如果没有）
         if (!window.AppState.currentChatId) {
             createNewChat();
         }
 
-        window.AIAgentUI?.showToast?.(`正在处理文件: ${file.name}...`, 'info');
+        // 存储上传的文件
+        if (!window.AppState.uploadedFiles) {
+            window.AppState.uploadedFiles = [];
+        }
+
+        window.AIAgentUI?.showToast?.(`已选择 ${files.length} 个文件，点击"分析文件"按钮开始分析`, 'info');
 
         try {
-            let content = '';
-            let attachment = null;
+            for (const file of files) {
+                let content = '';
+                let attachment = null;
 
-            // 根据文件类型处理
-            if (file.type.startsWith('image/')) {
-                // 图片文件
-                const base64 = await readFileAsBase64(file);
-                attachment = {
-                    type: 'image',
-                    name: file.name,
-                    data: base64
-                };
-                content = `[图片: ${file.name}]`;
-            } else if (file.type === 'text/plain' || file.type === 'text/markdown') {
-                // 文本文件
-                content = await readFileAsText(file);
-                attachment = {
-                    type: 'file',
-                    name: file.name,
-                    content: content.substring(0, 1000) // 限制长度
-                };
-            } else if (file.type === 'application/pdf') {
-                content = `[PDF文档: ${file.name}]\n(已上传，AI将分析文档内容)`;
-                attachment = {
-                    type: 'pdf',
-                    name: file.name
-                };
-            } else if (file.type.includes('word') || file.type.includes('document')) {
-                content = `[Word文档: ${file.name}]\n(已上传，AI将分析文档内容)`;
-                attachment = {
-                    type: 'doc',
-                    name: file.name
-                };
-            } else {
-                content = `[文件: ${file.name}]\n(已上传)`;
-                attachment = {
-                    type: 'file',
-                    name: file.name
-                };
+                // 根据文件类型处理
+                if (file.type.startsWith('image/')) {
+                    const base64 = await readFileAsBase64(file);
+                    attachment = {
+                        type: 'image',
+                        name: file.name,
+                        data: base64
+                    };
+                    content = `[图片: ${file.name}]`;
+                } else if (file.type === 'text/plain' || file.type === 'text/markdown') {
+                    content = await readFileAsText(file);
+                    attachment = {
+                        type: 'file',
+                        name: file.name,
+                        content: content.substring(0, 1000)
+                    };
+                } else if (file.type === 'application/pdf') {
+                    content = await parsePDFFile(file);
+                    attachment = {
+                        type: 'pdf',
+                        name: file.name,
+                        content: content.substring(0, 1000)
+                    };
+                } else if (file.type.includes('word') || file.type.includes('document')) {
+                    content = `[Word文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB`;
+                    attachment = {
+                        type: 'doc',
+                        name: file.name
+                    };
+                } else if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+                    content = await parseCSVFile(file);
+                    attachment = {
+                        type: 'csv',
+                        name: file.name,
+                        content: content.substring(0, 1000)
+                    };
+                } else if (file.type.includes('sheet') || file.type.includes('excel') || 
+                           file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                    content = `[电子表格: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n(支持CSV格式，Excel文件请转换为CSV后上传)`;
+                    attachment = {
+                        type: 'excel',
+                        name: file.name
+                    };
+                } else {
+                    content = `[文件: ${file.name}]`;
+                    attachment = {
+                        type: 'file',
+                        name: file.name
+                    };
+                }
+
+                window.AppState.uploadedFiles.push({
+                    file: file,
+                    content: content,
+                    attachment: attachment
+                });
             }
 
-            // 添加用户消息（带附件）
-            const userMessage = {
-                id: 'msg_' + Date.now(),
-                role: 'user',
-                content: content,
-                attachments: attachment ? [attachment] : [],
-                timestamp: Date.now()
-            };
-
-            if (!window.AppState.messages) window.AppState.messages = [];
-            window.AppState.messages.push(userMessage);
-
-            // 更新UI
-            window.AIAgentUI?.renderMessages?.();
-            updateCurrentChat();
-            window.AIAgentApp?.saveState?.();
-
-            // 自动发送消息获取AI回复
-            await sendMessageWithContent(content);
+            // 显示文件列表
+            showFileList();
 
         } catch (error) {
             console.error('文件处理失败:', error);
@@ -562,6 +571,124 @@
         }
 
         e.target.value = '';
+    }
+
+    // 显示文件列表
+    function showFileList() {
+        const files = window.AppState.uploadedFiles || [];
+        if (files.length === 0) return;
+
+        // 创建或更新文件列表UI
+        let fileListEl = document.getElementById('file-list-container');
+        if (!fileListEl) {
+            fileListEl = document.createElement('div');
+            fileListEl.id = 'file-list-container';
+            fileListEl.className = 'file-list-container';
+            const messagesContainer = document.getElementById('messages-container');
+            if (messagesContainer) {
+                messagesContainer.insertBefore(fileListEl, messagesContainer.firstChild);
+            }
+        }
+
+        fileListEl.innerHTML = `
+            <div class="file-list-header">
+                <span><i class="fas fa-paperclip"></i> 已选择 ${files.length} 个文件</span>
+                <button class="btn btn-sm btn-primary" id="analyze-files-btn">
+                    <i class="fas fa-magic"></i> 分析文件
+                </button>
+            </div>
+            <div class="file-list-items">
+                ${files.map((f, i) => `
+                    <div class="file-list-item">
+                        <input type="checkbox" id="file-check-${i}" class="file-checkbox" checked>
+                        <label for="file-check-${i}">
+                            <i class="fas fa-file"></i>
+                            <span>${f.file.name}</span>
+                            <span class="file-size">(${(f.file.size / 1024).toFixed(1)} KB)</span>
+                        </label>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        // 绑定分析按钮事件
+        document.getElementById('analyze-files-btn')?.addEventListener('click', analyzeSelectedFiles);
+    }
+
+    // 分析选中的文件
+    async function analyzeSelectedFiles() {
+        const files = window.AppState.uploadedFiles || [];
+        const checkboxes = document.querySelectorAll('.file-checkbox:checked');
+        const selectedIndices = Array.from(checkboxes).map(cb => 
+            parseInt(cb.id.replace('file-check-', ''))
+        );
+
+        if (selectedIndices.length === 0) {
+            window.AIAgentUI?.showToast?.('请至少选择一个文件', 'warning');
+            return;
+        }
+
+        window.AIAgentUI?.showToast?.(`正在分析 ${selectedIndices.length} 个文件...`, 'info');
+
+        // 移除文件列表UI
+        const fileListEl = document.getElementById('file-list-container');
+        if (fileListEl) fileListEl.remove();
+
+        // 处理选中的文件
+        for (const index of selectedIndices) {
+            const fileData = files[index];
+            if (!fileData) continue;
+
+            const userMessage = {
+                id: 'msg_' + Date.now() + '_' + index,
+                role: 'user',
+                content: `请分析以下文件：\n\n文件名：${fileData.file.name}\n\n内容：\n${fileData.content}`,
+                attachments: fileData.attachment ? [fileData.attachment] : [],
+                timestamp: Date.now()
+            };
+
+            if (!window.AppState.messages) window.AppState.messages = [];
+            window.AppState.messages.push(userMessage);
+        }
+
+        // 清空已上传文件列表
+        window.AppState.uploadedFiles = [];
+
+        // 更新UI
+        window.AIAgentUI?.renderMessages?.();
+        updateCurrentChat();
+        window.AIAgentApp?.debouncedSave?.();
+
+        // 发送消息获取AI回复
+        await sendMessageWithContent(`请分析以上 ${selectedIndices.length} 个文件的内容`);
+    }
+
+    // 解析PDF文件
+    async function parsePDFFile(file) {
+        return `[PDF文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n注意：完整PDF解析需要PDF.js库支持，当前显示基本信息。\n\n如需完整解析，请：\n1. 将PDF转换为文本格式\n2. 或使用支持PDF的在线工具提取内容后粘贴`;
+    }
+
+    // 解析CSV文件
+    async function parseCSVFile(file) {
+        try {
+            const text = await readFileAsText(file);
+            const lines = text.split('\n').filter(line => line.trim());
+            const previewLines = lines.slice(0, 10);
+            
+            let result = `[CSV文件: ${file.name}]\n`;
+            result += `总行数: ${lines.length}\n\n`;
+            result += `预览前10行:\n`;
+            result += previewLines.map((line, i) => `${i + 1}. ${line}`).join('\n');
+            
+            if (lines.length > 10) {
+                result += `\n... 还有 ${lines.length - 10} 行`;
+            }
+            
+            return result;
+        } catch (error) {
+            console.error('CSV解析失败:', error);
+            return `[CSV文件: ${file.name}]\n解析失败: ${error.message}`;
+        }
     }
 
     async function handleImageUpload(e) {
@@ -1962,6 +2089,4 @@ tags: code, review, quality
         openTaskModal,
         openPlanModal
     };
-
-    console.log('AI Agent Pro v6.0.0 事件处理模块已加载');
 })();

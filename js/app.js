@@ -13,14 +13,31 @@
     const SYNC_CONFIG_KEY = 'ai_agent_sync_config_v6';
     const RAG_VECTORS_KEY = 'ai_agent_rag_vectors_v6';
 
+    // ==================== 防抖和保存优化 ====================
+    let saveTimeout = null;
+    const SAVE_DELAY = 500; // 500ms 防抖延迟
+
+    function debouncedSave() {
+        if (saveTimeout) {
+            clearTimeout(saveTimeout);
+        }
+        saveTimeout = setTimeout(() => {
+            saveState();
+        }, SAVE_DELAY);
+    }
+
+    function immediateSave() {
+        if (saveTimeout) {
+            clearTimeout(saveTimeout);
+            saveTimeout = null;
+        }
+        saveState();
+    }
+
     // ==================== 默认API Keys ====================
-    const DEFAULT_API_KEYS = {
-        'glm-4-plus': '052dd25c55a54c3f8a4e087230b7e43c.V3pCoVwBQsxhKqVe',
-        'glm-4-flash': '052dd25c55a54c3f8a4e087230b7e43c.V3pCoVwBQsxhKqVe',
-        'deepseek-chat': 'sk-a135315b7bf248c1978dabca70819936',
-        'deepseek-reasoner': 'sk-a135315b7bf248c1978dabca70819936',
-        'qwen-max': 'sk-9eeb995cf93d441aa74869af1f2decd0'
-    };
+    // 注意：请勿在生产环境中硬编码 API Keys
+    // 用户需要在设置中配置自己的 API Keys
+    const DEFAULT_API_KEYS = {};
 
     // ==================== 内置模型配置 ====================
     const BUILTIN_MODELS = {
@@ -1535,7 +1552,6 @@ ${prompt}
         loadRagVectors();
         
         updateSplashProgress(100, '加载完成');
-        console.log('AI Agent Pro v' + VERSION + ' 已加载');
         
         // 延迟隐藏启动页 - 确保动画持续2-3秒
         setTimeout(() => {
@@ -1641,6 +1657,24 @@ ${prompt}
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         } catch (error) {
             console.error('保存状态失败:', error);
+            // 如果存储失败，尝试清理旧数据
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const oldState = JSON.parse(saved);
+                    // 只保存必要的数据
+                    const minimalState = {
+                        chats: oldState.chats || [],
+                        currentChatId: oldState.currentChatId,
+                        settings: oldState.settings || AppState.settings,
+                        savedAt: Date.now(),
+                        version: AppState.version
+                    };
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(minimalState));
+                }
+            } catch (retryError) {
+                console.error('重试保存失败:', retryError);
+            }
         }
     }
 
@@ -2043,13 +2077,13 @@ ${prompt}
             option.classList.toggle('active', option.dataset.theme === theme);
         });
         
-        saveState();
+        debouncedSave();
     }
 
     function applyLanguage(lang) {
         AppState.settings.language = lang;
         document.documentElement.lang = lang === 'zh' || lang === 'zh-CN' ? 'zh-CN' : 'en';
-        saveState();
+        debouncedSave();
         
         // 更新语言选择器
         const langSelect = document.getElementById('setting-language');
@@ -2063,7 +2097,7 @@ ${prompt}
         const body = document.body;
         body.classList.remove('font-small', 'font-medium', 'font-large');
         body.classList.add(`font-${size}`);
-        saveState();
+        debouncedSave();
         
         // 更新字体大小选择器
         const fontSelect = document.getElementById('setting-font-size');
@@ -2074,7 +2108,7 @@ ${prompt}
 
     function applyShortcut(shortcut) {
         AppState.settings.sendShortcut = shortcut;
-        saveState();
+        debouncedSave();
         
         // 更新快捷键选择器
         const shortcutSelect = document.getElementById('setting-shortcut');
@@ -2086,7 +2120,7 @@ ${prompt}
     function switchSubAgent(agentId) {
         if (AppState.subAgents[agentId]) {
             AppState.currentSubAgent = agentId;
-            saveState();
+            debouncedSave();
             return true;
         }
         return false;

@@ -166,9 +166,9 @@
         // 根据任务类型渲染内容
         if (msg.role === 'assistant') {
             const outputFormat = msg.outputFormat || detectOutputFormat(msg.content);
-            contentHtml = renderContentByFormat(contentHtml, outputFormat);
+            contentHtml = renderContentByFormat(renderMarkdown(msg.content), outputFormat);
         } else {
-            contentHtml = escapeHtml(contentHtml).replace(/\n/g, '<br>');
+            contentHtml = escapeHtml(msg.content).replace(/\n/g, '<br>');
         }
 
         // 左下角操作按钮（复制、下载）
@@ -269,24 +269,62 @@
         if (!currentStreamMessageEl) return;
 
         currentStreamMessageEl.classList.remove('streaming');
-        currentStreamMessageEl.removeAttribute('id');
+        
+        // 生成消息ID
+        const msgId = 'msg_' + Date.now();
+        currentStreamMessageEl.dataset.messageId = msgId;
 
         const messageBody = currentStreamMessageEl.querySelector('.message-body');
         if (messageBody) {
             let thinkingHtml = '';
             if (thinking && window.AppState.settings?.showThinking !== false) {
                 thinkingHtml = `
-                    <div class="thinking-section">
-                        <div class="thinking-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+                    <div class="thinking-section" data-message-id="${msgId}">
+                        <div class="thinking-header" onclick="AIAgentUI.toggleThinking('${msgId}')">
                             <i class="fas fa-brain"></i>
                             <span>思考过程</span>
-                            <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 10px;"></i>
+                            <i class="fas fa-chevron-down thinking-toggle-icon" style="margin-left: auto; font-size: 10px;"></i>
                         </div>
                         <div class="thinking-content collapsed">${escapeHtml(thinking)}</div>
                     </div>
                 `;
             }
-            messageBody.innerHTML = thinkingHtml + renderMarkdown(finalContent);
+            
+            // 渲染内容
+            const outputFormat = detectOutputFormat(finalContent);
+            const contentHtml = renderContentByFormat(renderMarkdown(finalContent), outputFormat);
+            
+            // 添加操作按钮
+            const leftActions = `
+                <button class="msg-action-btn" title="复制" onclick="AIAgentUI.copyMessage('${msgId}')">
+                    <i class="fas fa-copy"></i>
+                </button>
+                <button class="msg-action-btn" title="下载" onclick="AIAgentUI.downloadMessage('${msgId}')">
+                    <i class="fas fa-download"></i>
+                </button>
+            `;
+            
+            const rightActions = `
+                <button class="msg-action-btn" title="语音播放" onclick="AIAgentUI.speakMessage('${msgId}')"><i class="fas fa-volume-up"></i></button>
+                <button class="msg-action-btn" title="重新生成" onclick="AIAgentUI.regenerateMessage('${msgId}')"><i class="fas fa-redo"></i></button>
+                <button class="msg-action-btn" title="编辑" onclick="AIAgentUI.editMessage('${msgId}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="msg-action-btn" title="删除" onclick="AIAgentUI.deleteMessage('${msgId}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+            
+            messageBody.innerHTML = thinkingHtml + contentHtml;
+            
+            // 添加操作按钮
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'message-actions';
+            actionsDiv.innerHTML = `
+                <div class="message-actions-left">${leftActions}</div>
+                <div class="message-actions-right">${rightActions}</div>
+            `;
+            messageBody.appendChild(actionsDiv);
         }
 
         currentStreamMessageEl = null;
@@ -3498,6 +3536,4 @@ ${ex.content}`).join('\n\n')}
         downloadAsDOC,
         downloadAsCSV
     };
-
-    console.log('AI Agent Pro v6.0.0 UI模块已加载');
 })();
