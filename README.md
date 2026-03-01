@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-8.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-8.2.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Web-lightgrey.svg)
 
@@ -365,10 +365,15 @@ http://localhost:8080/test/comprehensive-test.html
 
 ## 📝 更新日志
 
-### v8.1.0 (2026-03-01)
-- ✅ 更新功能说明书
-- ✅ 优化菜单文档链接
-- ✅ 完善文档系统
+### v8.2.0 (2026-03-01)
+- ✅ 深度评审与代码优化
+- ✅ 文件附件解析状态改为小字显示，移除遮挡输入框的 Toast
+- ✅ 附件进度圈改为完整 360° 百分比显示
+- ✅ 图片解析增强（Tesseract 降级、多 CDN、容错）
+- ✅ PDF 解析多方法降级（pdf/file/二进制）
+- ✅ 网页爬取改用 POST+url，支持 URL 编码
+- ✅ 合并冗余部署脚本，归档 SSH 文档
+- ✅ 统一版本号至 8.2.0
 
 ### v8.1.0 (2026-03-01)
 - ✅ 更新功能说明书

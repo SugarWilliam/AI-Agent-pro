@@ -1399,7 +1399,16 @@ body {
     margin-bottom: 8px;
 }
 
+.mode-selector-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
 .mode-selector {
+    flex: 1;
     display: flex;
     gap: 0;
     overflow-x: auto;
@@ -1412,6 +1421,16 @@ body {
 
 .mode-selector::-webkit-scrollbar {
     display: none;
+}
+
+.mode-selector-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
 }
 
 .mode-option {
@@ -1440,8 +1459,58 @@ body {
     box-shadow: var(--shadow-sm);
 }
 
+/* 选中状态的图标颜色（蓝色） */
+.mode-option.active i {
+    color: var(--primary);
+    font-size: 12px;
+    transition: color var(--transition-fast);
+}
+
+/* 对话、任务、计划模式选中时的图标颜色（蓝色） */
+.mode-option[data-mode="chat"].active i,
+.mode-option[data-mode="task"].active i,
+.mode-option[data-mode="plan"].active i {
+    color: var(--primary);
+}
+
 .mode-option i {
     font-size: 12px;
+}
+
+/* 右侧工具箱和搜索按钮样式 */
+.mode-selector-right .mode-option {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.mode-selector-right .mode-option span {
+    display: none;
+}
+
+.mode-selector-right .mode-option i {
+    font-size: 13px;
+}
+
+/* 互联网搜索开关状态指示 */
+.mode-selector-right .mode-option.web-search.active {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    position: relative;
+}
+
+.mode-selector-right .mode-option.web-search.active::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 6px;
+    height: 6px;
+    background: var(--success);
+    border-radius: var(--radius-full);
+    box-shadow: 0 0 4px var(--success);
 }
 
 /* 工具栏 - 分组布局 */
@@ -1512,7 +1581,7 @@ body {
 .input-box-container {
     display: flex;
     align-items: flex-end;
-    gap: 10px;
+    gap: 8px;
     padding: 10px 14px;
     background: var(--bg-tertiary);
     border-radius: var(--radius-xl);
@@ -1520,9 +1589,65 @@ body {
     transition: all var(--transition-fast);
 }
 
+/* 输入框内的按钮 */
+.input-box-container .voice-input-btn,
+.input-box-container .attachment-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.input-box-container .voice-input-btn:hover,
+.input-box-container .attachment-btn:hover {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+}
+
+.input-box-container .attachment-btn {
+    margin-right: 4px;
+}
+
 .input-box-container:focus-within {
     border-color: var(--border-active);
     box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+/* 输入框内的按钮 */
+.input-box-container .voice-input-btn,
+.input-box-container .attachment-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.input-box-container .voice-input-btn:hover,
+.input-box-container .attachment-btn:hover {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+}
+
+.input-box-container .attachment-btn {
+    margin-right: 4px;
 }
 
 .message-input {
@@ -1544,6 +1669,8 @@ body {
 }
 
 .send-btn {
+    position: relative;
+    overflow: visible;
     width: 36px;
     height: 36px;
     border-radius: var(--radius-full);
@@ -1571,16 +1698,36 @@ body {
 
 .send-btn.processing {
     background: linear-gradient(135deg, var(--warning), var(--error));
-    animation: pulse 1.5s ease-in-out infinite;
+    animation: send-btn-pulse 1.5s ease-in-out infinite;
+}
+
+/* 外围光晕转圈圈 - busy 状态更明显 */
+.send-btn.processing::before {
+    content: '';
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: var(--warning);
+    border-right-color: var(--error);
+    border-bottom-color: var(--warning-glow);
+    border-left-color: var(--error-glow);
+    animation: send-btn-halo-spin 0.8s linear infinite;
+    pointer-events: none;
+    box-shadow: 0 0 14px var(--warning-glow), 0 0 8px var(--error-glow);
 }
 
 .send-btn.processing:hover {
     background: linear-gradient(135deg, var(--error), var(--warning));
 }
 
-@keyframes pulse {
+@keyframes send-btn-pulse {
     0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+    50% { opacity: 0.85; }
+}
+
+@keyframes send-btn-halo-spin {
+    to { transform: rotate(360deg); }
 }
 
 /* 搜索状态显示 */
@@ -2378,6 +2525,131 @@ body {
     margin-top: 4px;
     font-size: 10px;
     color: var(--text-tertiary);
+}
+
+.form-hint {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    line-height: 1.5;
+}
+
+.form-hint a {
+    color: var(--primary);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+.form-hint a:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
+}
+
+/* 设置页表单内勾选框（与 resource-checkbox-item 风格一致） */
+.form-group .resource-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    margin-bottom: 0;
+    cursor: pointer;
+    user-select: none;
+}
+
+.form-group .resource-checkbox-item input[type="checkbox"] {
+    display: none;
+}
+
+.form-group .resource-checkbox-item .custom-checkbox {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--text-tertiary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all var(--transition-fast);
+    background: transparent;
+}
+
+.form-group .resource-checkbox-item input[type="checkbox"]:checked + .custom-checkbox {
+    border-color: var(--success);
+    background: var(--success);
+}
+
+.form-group .resource-checkbox-item .custom-checkbox::after {
+    content: '✓';
+    font-size: 12px;
+    color: white;
+    opacity: 0;
+    transform: scale(0);
+    transition: all var(--transition-fast);
+    font-weight: bold;
+}
+
+.form-group .resource-checkbox-item input[type="checkbox"]:checked + .custom-checkbox::after {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.form-group .resource-checkbox-item .checkbox-text {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.form-group .resource-checkbox-item input[type="checkbox"]:checked ~ .checkbox-text {
+    color: var(--text-primary);
+}
+
+/* 信息框（支持的格式等说明区域） */
+.info-box {
+    padding: 12px 16px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.info-box strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.info-box ul {
+    margin: 8px 0 12px 0;
+    padding-left: 20px;
+}
+
+.info-box ul li {
+    margin-bottom: 4px;
+    color: var(--text-secondary);
+}
+
+.info-box ul li::marker {
+    color: var(--primary);
+}
+
+.info-box p {
+    margin: 0;
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+.info-box p strong {
+    color: var(--text-secondary);
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
+.form-actions .btn {
+    flex-shrink: 0;
 }
 
 /* ==================== 云同步 ==================== */
@@ -3233,14 +3505,20 @@ body {
         display: none;
     }
     
-    /* 工具栏适配 */
-    .input-toolbar {
+    /* 模式选择器容器适配 */
+    .mode-selector-container {
         gap: 6px;
         margin-bottom: 6px;
     }
     
-    .toolbar-group {
+    .mode-selector-right {
+        gap: 2px;
         padding: 2px;
+    }
+    
+    .mode-selector-right .mode-option {
+        width: 28px;
+        height: 28px;
     }
     
     .toolbar-btn {
@@ -4224,17 +4502,23 @@ body {
     white-space: nowrap;
 }
 
+/* 移除按钮：加载完成后显示，纯色圆角矩形，与进度圈区分 */
 .file-attachment-item .file-remove {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    min-height: 22px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
     background: var(--bg-elevated);
     color: var(--text-muted);
     cursor: pointer;
     transition: all var(--transition-fast);
+    flex-shrink: 0;
 }
 
 .file-attachment-item .file-remove:hover {
@@ -4242,9 +4526,80 @@ body {
     color: white;
 }
 
+.file-attachment-item .file-remove i {
+    font-size: 12px;
+}
+
 .file-attachment-item .file-size {
     font-size: 11px;
     color: var(--text-muted);
+}
+
+/* 附件后小字状态（解析中/已加载/加载失败） */
+.file-attachment-item .file-status-badge {
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 0 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.file-attachment-item .file-status-badge.file-status-parsing {
+    color: var(--primary);
+}
+
+.file-attachment-item .file-status-badge.file-status-parsing .fa-spinner {
+    font-size: 10px;
+}
+
+.file-attachment-item .file-status-error {
+    color: var(--danger);
+}
+
+/* 解析/加载进度圈（SVG 360° 百分比） */
+.file-attachment-item .file-progress-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+}
+
+.file-attachment-item .file-progress-svg {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    transform: rotate(-90deg);
+}
+
+.file-attachment-item .file-progress-bg {
+    fill: none;
+    stroke: var(--bg-elevated);
+    stroke-width: 2;
+}
+
+.file-attachment-item .file-progress-fg {
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.2s ease;
+}
+
+.file-attachment-item .file-progress-num {
+    position: relative;
+    z-index: 1;
+    font-size: 8px;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+/* 加载完成时绝不显示进度圈，仅显示移除按钮 */
+.file-attachment-item[data-status="loaded"] .file-progress-wrap,
+.file-attachment-item[data-status="error"] .file-progress-wrap {
+    display: none !important;
 }
 
 /* ==================== 其他样式 ==================== */

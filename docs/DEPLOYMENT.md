@@ -1,6 +1,6 @@
 # AI Agent Pro 部署文档
 
-**版本**: v8.1.0  
+**版本**: v8.2.0  
 **日期**: 2026-03-01
 
 ---
@@ -151,6 +151,10 @@ php -S localhost:8080
 - 免费
 - 自动HTTPS
 - 自动部署（push后自动更新）
+
+**部署脚本**（项目根目录）：
+- `./deploy.sh [--auto] [--force]`：常规推送（支持 SSH/HTTPS）
+- `GITHUB_TOKEN=xxx ./DEPLOY_NOW.sh`：使用 Token 推送（解决 SSH 认证问题）
 
 ### 4.2 Vercel部署
 
@@ -592,6 +596,6 @@ sudo nginx -t
 
 ---
 
-**文档版本**: v8.1.0  
+**文档版本**: v8.2.0  
 **最后更新**: 2026-03-01  
 **维护者**: AI Agent Pro Team

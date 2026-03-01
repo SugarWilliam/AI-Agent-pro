@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
     <meta name="theme-color" content="#000000">
-    <title>AI Agent Pro v8.1.0</title>
+    <title>AI Agent Pro v8.2.0</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
@@ -27,7 +27,7 @@
                 </div>
                 <h1 class="splash-title">AI Agent Pro</h1>
                 <p class="splash-subtitle">智能助手，未来已来</p>
-                <p class="splash-version">v8.1.0</p>
+                <p class="splash-version">v8.2.0</p>
                 <div class="splash-loading">
                     <div class="splash-loading-bar" id="splash-loading-bar"></div>
                 </div>
@@ -53,7 +53,7 @@
                     </div>
                     <div class="brand-info">
                         <div class="brand-name">AI Agent Pro</div>
-                        <div class="brand-version">v8.1.0</div>
+                        <div class="brand-version">v8.2.0</div>
                     </div>
                 </div>
                 <button id="close-sidebar" class="close-sidebar-btn">
@@ -139,10 +139,11 @@
                     <i class="fas fa-bars"></i>
                 </button>
                 <div class="header-center">
-                    <div class="status-bar" id="status-bar">
+                    <button id="subagent-btn" class="status-bar agent-selector-btn" title="选择助手">
+                        <i class="fas fa-user-astronaut"></i>
                         <span id="current-agent-name">通用助手</span>
                         <span id="current-mode-badge" class="mode-badge">对话</span>
-                    </div>
+                    </button>
                 </div>
                 <button id="model-selector-btn" class="model-selector">
                     <i class="fas fa-brain"></i>
@@ -185,7 +186,7 @@
 
             <!-- 输入区域 -->
             <div class="input-area">
-                <!-- 模式选择器 - 胶囊分段控制器 -->
+                <!-- 模式选择器 - 胶囊分段控制器（合并工具箱和搜索） -->
                 <div class="mode-selector-container">
                     <div class="mode-selector">
                         <button class="mode-option active" data-mode="chat">
@@ -209,41 +210,12 @@
                             <span>创作</span>
                         </button>
                     </div>
-                </div>
-                <!-- 工具栏 - 分组布局 -->
-                <div class="input-toolbar">
-                    <!-- 助手和文件组 -->
-                    <div class="toolbar-group">
-                        <button class="toolbar-btn" id="subagent-btn" title="选择助手">
-                            <i class="fas fa-user-astronaut"></i>
-                        </button>
-                        <button class="toolbar-btn" id="upload-btn" title="上传文件">
-                            <i class="fas fa-paperclip"></i>
-                        </button>
-                        <button class="toolbar-btn" id="image-btn" title="发送图片">
-                            <i class="fas fa-image"></i>
-                        </button>
-                    </div>
-                    <!-- 输入方式组 -->
-                    <div class="toolbar-group">
-                        <button class="toolbar-btn" id="voice-btn" title="语音输入">
-                            <i class="fas fa-microphone"></i>
-                        </button>
-                    </div>
-                    <!-- 功能组 -->
-                    <div class="toolbar-group">
-                        <button class="toolbar-btn web-search" id="search-btn" title="网络搜索">
+                    <div class="mode-selector-right">
+                        <button class="mode-option web-search" id="search-btn" title="网络搜索">
                             <i class="fas fa-globe"></i>
                         </button>
-                        <button class="toolbar-btn" id="tools-btn" title="工具箱">
+                        <button class="mode-option" id="tools-btn" title="工具箱">
                             <i class="fas fa-toolbox"></i>
-                        </button>
-                    </div>
-                    <div class="toolbar-spacer"></div>
-                    <!-- 操作组 -->
-                    <div class="toolbar-group">
-                        <button class="toolbar-btn" id="clear-btn" title="清空对话">
-                            <i class="fas fa-trash"></i>
                         </button>
                     </div>
                 </div>
@@ -253,7 +225,13 @@
                 </div>
                 <!-- 输入框 -->
                 <div class="input-box-container">
+                    <button class="toolbar-btn voice-input-btn" id="voice-btn" title="语音输入">
+                        <i class="fas fa-microphone"></i>
+                    </button>
                     <textarea id="message-input" class="message-input" placeholder="输入消息..." rows="1"></textarea>
+                    <button class="toolbar-btn attachment-btn" id="upload-btn" title="上传文件/图片">
+                        <i class="fas fa-plus"></i>
+                    </button>
                     <button id="send-btn" class="send-btn">
                         <i class="fas fa-paper-plane"></i>
                     </button>
@@ -530,9 +508,10 @@
                                 </small>
                             </div>
                             <div class="form-group">
-                                <label class="form-checkbox">
+                                <label class="resource-checkbox-item jina-checkbox-item">
                                     <input type="checkbox" id="jina-enabled" checked>
-                                    <span>启用Jina AI文档解析</span>
+                                    <span class="custom-checkbox"></span>
+                                    <span class="checkbox-text">启用Jina AI文档解析</span>
                                 </label>
                             </div>
                             <div class="form-group">
@@ -684,8 +663,7 @@
     </div>
 
     <!-- 隐藏的文件输入 -->
-    <input type="file" id="file-input" style="display: none;" multiple>
-    <input type="file" id="image-input" style="display: none;" accept="image/*" multiple>
+    <input type="file" id="file-input" style="display: none;" multiple accept="*/*">
     <input type="file" id="import-data-btn" style="display: none;" accept=".json">
 
     <!-- JavaScript Files -->
@@ -695,12 +673,12 @@
     <script src="js/utils/event-manager.js"></script>
     <!-- UI工具模块 -->
     <script src="js/ui/ui-utils.js"></script>
-    <!-- 核心模块 -->
+    <!-- 核心模块（rag 需在 events 前加载，供文件解析使用） -->
     <script src="js/app.js"></script>
     <script src="js/ui.js"></script>
+    <script src="js/rag.js"></script>
     <script src="js/llm.js"></script>
     <script src="js/events.js"></script>
-    <script src="js/rag.js"></script>
     <script src="js/plan.js"></script>
     <script src="js/sync.js"></script>
 </body>

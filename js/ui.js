@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.1.0 - UI渲染模块
+ * AI Agent Pro v8.2.0 - UI渲染模块
  * 未来科技感UI
  */
 
@@ -374,6 +374,11 @@
     function renderMarkdown(text) {
         if (!text) return '';
 
+        // 解码 AI/存储 可能返回的 HTML 实体（如 &lt;strong&gt;金月湾&lt;/strong&gt;），使其能正确渲染
+        text = String(text)
+            .replace(/&amp;lt;/g, '<').replace(/&amp;gt;/g, '>')
+            .replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+
         // 保存代码块，避免被其他规则处理
         const codeBlocks = [];
         text = text.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
@@ -513,22 +518,46 @@
             return `<p>${p}</p>`;
         }).join('\n');
 
+        // 移除孤儿闭合标签（如 AI 返回的 "有异常</strong>" 中多余的 </strong>）
+        text = removeOrphanClosingTags(text);
+
         return text;
+    }
+
+    /** 移除孤儿闭合标签，修复 "xxx有异常</strong>" 等显示异常 */
+    function removeOrphanClosingTags(html) {
+        if (!html || !/<\/\w+>/.test(html)) return html;
+        const tags = ['strong', 'em', 'b', 'i', 'code', 'a'];
+        let out = html;
+        tags.forEach(tag => {
+            const opens = (out.match(new RegExp(`<${tag}(\\s[^>]*)?>`, 'gi')) || []).length;
+            const closes = (out.match(new RegExp(`</${tag}>`, 'gi')) || []).length;
+            if (closes > opens) {
+                for (let n = closes - opens; n > 0; n--) {
+                    out = out.replace(new RegExp(`</${tag}>`, 'i'), '');
+                }
+            }
+        });
+        return out;
     }
 
     // ==================== Markdown表格渲染 ====================
     function renderMarkdownTable(text) {
         // 匹配Markdown表格格式
-        // 格式: | 列1 | 列2 | 列3 |
-        //       |-----|-----|-----|
-        //       | 内容1 | 内容2 | 内容3 |
+        // 格式1: | 列1 | 列2 | 列3 |
+        // 格式2: 列1\t列2\t列3（TAB分隔，AI 常输出此格式）
         const lines = text.split('\n');
         const result = [];
         let inTable = false;
         let tableLines = [];
 
         for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
+            let line = lines[i];
+            // TAB 分隔行转为管道格式，便于统一解析
+            if (/\t/.test(line) && !/^\s*\|.*\|\s*$/.test(line)) {
+                const cells = line.split('\t').map(c => c.trim());
+                if (cells.length >= 2) line = '| ' + cells.join(' | ') + ' |';
+            }
             // 检查是否是表格行（以|开头和结尾，或包含|）
             const isTableLine = /^\s*\|.*\|\s*$/.test(line);
             
@@ -555,6 +584,39 @@
         }
         
         return result.join('\n');
+    }
+
+    /**
+     * 表格单元格内容安全处理：允许 Markdown 渲染后的安全标签（strong/em/code/a 等），
+     * 移除危险标签和事件属性，避免 <strong>9. 价格与价值</strong> 等被转义显示异常
+     */
+    function sanitizeTableCellHtml(html) {
+        if (!html) return '';
+        let str = String(html);
+        // 解码 AI 可能返回的 HTML 实体（如 &lt;strong&gt;），使其能正确渲染
+        str = str.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+        // 无 HTML 标签时直接转义返回
+        if (!/<[^>]+>/.test(str)) return escapeHtml(str);
+        // 白名单：仅保留 Markdown 常用安全标签（含 br 用于换行）
+        const allowedTags = ['strong', 'em', 'b', 'i', 'code', 'a', 'br'];
+        let out = str
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+            .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+            .replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '')
+            .replace(/\s+on\w+\s*=\s*[^\s>]*/gi, '');
+        // 用占位符保护白名单标签，移除非白名单标签后恢复
+        allowedTags.forEach(tag => {
+            const open = new RegExp(`<${tag}(\\s[^>]*)?>`, 'gi');
+            const close = new RegExp(`</${tag}>`, 'gi');
+            out = out.replace(open, `\x00OPEN_${tag}\x00`).replace(close, `\x00CLOSE_${tag}\x00`);
+        });
+        out = out.replace(/<[^>]+>/g, '');
+        allowedTags.forEach(tag => {
+            out = out.replace(new RegExp(`\x00OPEN_${tag}\x00`, 'gi'), `<${tag}>`)
+                    .replace(new RegExp(`\x00CLOSE_${tag}\x00`, 'gi'), `</${tag}>`);
+        });
+        return out;
     }
 
     function renderTableLines(lines) {
@@ -590,23 +652,22 @@
         // 构建HTML表格
         let html = '<table>';
         
-        // 表头
+        // 表头：与单元格一致，支持 <strong> 等 Markdown 渲染标签
         if (headers.length > 0) {
             html += '<thead><tr>';
             headers.forEach(header => {
-                html += `<th>${escapeHtml(header)}</th>`;
+                html += `<th>${sanitizeTableCellHtml(header)}</th>`;
             });
             html += '</tr></thead>';
         }
         
-        // 数据行
+        // 数据行：单元格可能含 Markdown 渲染后的 <strong>/<em>/<code>/<a>，需保留渲染效果而非转义
         if (rows.length > 0) {
             html += '<tbody>';
             rows.forEach(row => {
                 html += '<tr>';
-                row.forEach((cell, idx) => {
-                    // 如果单元格数量超过表头，仍然显示
-                    html += `<td>${escapeHtml(cell)}</td>`;
+                row.forEach((cell) => {
+                    html += `<td>${sanitizeTableCellHtml(cell)}</td>`;
                 });
                 html += '</tr>';
             });
@@ -933,6 +994,11 @@
             return 'spreadsheet';
         }
 
+        // 检测表格（优先于代码：含表格+代码块时用 markdown 渲染，避免 <strong>/<br> 被转义显示）
+        if (content.match(/\|.*\|.*\|/)) {
+            return 'table';
+        }
+
         // 检测代码
         if (content.includes('```') || content.match(/^(function|class|const|let|var|import|export|def|class\s+\w+)/m)) {
             return 'code';
@@ -946,11 +1012,6 @@
         // 检测图片生成提示
         if (content.match(/^(图片|Image|生成图片|Generate image)/im) || content.includes('![image]')) {
             return 'image';
-        }
-
-        // 检测表格
-        if (content.match(/\|.*\|.*\|/)) {
-            return 'table';
         }
 
         return 'markdown';
@@ -1102,8 +1163,8 @@
 
     // 渲染表格内容
     function renderTableContent(content) {
-        // 解析Markdown表格
-        let html = renderMarkdown(content);
+        // content 已是 renderMarkdown 的产物（含 <strong>/<br> 等），直接使用，避免二次渲染破坏格式
+        let html = content;
 
         // 包装表格
         html = `<div class="table-output-container">

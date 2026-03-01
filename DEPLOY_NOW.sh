@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# AI Agent Pro v8.1.0 - 立即部署脚本（解决SSH错误）
+# AI Agent Pro v8.2.0 - 立即部署脚本（解决SSH错误）
 # 使用方法: GITHUB_TOKEN=your_token ./DEPLOY_NOW.sh
 
 set -e
 
-echo "🚀 AI Agent Pro v8.1.0 - 立即部署"
+echo "🚀 AI Agent Pro v8.2.0 - 立即部署"
 echo "================================"
 echo ""
 

@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.1.0 - 事件处理模块
+ * AI Agent Pro v8.2.0 - 事件处理模块
  * 未来科技感交互设计
  */
 
@@ -82,9 +82,26 @@
 
     function updateAgentName() {
         const agentNameEl = document.getElementById('current-agent-name');
+        const agentIconEl = document.querySelector('#subagent-btn i');
+        
         if (agentNameEl) {
             const agent = window.AppState.subAgents?.[window.AppState.currentSubAgent];
             agentNameEl.textContent = agent?.name || '通用助手';
+        }
+        
+        // 更新助手图标（显示当前选中助手的图标）
+        if (agentIconEl) {
+            const agent = window.AppState.subAgents?.[window.AppState.currentSubAgent];
+            const iconClass = agent?.icon || 'fa-user-astronaut';
+            // 移除所有FontAwesome图标类（保留fas基础类）
+            const classesToRemove = Array.from(agentIconEl.classList).filter(cls => 
+                cls.startsWith('fa-') && cls !== 'fas'
+            );
+            classesToRemove.forEach(cls => agentIconEl.classList.remove(cls));
+            // 添加新的图标类
+            if (!agentIconEl.classList.contains(iconClass)) {
+                agentIconEl.classList.add(iconClass);
+            }
         }
     }
 
@@ -190,17 +207,11 @@
             });
         }
 
-        // 文件上传
+        // 文件上传（支持所有文件类型，包括图片）
         document.getElementById('upload-btn')?.addEventListener('click', () => {
             document.getElementById('file-input')?.click();
         });
         document.getElementById('file-input')?.addEventListener('change', handleFileUpload);
-
-        // 图片
-        document.getElementById('image-btn')?.addEventListener('click', () => {
-            document.getElementById('image-input')?.click();
-        });
-        document.getElementById('image-input')?.addEventListener('change', handleImageUpload);
 
         // 语音输入
         document.getElementById('voice-btn')?.addEventListener('click', startVoiceInput);
@@ -223,8 +234,9 @@
             window.AIAgentUI?.showCreatePlanDialog?.();
         });
 
-        // Sub Agent按钮
-        document.getElementById('subagent-btn')?.addEventListener('click', () => {
+        // Sub Agent按钮（已移到顶部栏）
+        document.getElementById('subagent-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
             showSubAgentSelector();
         });
 
@@ -807,20 +819,39 @@
             window.AppState.uploadedFiles = [];
         }
 
-        // 显示加载提示
         const totalFiles = files.length;
-        if (totalFiles > 1) {
-            window.AIAgentUI?.showToast?.(`正在加载 ${totalFiles} 个文件...`, 'info');
-        }
-
         let successCount = 0;
         let failCount = 0;
         const errors = [];
 
-        // 逐个处理文件，即使某个文件失败也继续处理其他文件
+        // 先添加占位项，状态在附件后小字显示，避免 Toast 覆盖输入框
+        const baseIndex = window.AppState.uploadedFiles.length;
+        for (let i = 0; i < files.length; i++) {
+            window.AppState.uploadedFiles.push({
+                file: files[i],
+                content: null,
+                attachment: null,
+                status: 'parsing',
+                progress: 0
+            });
+        }
+        renderFileAttachments();
+
+        // 逐个处理文件
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
+            const itemIndex = baseIndex + i;
+            const updateProgress = (status, progress) => {
+                const item = window.AppState.uploadedFiles[itemIndex];
+                if (item) {
+                    item.status = status;
+                    item.progress = progress;
+                    renderFileAttachments();
+                }
+            };
             try {
+                updateProgress('parsing', 30);
+                await new Promise(r => requestAnimationFrame(r)); // 让解析中状态先渲染
                 let content = '';
                 let attachment = null;
 
@@ -832,20 +863,19 @@
                         name: file.name,
                         data: base64
                     };
-                    // 使用RAGManager的Jina AI解析图片（OCR和描述）
+                    // 使用 RAGManager.parseImage 解析图片（Jina AI + Tesseract OCR 降级）
                     try {
-                        window.AIAgentUI?.showToast?.(`正在解析图片: ${file.name}...`, 'info');
-                        const imageContent = await window.RAGManager?.parseImage?.(file);
-                        if (imageContent && !imageContent.includes('[图片:') && !imageContent.includes('注意：')) {
-                            // 如果成功解析，使用解析内容
-                            content = `[图片: ${file.name}]\n\n${imageContent}`;
+                        const parsedContent = window.RAGManager?.parseImage
+                            ? await window.RAGManager.parseImage(file)
+                            : null;
+                        if (parsedContent && parsedContent.trim().length > 0) {
+                            content = parsedContent.startsWith('[') ? parsedContent : `【图片: ${file.name}】\n\n${parsedContent}`;
                         } else {
-                            // 如果解析失败，只显示基本信息
-                            content = `[图片: ${file.name}]`;
+                            content = `[图片: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n图片已作为附件上传，请根据用户问题分析图片内容。`;
                         }
                     } catch (error) {
-                        window.Logger?.error(`图片解析失败: ${file.name}`, error);
-                        content = `[图片: ${file.name}]`;
+                        window.Logger?.error(`图片解析异常: ${file.name}`, error);
+                        content = `[图片: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n图片已作为附件上传，请根据用户问题分析图片内容。`;
                     }
                 } else if (file.type === 'text/plain' || file.type === 'text/markdown') {
                     content = await readFileAsText(file);
@@ -855,15 +885,16 @@
                         content: content.substring(0, 1000)
                     };
                 } else if (file.type === 'application/pdf') {
-                    // 使用RAGManager的Jina AI解析功能
                     try {
-                        window.AIAgentUI?.showToast?.(`正在解析PDF: ${file.name}...`, 'info');
-                        const rawContent = await window.RAGManager?.parsePDF?.(file);
+                        let rawContent;
+                        if (window.RAGManager && typeof window.RAGManager.parsePDF === 'function') {
+                            rawContent = await window.RAGManager.parsePDF(file);
+                        } else {
+                            window.Logger?.warn(`RAGManager.parsePDF 不可用，请确保页面已完全加载`);
+                            rawContent = null;
+                        }
                         
-                        // 检查解析结果：更严格的判断逻辑
-                        // 1. 如果内容为空，解析失败
-                        // 2. 如果内容很短（<100字符）且包含明确的错误标记，解析失败
-                        // 3. 如果内容以错误标记开头，解析失败
+                        // 检查解析结果
                         const errorMarkers = [
                             '[PDF文档:',
                             '(注意：请配置Jina AI',
@@ -871,34 +902,20 @@
                             'PDF解析失败',
                             'Jina AI未配置或已禁用'
                         ];
-                        
-                        const hasErrorMarker = errorMarkers.some(marker => 
-                            rawContent && rawContent.includes(marker)
-                        );
-                        
+                        const hasErrorMarker = rawContent && errorMarkers.some(m => rawContent.includes(m));
                         const isShortError = rawContent && rawContent.length < 100 && hasErrorMarker;
                         const startsWithError = rawContent && rawContent.trim().startsWith('[PDF文档:');
                         
                         if (!rawContent || isShortError || startsWithError) {
-                            // 解析失败，使用降级方案
-                            window.Logger?.warn(`PDF解析失败，返回占位符: ${file.name}`, {
-                                contentLength: rawContent?.length,
-                                hasErrorMarker,
-                                isShortError,
-                                startsWithError,
-                                contentPreview: rawContent?.substring(0, 200)
-                            });
-                            content = `[PDF文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n${rawContent || 'PDF解析失败，请检查Jina AI配置'}`;
+                            const reason = !rawContent ? 'RAGManager 未加载或 API 返回空' : (hasErrorMarker ? 'API 返回错误' : '内容无效');
+                            window.Logger?.warn(`PDF解析失败: ${file.name}`, { reason, contentLength: rawContent?.length });
+                            content = `[PDF文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n${rawContent || 'PDF解析失败。请检查：1) 设置中 Jina AI API 密钥已配置并保存；2) 刷新页面后重试；3) 查看控制台获取详细错误。'}`;
                         } else {
-                            // 解析成功，添加文件信息前缀
                             window.Logger?.info(`PDF解析成功: ${file.name}, 内容长度: ${rawContent.length} 字符`);
-                            // 显示解析成功提示
-                            window.AIAgentUI?.showToast?.(`PDF解析成功: ${file.name} (${rawContent.length} 字符)`, 'success');
                             content = `【文件: ${file.name}】\n\n${rawContent}`;
                         }
                     } catch (error) {
                         window.Logger?.error(`PDF解析异常: ${file.name}`, error);
-                        window.AIAgentUI?.showToast?.(`PDF解析失败: ${error.message}`, 'error');
                         content = `[PDF文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\nPDF解析失败: ${error.message}`;
                     }
                     attachment = {
@@ -907,9 +924,7 @@
                         content: content.substring(0, 1000)
                     };
                 } else if (file.type.includes('word') || file.type.includes('document')) {
-                    // 使用RAGManager的Jina AI解析功能
                     try {
-                        window.AIAgentUI?.showToast?.(`正在解析Word文档: ${file.name}...`, 'info');
                         content = await window.RAGManager?.parseDOC?.(file);
                         if (!content || content.includes('[Word文档:') || content.includes('注意：')) {
                             // 如果解析失败或返回占位符，使用降级方案
@@ -933,9 +948,7 @@
                     };
                 } else if (file.type.includes('sheet') || file.type.includes('excel') || 
                            file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-                    // 使用RAGManager的Jina AI解析功能
                     try {
-                        window.AIAgentUI?.showToast?.(`正在解析Excel: ${file.name}...`, 'info');
                         content = await window.RAGManager?.parseExcel?.(file);
                         if (!content || content.includes('[电子表格:') || content.includes('注意：')) {
                             // 如果解析失败或返回占位符，使用降级方案
@@ -952,9 +965,7 @@
                     };
                 } else if (file.type.includes('presentation') || file.type.includes('powerpoint') ||
                            file.name.endsWith('.ppt') || file.name.endsWith('.pptx')) {
-                    // 使用RAGManager的Jina AI解析功能
                     try {
-                        window.AIAgentUI?.showToast?.(`正在解析PPT: ${file.name}...`, 'info');
                         content = await window.RAGManager?.parsePPT?.(file);
                         if (!content || content.includes('[PowerPoint文档:') || content.includes('注意：')) {
                             // 如果解析失败或返回占位符，使用降级方案
@@ -1012,13 +1023,16 @@
                     }
                 }
 
-                // 添加到文件列表
-                window.AppState.uploadedFiles.push({
-                    file: file,
-                    content: content,
-                    attachment: attachment
-                });
+                // 更新已占位的文件项
+                const item = window.AppState.uploadedFiles[itemIndex];
+                if (item) {
+                    item.content = content;
+                    item.attachment = attachment;
+                    item.status = 'loaded';
+                    item.progress = 100;
+                }
                 successCount++;
+                renderFileAttachments();
 
             } catch (error) {
                 // 单个文件处理失败，记录错误但继续处理其他文件
@@ -1026,38 +1040,20 @@
                 errors.push(`${file.name}: ${error.message}`);
                 window.Logger?.error(`处理文件 ${file.name} 失败:`, error);
                 
-                // 即使处理失败，也添加文件信息（至少显示文件名）
-                try {
-                    window.AppState.uploadedFiles.push({
-                        file: file,
-                        content: `[文件: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n处理失败: ${error.message}`,
-                        attachment: {
-                            type: 'file',
-                            name: file.name
-                        }
-                    });
-                } catch (pushError) {
-                    window.Logger?.error(`添加文件 ${file.name} 到列表失败:`, pushError);
+                // 更新占位项为失败状态
+                const failItem = window.AppState.uploadedFiles[itemIndex];
+                if (failItem) {
+                    failItem.content = `[文件: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n处理失败: ${error.message}`;
+                    failItem.attachment = { type: 'file', name: file.name };
+                    failItem.status = 'error';
+                    failItem.progress = 0;
+                    renderFileAttachments();
                 }
             }
         }
 
-        // 在输入框上方显示文件附件
+        // 在输入框上方显示文件附件（状态在附件后小字显示，不再弹 Toast）
         renderFileAttachments();
-
-        // 显示处理结果提示
-        if (totalFiles > 1) {
-            if (failCount === 0) {
-                window.AIAgentUI?.showToast?.(`成功加载 ${successCount} 个文件`, 'success');
-            } else {
-                window.AIAgentUI?.showToast?.(`已加载 ${successCount} 个文件，${failCount} 个失败`, 'warning');
-                if (errors.length > 0) {
-                    window.Logger?.warn('文件处理错误:', errors);
-                }
-            }
-        } else if (successCount > 0) {
-            window.AIAgentUI?.showToast?.('文件已加载', 'success');
-        }
 
         // 清空文件输入，允许再次选择相同文件
         e.target.value = '';
@@ -1088,15 +1084,37 @@
             const file = fileData.file;
             const fileSize = (file.size / 1024).toFixed(1);
             const iconClass = getFileIcon(file.type, file.name);
+            const status = fileData.status || 'loaded';
+            const progress = Math.min(100, Math.max(0, fileData.progress ?? 100));
+            const statusText = status === 'parsing' ? '解析中' : status === 'loaded' ? '已加载' : '加载失败';
+            const showProgress = status === 'parsing';  // 仅解析中显示进度圈
+            const showRemove = status === 'loaded' || status === 'error';  // 加载完成/失败显示移除按钮
             
+            const circumference = 2 * Math.PI * 8;
+            const strokeDash = (progress / 100) * circumference;
             return `
-                <div class="file-attachment-item" data-index="${index}">
+                <div class="file-attachment-item" data-index="${index}" data-status="${status}">
                     <i class="fas ${iconClass} file-icon"></i>
                     <span class="file-name">${file.name}</span>
                     <span class="file-size">${fileSize} KB</span>
-                    <button class="file-remove" onclick="removeFileAttachment(${index})" title="移除">
+                    <span class="file-status-badge${status === 'error' ? ' file-status-error' : ''}${status === 'parsing' ? ' file-status-parsing' : ''}">
+                        ${status === 'parsing' ? '<i class="fas fa-spinner fa-spin"></i>' : ''}
+                        ${statusText}
+                    </span>
+                    ${showProgress ? `
+                    <span class="file-progress-wrap" title="解析中 ${progress}%">
+                        <svg class="file-progress-svg" viewBox="0 0 20 20">
+                            <circle class="file-progress-bg" cx="10" cy="10" r="8"/>
+                            <circle class="file-progress-fg" cx="10" cy="10" r="8" stroke-dasharray="${circumference}" stroke-dashoffset="${circumference - strokeDash}"/>
+                        </svg>
+                        <span class="file-progress-num">${progress}%</span>
+                    </span>
+                    ` : ''}
+                    ${showRemove ? `
+                    <button type="button" class="file-remove" onclick="removeFileAttachment(${index})" title="移除">
                         <i class="fas fa-times"></i>
                     </button>
+                    ` : ''}
                 </div>
             `;
         }).join('');
@@ -1155,60 +1173,7 @@
         }
     }
 
-    async function handleImageUpload(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        if (!file.type.startsWith('image/')) {
-            window.AIAgentUI?.showToast?.('请选择图片文件', 'error');
-            return;
-        }
-
-        // 创建新对话（如果没有）
-        if (!window.AppState.currentChatId) {
-            createNewChat();
-        }
-
-        window.AIAgentUI?.showToast?.('正在处理图片...', 'info');
-
-        try {
-            const base64 = await readFileAsBase64(file);
-
-            // 添加用户消息（带图片附件）
-            const userMessage = {
-                id: 'msg_' + Date.now(),
-                role: 'user',
-                content: `[图片: ${file.name}]`,
-                attachments: [{
-                    type: 'image',
-                    name: file.name,
-                    data: base64
-                }],
-                timestamp: Date.now()
-            };
-
-            if (!window.AppState.messages) window.AppState.messages = [];
-            window.AppState.messages.push(userMessage);
-
-            // 更新UI
-            window.AIAgentUI?.renderMessages?.();
-            updateCurrentChat();
-            window.AIAgentApp?.saveState?.();
-
-            // 自动发送消息获取AI回复
-            await sendMessageWithContent('请分析这张图片的内容');
-
-        } catch (error) {
-            window.ErrorHandler?.handle(error, {
-                type: window.ErrorType?.VALIDATION,
-                showToast: true,
-                logError: true
-            });
-            window.AIAgentUI?.showToast?.('图片处理失败: ' + error.message, 'error');
-        }
-
-        e.target.value = '';
-    }
+    // handleImageUpload函数已移除，图片上传统一通过handleFileUpload处理
 
     // 辅助函数：读取文件为Base64
     function readFileAsBase64(file) {
@@ -1757,16 +1722,11 @@
             const activeTab = dialog.querySelector('.rag-tab.active').dataset.tab;
             
             if (activeTab === 'file' && selectedFiles.length > 0) {
-                // 处理文件上传
                 for (const file of selectedFiles) {
-                    window.AIAgentUI?.showToast?.(`正在解析: ${file.name}...`, 'info');
                     try {
-                        const docInfo = await window.RAGManager?.parseDocument?.(file);
-                        if (docInfo) {
-                            window.AIAgentUI?.showToast?.(`${file.name} 解析完成`, 'success');
-                        }
+                        await window.RAGManager?.parseDocument?.(file);
                     } catch (error) {
-                        window.AIAgentUI?.showToast?.(`${file.name} 解析失败: ${error.message}`, 'error');
+                        window.Logger?.error(`RAG 解析失败: ${file.name}`, error);
                     }
                 }
                 window.AIAgentUI?.renderResources?.('rag');
@@ -1780,13 +1740,11 @@
                     return;
                 }
                 
-                window.AIAgentUI?.showToast?.('正在获取网页内容...', 'info');
                 try {
                     const docInfo = await window.RAGManager?.parseURL?.(url);
                     if (docInfo && name) {
                         docInfo.name = name;
                     }
-                    window.AIAgentUI?.showToast?.('网页内容已添加', 'success');
                     window.AIAgentUI?.renderResources?.('rag');
                     AIAgentUI.closeModal('add-rag-dialog');
                 } catch (error) {

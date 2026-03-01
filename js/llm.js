@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.1.0 - LLM服务
+ * AI Agent Pro v8.2.0 - LLM服务
  * 多模态输入输出支持
  */
 
@@ -2722,34 +2722,53 @@
                 // 使用 Jina AI 抓取网页内容（如果配置了API密钥）
                 const jinaApiKey = window.AIAgentApp?.getJinaAIKey?.() || '';
                 if (jinaApiKey) {
+                    const fetchHeaders = {
+                        'Content-Type': 'application/json',
+                        'X-Return-Format': 'text',
+                        'Authorization': `Bearer ${jinaApiKey}`
+                    };
+                    // 方法1: POST + url 参数（推荐，避免 CORS/URL 编码问题）
+
+                    let response;
                     try {
-                        const fetchHeaders = {
-                            'X-Return-Format': 'text',
-                            'Authorization': `Bearer ${jinaApiKey}`
-                        };
-                        
-                        // Jina AI Reader API格式：https://r.jina.ai/{url}
-                        const jinaUrl = `https://r.jina.ai/${cleanUrl}`;
-                        window.Logger?.debug(`使用Jina AI爬取: ${jinaUrl}`);
-                        
-                        const response = await fetch(jinaUrl, {
-                            headers: fetchHeaders
+                        response = await fetch('https://r.jina.ai/', {
+                            method: 'POST',
+                            headers: fetchHeaders,
+                            body: JSON.stringify({ url: cleanUrl })
                         });
-                        
                         if (response.ok) {
                             const content = await response.text();
-                            window.Logger?.info(`网页爬取成功: ${cleanUrl}, 内容长度: ${content.length}`);
-                            
+                            window.Logger?.info(`网页爬取成功(POST): ${cleanUrl}, 内容长度: ${content.length}`);
                             return {
                                 url: cleanUrl,
                                 title: this.extractTitle(content) || cleanUrl,
-                                content: content.substring(0, 5000) // 限制内容长度
+                                content: content.substring(0, 5000)
                             };
-                        } else {
-                            window.Logger?.warn(`Jina AI爬取失败: ${response.status}`);
                         }
-                    } catch (jinaError) {
-                        window.Logger?.warn('Jina AI爬取异常', jinaError);
+                        window.Logger?.warn(`Jina 爬取失败(POST): ${response.status}`);
+                    } catch (postErr) {
+                        window.Logger?.warn('Jina POST 爬取异常', postErr);
+                    }
+                    // 方法2: GET + 前缀（Jina 官方格式）
+                    try {
+                        const encodedUrl = encodeURIComponent(cleanUrl);
+                        const jinaUrl = `https://r.jina.ai/${encodedUrl}`;
+                        window.Logger?.debug(`尝试 GET: ${jinaUrl}`);
+                        response = await fetch(jinaUrl, {
+                            headers: { 'X-Return-Format': 'text', 'Authorization': `Bearer ${jinaApiKey}` }
+                        });
+                        if (response.ok) {
+                            const content = await response.text();
+                            window.Logger?.info(`网页爬取成功(GET): ${cleanUrl}, 内容长度: ${content.length}`);
+                            return {
+                                url: cleanUrl,
+                                title: this.extractTitle(content) || cleanUrl,
+                                content: content.substring(0, 5000)
+                            };
+                        }
+                        window.Logger?.warn(`Jina 爬取失败(GET): ${response.status}`);
+                    } catch (getErr) {
+                        window.Logger?.warn('Jina GET 爬取异常', getErr);
                     }
                 }
                 
