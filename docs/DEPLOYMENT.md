@@ -145,7 +145,7 @@ php -S localhost:8080
 5. 保存设置
 6. 等待部署完成（约1-2分钟）
 
-**访问地址**: `https://yourusername.github.io/ai-agent-pro`
+**访问地址**: `https://sugarwilliam.github.io/AI-Agent-pro`
 
 **优点**：
 - 免费

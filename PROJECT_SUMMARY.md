@@ -236,7 +236,7 @@ AI-Agent-pro/
 
 3. **连接远程仓库**
    ```bash
-   git remote add origin https://github.com/yourusername/ai-agent-pro.git
+   git remote add origin https://github.com/SugarWilliam/AI-Agent-pro.git
    git branch -M main
    git push -u origin main
    ```

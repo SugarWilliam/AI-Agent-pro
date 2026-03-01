@@ -220,7 +220,7 @@ AI-Agent-pro/
 1. Fork本项目
 2. 在仓库设置中启用GitHub Pages
 3. 选择`main`分支和`/root`目录
-4. 访问 `https://yourusername.github.io/ai-agent-pro`
+4. 访问 `https://sugarwilliam.github.io/AI-Agent-pro`
 
 ### Vercel部署
 
@@ -426,6 +426,6 @@ MIT License
 
 **Made with ❤️ by AI Agent Pro Team**
 
-[⭐ Star this repo](https://github.com/yourusername/ai-agent-pro) • [📖 Read the docs](docs/) • [🐛 Report Bug](https://github.com/yourusername/ai-agent-pro/issues) • [📥 Download Source](https://github.com/yourusername/ai-agent-pro/archive/refs/heads/main.zip)
+[⭐ Star this repo](https://github.com/SugarWilliam/AI-Agent-pro) • [📖 Read the docs](docs/) • [🐛 Report Bug](https://github.com/SugarWilliam/AI-Agent-pro/issues) • [📥 Download Source](https://github.com/SugarWilliam/AI-Agent-pro/archive/refs/heads/main.zip)
 
 </div>
