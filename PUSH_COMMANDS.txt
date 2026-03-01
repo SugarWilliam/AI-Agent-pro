@@ -1,0 +1,53 @@
+========================================
+AI Agent Pro v8.1.0 - GitHub推送命令
+========================================
+
+当前目录: /home/pyc/ai-agent-pro-source/AI-Agent-pro
+
+待推送提交数: 4个
+
+========================================
+方法1: SSH方式推送（推荐）
+========================================
+
+cd /home/pyc/ai-agent-pro-source/AI-Agent-pro
+git push origin gh-pages
+
+========================================
+方法2: HTTPS方式推送（如果SSH不可用）
+========================================
+
+cd /home/pyc/ai-agent-pro-source/AI-Agent-pro
+git remote set-url origin https://github.com/SugarWilliam/AI-Agent-pro.git
+git push origin gh-pages
+
+（推送时需要输入GitHub用户名和Personal Access Token）
+
+========================================
+方法3: 使用部署脚本
+========================================
+
+cd /home/pyc/ai-agent-pro-source/AI-Agent-pro
+./deploy.sh
+
+========================================
+推送后配置GitHub Pages
+========================================
+
+1. 访问: https://github.com/SugarWilliam/AI-Agent-pro/settings/pages
+2. Source: 选择 gh-pages 分支
+3. Folder: 选择 / (root) 目录
+4. 点击 Save
+5. 等待1-2分钟部署完成
+6. 访问: https://sugarwilliam.github.io/AI-Agent-pro/
+
+========================================
+最新提交列表
+========================================
+
+9376813 docs: 添加GitHub部署快速参考
+9c409e1 docs: 添加GitHub部署指南
+7a11d27 feat: 更新到v8.1.0 - 更新功能说明书、优化菜单链接、统一版本号
+f62d9ab fix: 修复历史会话丢失问题 v8.0.1
+
+========================================
