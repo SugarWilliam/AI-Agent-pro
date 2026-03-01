@@ -13,33 +13,63 @@
 
     // ==================== 启动页 ====================
     function initSplashScreen() {
+        // 注意：启动页的隐藏和UI初始化由app.js的init()函数控制
+        // 这里只做备用处理，如果app.js的init()没有调用initUI()，则延迟调用
         setTimeout(() => {
-            const splash = document.getElementById('splash');
-            const app = document.getElementById('app');
-            if (splash) {
-                splash.classList.add('hidden');
-                setTimeout(() => {
-                    splash.style.display = 'none';
-                    if (app) app.style.display = 'flex';
-                    initUI();
-                }, 500);
+            // 检查是否已经初始化完成（通过检查AppState是否已加载）
+            if (window.AppState && window.AppState.chats !== undefined) {
+                // 如果数据已加载但UI未初始化，则初始化UI
+                const app = document.getElementById('app');
+                if (app && app.style.display === 'none') {
+                    const splash = document.getElementById('splash');
+                    if (splash && !splash.classList.contains('hidden')) {
+                        splash.classList.add('hidden');
+                        setTimeout(() => {
+                            splash.style.display = 'none';
+                            if (app) app.style.display = 'flex';
+                            initUI();
+                        }, 500);
+                    }
+                }
             }
-        }, 2000);
+        }, 5000); // 5秒后检查，确保app.js的init()有足够时间完成
     }
 
     function initUI() {
+        window.Logger?.debug('初始化UI，当前会话数:', window.AppState?.chats?.length || 0);
+        
         if (window.AIAgentUI) {
+            // 先渲染历史会话列表
             window.AIAgentUI.renderChatHistory();
             window.AIAgentUI.updateCurrentModelDisplay();
         }
         
-        if (window.AppState.currentChatId) {
-            loadChat(window.AppState.currentChatId);
+        // 如果有当前会话ID，加载该会话
+        if (window.AppState?.currentChatId) {
+            const chat = window.AppState.chats?.find(c => c.id === window.AppState.currentChatId);
+            if (chat) {
+                window.Logger?.debug('加载当前会话:', window.AppState.currentChatId);
+                loadChat(window.AppState.currentChatId);
+            } else {
+                window.Logger?.warn('当前会话ID不存在，清除currentChatId');
+                window.AppState.currentChatId = null;
+                window.AppState.messages = [];
+                if (window.AIAgentUI) {
+                    window.AIAgentUI.showWelcomeScreen();
+                }
+            }
+        } else {
+            // 如果没有当前会话，显示欢迎界面
+            if (window.AIAgentUI) {
+                window.AIAgentUI.showWelcomeScreen();
+            }
         }
         
         updateAgentName();
         updateModeBadge();
         updateSearchButton();
+        
+        window.Logger?.debug('UI初始化完成');
     }
 
     function updateSearchButton() {
@@ -2512,6 +2542,7 @@ tags: code, review, quality
 
     // ==================== 暴露到全局 ====================
     window.AIAgentEvents = {
+        initUI,
         loadChat,
         updateCurrentChat,
         sendMessage,

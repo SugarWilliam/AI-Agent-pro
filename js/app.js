@@ -1856,6 +1856,18 @@ ${prompt}
         
         setTimeout(() => {
             hideSplash();
+            // 显示主应用界面
+            const app = document.getElementById('app');
+            if (app) {
+                app.style.display = 'flex';
+            }
+            // 初始化完成后，确保UI已渲染历史会话
+            // 延迟一点时间确保DOM已更新
+            setTimeout(() => {
+                if (window.AIAgentEvents && typeof window.AIAgentEvents.initUI === 'function') {
+                    window.AIAgentEvents.initUI();
+                }
+            }, 100);
         }, Math.min(remaining, maxRemaining));
     }
     
@@ -1925,7 +1937,10 @@ ${prompt}
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 const state = JSON.parse(saved);
-                if (state.chats) AppState.chats = state.chats;
+                if (state.chats && Array.isArray(state.chats)) {
+                    AppState.chats = state.chats;
+                    window.Logger?.debug(`加载了 ${state.chats.length} 个历史会话`);
+                }
                 if (state.plans) AppState.plans = state.plans;
                 if (state.tasks) AppState.tasks = state.tasks;
                 if (state.todos) AppState.todos = state.todos;

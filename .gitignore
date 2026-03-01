@@ -65,3 +65,11 @@ test/*.md
 !test/README.md
 !test/comprehensive-test.html
 !test/browser-test.html
+!test/review-test.html
+!test/PDF_DIAGNOSTIC.html
+!test/TEST_PDF_PARSE.html
+
+# SSH相关文件（不要提交私钥）
+git-ssh-wrapper.sh
+ssh_private_key
+ssh_public_key.txt
