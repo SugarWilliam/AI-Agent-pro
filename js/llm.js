@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.0.0 - LLM服务
+ * AI Agent Pro v8.0.1 - LLM服务
  * 多模态输入输出支持
  */
 
@@ -120,16 +120,27 @@
             const lastMessage = messages[messages.length - 1]?.content || '';
             
             // 如果启用网络搜索且subagent支持，自动进行搜索和网页爬取
-            if (enableWebSearch && resources.mcp.some(m => m.id === 'mcp_web_search')) {
+            const hasWebSearchMCP = resources.mcp && resources.mcp.some(m => m && m.id === 'mcp_web_search');
+            window.Logger?.debug(`网络搜索检查: enableWebSearch=${enableWebSearch}, hasWebSearchMCP=${hasWebSearchMCP}`);
+            
+            if (enableWebSearch && hasWebSearchMCP) {
                 try {
                     // 提取搜索关键词（从用户消息中提取）
                     const searchQuery = this.extractSearchQuery(lastMessage);
+                    window.Logger?.debug(`提取搜索关键词: ${searchQuery || '未提取到关键词'}`);
                     
                     if (searchQuery) {
                         // 执行网络搜索
+                        window.Logger?.info(`开始执行网络搜索: ${searchQuery}`);
                         const searchResults = await this.performWebSearch(searchQuery);
+                        window.Logger?.info(`网络搜索完成，返回${searchResults.length}个结果`);
                         
-                        if (searchResults.length > 0) {
+                        // 检查是否是错误提示结果
+                        const isErrorResult = searchResults.length === 1 && 
+                            (searchResults[0].title.includes('搜索服务暂时不可用') || 
+                             searchResults[0].title.includes('搜索失败'));
+                        
+                        if (searchResults.length > 0 && !isErrorResult) {
                             mcpResults.push({ type: 'search', data: searchResults });
                             
                             // 自动爬取前3个搜索结果的内容
@@ -747,72 +758,261 @@
         // ==================== 网络搜索 ====================
         async performWebSearch(query) {
             try {
-                // 使用 Jina AI 进行网络搜索
+                window.Logger?.info(`开始网络搜索: ${query}`);
+                
+                // 方法1: 使用DuckDuckGo Instant Answer API（无需API密钥）
+                try {
+                    const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
+                    
+                    const ddgResponse = await fetch(ddgUrl, {
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                    
+                    if (ddgResponse.ok) {
+                        const ddgData = await ddgResponse.json();
+                        
+                        // 如果DuckDuckGo有即时答案，使用它
+                        if (ddgData.AbstractText) {
+                            window.Logger?.info('DuckDuckGo返回即时答案');
+                            return [{
+                                title: ddgData.Heading || query,
+                                url: ddgData.AbstractURL || '',
+                                snippet: ddgData.AbstractText
+                            }];
+                        }
+                        
+                        // 如果有相关主题，使用它们
+                        if (ddgData.RelatedTopics && ddgData.RelatedTopics.length > 0) {
+                            window.Logger?.info(`DuckDuckGo返回${ddgData.RelatedTopics.length}个相关主题`);
+                            return ddgData.RelatedTopics.slice(0, 5).map(topic => ({
+                                title: topic.Text?.split(' - ')[0] || query,
+                                url: topic.FirstURL || '',
+                                snippet: topic.Text || ''
+                            }));
+                        }
+                    }
+                } catch (ddgError) {
+                    if (ddgError.name === 'AbortError') {
+                        window.Logger?.warn('DuckDuckGo API请求超时，尝试备用方法');
+                    } else {
+                        window.Logger?.warn('DuckDuckGo搜索失败，尝试备用方法', ddgError);
+                    }
+                }
+                
+                // 方法2: 使用Jina AI Reader API搜索（如果配置了API密钥，优先使用）
                 const jinaApiKey = window.AIAgentApp?.getJinaAIKey?.() || '';
-                const searchHeaders = {
-                    'X-Return-Format': 'text'
-                };
                 if (jinaApiKey) {
-                    searchHeaders['Authorization'] = `Bearer ${jinaApiKey}`;
+                    try {
+                        window.Logger?.info('尝试使用Jina AI进行搜索');
+                        const searchHeaders = {
+                            'X-Return-Format': 'text',
+                            'Authorization': `Bearer ${jinaApiKey}`
+                        };
+                        
+                        // 使用Bing搜索（更可靠）
+                        const bingSearchUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}`;
+                        const jinaSearchUrl = `https://r.jina.ai/${bingSearchUrl}`;
+                        
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+                        
+                        const jinaResponse = await fetch(jinaSearchUrl, {
+                            headers: searchHeaders,
+                            signal: controller.signal
+                        });
+                        clearTimeout(timeoutId);
+                        
+                        if (jinaResponse.ok) {
+                            const content = await jinaResponse.text();
+                            const results = this.parseBingSearchResults(content);
+                            if (results.length > 0) {
+                                window.Logger?.info(`Jina AI搜索返回${results.length}个结果`);
+                                return results.slice(0, 5);
+                            }
+                        }
+                    } catch (jinaError) {
+                        if (jinaError.name === 'AbortError') {
+                            window.Logger?.warn('Jina AI搜索请求超时');
+                        } else {
+                            window.Logger?.warn('Jina AI搜索失败', jinaError);
+                        }
+                    }
                 }
-                const searchUrl = `https://r.jina.ai/http://www.google.com/search?q=${encodeURIComponent(query)}`;
-                const response = await fetch(searchUrl, {
-                    headers: searchHeaders
-                });
                 
-                if (!response.ok) {
-                    throw new Error(`网络搜索失败: ${response.status}`);
+                // 方法3: 使用DuckDuckGo HTML搜索作为备用方案
+                try {
+                    const htmlSearchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
+                    
+                    const htmlResponse = await fetch(htmlSearchUrl, {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                        },
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                    
+                    if (htmlResponse.ok) {
+                        const html = await htmlResponse.text();
+                        const results = this.parseDuckDuckGoResults(html);
+                        if (results.length > 0) {
+                            window.Logger?.info(`DuckDuckGo HTML搜索返回${results.length}个结果`);
+                            return results.slice(0, 5);
+                        }
+                    }
+                } catch (htmlError) {
+                    if (htmlError.name === 'AbortError') {
+                        window.Logger?.warn('DuckDuckGo HTML搜索请求超时');
+                    } else {
+                        window.Logger?.warn('DuckDuckGo HTML搜索失败', htmlError);
+                    }
                 }
                 
-                const html = await response.text();
-                
-                // 解析搜索结果（简化版）
-                const results = this.parseGoogleSearchResults(html);
-                
-                return results.slice(0, 5); // 限制返回前5个结果
+                // 方法4: 如果所有方法都失败，返回提示信息
+                window.Logger?.warn('所有搜索方法都失败，可能是网络连接问题');
+                return [{
+                    title: '搜索服务暂时不可用',
+                    url: '',
+                    snippet: '网络搜索功能暂时无法使用，可能是网络连接问题或搜索服务不可访问。请检查网络连接或稍后重试。'
+                }];
             } catch (error) {
+                window.Logger?.error('网络搜索异常', error);
                 window.ErrorHandler?.handle(error, {
                     type: window.ErrorType?.NETWORK,
-                    showToast: false, // 网络搜索失败不显示Toast，避免干扰
+                    showToast: false,
                     logError: true
                 });
-                return [];
+                return [{
+                    title: '搜索失败',
+                    url: '',
+                    snippet: `搜索失败: ${error.message}。请检查网络连接。`
+                }];
             }
         },
 
-        parseGoogleSearchResults(html) {
+        parseBingSearchResults(content) {
             const results = [];
             
-            // 简单的HTML解析，提取搜索结果
-            const titleRegex = /<h3[^>]*>(.*?)<\/h3>/gi;
-            const linkRegex = /<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi;
-            const snippetRegex = /<div[^>]*class="[^"]*st[^"]*"[^>]*>(.*?)<\/div>/gi;
-            
-            let titleMatch;
-            const titles = [];
-            while ((titleMatch = titleRegex.exec(html)) !== null) {
-                titles.push(this.stripHtmlTags(titleMatch[1]));
-            }
-            
-            let linkMatch;
-            const links = [];
-            while ((linkMatch = linkRegex.exec(html)) !== null) {
-                links.push({
-                    url: linkMatch[1],
-                    title: this.stripHtmlTags(linkMatch[2])
-                });
-            }
-            
-            // 组合结果
-            for (let i = 0; i < Math.min(titles.length, links.length); i++) {
-                results.push({
-                    title: titles[i] || links[i].title,
-                    url: links[i].url,
-                    snippet: titles[i] || ''
-                });
+            try {
+                // 使用正则表达式解析Bing搜索结果
+                // Bing搜索结果通常在特定的HTML结构中
+                const titleRegex = /<h2[^>]*><a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a><\/h2>/gi;
+                const snippetRegex = /<p[^>]*class="[^"]*b_caption[^"]*"[^>]*>(.*?)<\/p>/gi;
+                
+                const titles = [];
+                let match;
+                while ((match = titleRegex.exec(content)) !== null && titles.length < 10) {
+                    const url = match[1];
+                    const title = this.stripHtmlTags(match[2]);
+                    if (title && url && !url.startsWith('javascript:')) {
+                        titles.push({ title, url });
+                    }
+                }
+                
+                const snippets = [];
+                while ((match = snippetRegex.exec(content)) !== null && snippets.length < 10) {
+                    snippets.push(this.stripHtmlTags(match[1]));
+                }
+                
+                // 组合结果
+                for (let i = 0; i < titles.length; i++) {
+                    results.push({
+                        title: titles[i].title,
+                        url: titles[i].url,
+                        snippet: snippets[i] || ''
+                    });
+                }
+            } catch (error) {
+                window.Logger?.warn('解析Bing搜索结果失败', error);
             }
             
             return results;
+        },
+        
+        parseDuckDuckGoResults(html) {
+            const results = [];
+            
+            try {
+                // 创建临时DOM解析器
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                // 查找搜索结果容器
+                const resultElements = doc.querySelectorAll('.result, .web-result, [class*="result"]');
+                
+                resultElements.forEach((element, index) => {
+                    if (index >= 10) return; // 限制最多10个结果
+                    
+                    // 提取标题和链接
+                    const titleElement = element.querySelector('a.result__a, a[class*="result__a"], h2 a, .result__title a');
+                    const snippetElement = element.querySelector('.result__snippet, .result__body, [class*="snippet"]');
+                    
+                    if (titleElement) {
+                        const title = titleElement.textContent.trim();
+                        const url = titleElement.getAttribute('href') || '';
+                        
+                        // 清理URL（移除DuckDuckGo重定向）
+                        let cleanUrl = url;
+                        if (url.startsWith('/l/?uddg=')) {
+                            try {
+                                const decoded = decodeURIComponent(url.split('uddg=')[1].split('&')[0]);
+                                cleanUrl = decoded;
+                            } catch (e) {
+                                // 如果解码失败，使用原始URL
+                            }
+                        }
+                        
+                        const snippet = snippetElement ? snippetElement.textContent.trim() : '';
+                        
+                        if (title && cleanUrl) {
+                            results.push({
+                                title: title,
+                                url: cleanUrl,
+                                snippet: snippet
+                            });
+                        }
+                    }
+                });
+                
+                // 如果DOM解析失败，尝试正则表达式解析
+                if (results.length === 0) {
+                    const titleRegex = /<a[^>]*class="[^"]*result__a[^"]*"[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi;
+                    const snippetRegex = /<a[^>]*class="[^"]*result__snippet[^"]*"[^>]*>(.*?)<\/a>/gi;
+                    
+                    let match;
+                    while ((match = titleRegex.exec(html)) !== null && results.length < 10) {
+                        let url = match[1];
+                        // 清理DuckDuckGo重定向URL
+                        if (url.startsWith('/l/?uddg=')) {
+                            try {
+                                url = decodeURIComponent(url.split('uddg=')[1].split('&')[0]);
+                            } catch (e) {}
+                        }
+                        
+                        const title = this.stripHtmlTags(match[2]);
+                        if (title && url) {
+                            results.push({
+                                title: title,
+                                url: url,
+                                snippet: ''
+                            });
+                        }
+                    }
+                }
+            } catch (error) {
+                window.Logger?.warn('解析搜索结果失败', error);
+            }
+            
+            return results;
+        },
+        
+        parseGoogleSearchResults(html) {
+            // 保留此方法以兼容旧代码
+            return this.parseDuckDuckGoResults(html);
         },
 
         stripHtmlTags(html) {
@@ -823,33 +1023,57 @@
         extractSearchQuery(message) {
             if (!message || typeof message !== 'string') return null;
             
-            // 检测是否需要搜索的关键词
-            const searchKeywords = ['搜索', '查找', '查询', '最新', '现在', '当前', '实时', '今天', '最近', '什么', '如何', '为什么', '哪里'];
-            const hasSearchIntent = searchKeywords.some(keyword => message.includes(keyword));
-            
-            // 检测URL
+            // 检测URL（如果有URL，直接返回用于爬取）
             const urlRegex = /(https?:\/\/[^\s]+)/g;
             const urls = message.match(urlRegex);
             if (urls && urls.length > 0) {
-                return urls[0]; // 如果有URL，直接返回URL
+                return urls[0]; // 如果有URL，直接返回URL用于爬取
             }
             
-            // 如果没有明确的搜索意图，返回null（不自动搜索）
-            if (!hasSearchIntent) return null;
+            // 检测是否需要搜索的关键词（更宽松的匹配）
+            const searchKeywords = [
+                '搜索', '查找', '查询', '搜一下', '找一下',
+                '最新', '现在', '当前', '实时', '今天', '最近', '2024', '2025',
+                '什么', '如何', '为什么', '哪里', '哪个', '谁',
+                '新闻', '资讯', '消息', '动态', '更新',
+                '价格', '多少钱', '多少', '什么时候', '几点'
+            ];
+            const hasSearchIntent = searchKeywords.some(keyword => message.includes(keyword));
             
-            // 提取关键词：移除常见停用词
-            const stopWords = ['的', '了', '在', '是', '我', '你', '他', '她', '它', '我们', '你们', '他们', '请', '帮', '能', '可以', '要', '想', '给', '告诉'];
+            // 如果消息包含问号，更可能是搜索意图
+            const hasQuestionMark = message.includes('?') || message.includes('？');
+            
+            // 如果消息很短（少于20字符）且包含问号，可能是搜索
+            const isShortQuestion = message.length < 20 && hasQuestionMark;
+            
+            // 如果没有明确的搜索意图，返回null（不自动搜索）
+            if (!hasSearchIntent && !hasQuestionMark && !isShortQuestion) {
+                return null;
+            }
+            
+            // 提取关键词：移除常见停用词和搜索指令词
+            const stopWords = ['的', '了', '在', '是', '我', '你', '他', '她', '它', '我们', '你们', '他们', '请', '帮', '能', '可以', '要', '想', '给', '告诉', '搜索', '查找', '查询', '搜一下', '找一下'];
             let query = message;
+            
+            // 移除搜索指令词
             stopWords.forEach(word => {
-                query = query.replace(new RegExp(word, 'g'), ' ');
+                query = query.replace(new RegExp(word, 'gi'), ' ');
             });
+            
+            // 移除问号
+            query = query.replace(/[?？]/g, ' ').trim();
             
             // 清理多余空格
             query = query.replace(/\s+/g, ' ').trim();
             
-            // 限制长度
-            if (query.length > 50) {
-                query = query.substring(0, 50);
+            // 限制长度（但至少保留3个字符）
+            if (query.length < 3) {
+                // 如果清理后太短，使用原始消息（移除搜索指令词）
+                query = message.replace(/^(请|帮|能|可以|要|想|给|告诉)?(搜索|查找|查询|搜一下|找一下)?/gi, '').trim();
+            }
+            
+            if (query.length > 100) {
+                query = query.substring(0, 100);
             }
             
             return query || null;
@@ -857,37 +1081,76 @@
 
         async fetchWebPage(url) {
             try {
-                // 使用 Jina AI 抓取网页内容
+                window.Logger?.info(`开始爬取网页: ${url}`);
+                
+                // 清理URL（移除DuckDuckGo重定向等）
+                let cleanUrl = url;
+                if (url.startsWith('/l/?uddg=')) {
+                    try {
+                        cleanUrl = decodeURIComponent(url.split('uddg=')[1].split('&')[0]);
+                    } catch (e) {
+                        window.Logger?.warn('URL解码失败，使用原始URL', e);
+                    }
+                }
+                
+                // 确保URL有协议
+                if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+                    cleanUrl = 'https://' + cleanUrl;
+                }
+                
+                // 使用 Jina AI 抓取网页内容（如果配置了API密钥）
                 const jinaApiKey = window.AIAgentApp?.getJinaAIKey?.() || '';
-                const fetchHeaders = {
-                    'X-Return-Format': 'text'
-                };
                 if (jinaApiKey) {
-                    fetchHeaders['Authorization'] = `Bearer ${jinaApiKey}`;
+                    try {
+                        const fetchHeaders = {
+                            'X-Return-Format': 'text',
+                            'Authorization': `Bearer ${jinaApiKey}`
+                        };
+                        
+                        // Jina AI Reader API格式：https://r.jina.ai/{url}
+                        const jinaUrl = `https://r.jina.ai/${cleanUrl}`;
+                        window.Logger?.debug(`使用Jina AI爬取: ${jinaUrl}`);
+                        
+                        const response = await fetch(jinaUrl, {
+                            headers: fetchHeaders
+                        });
+                        
+                        if (response.ok) {
+                            const content = await response.text();
+                            window.Logger?.info(`网页爬取成功: ${cleanUrl}, 内容长度: ${content.length}`);
+                            
+                            return {
+                                url: cleanUrl,
+                                title: this.extractTitle(content) || cleanUrl,
+                                content: content.substring(0, 5000) // 限制内容长度
+                            };
+                        } else {
+                            window.Logger?.warn(`Jina AI爬取失败: ${response.status}`);
+                        }
+                    } catch (jinaError) {
+                        window.Logger?.warn('Jina AI爬取异常', jinaError);
+                    }
                 }
-                const fetchUrl = `https://r.jina.ai/http://${url.replace(/^https?:\/\//, '')}`;
-                const response = await fetch(fetchUrl, {
-                    headers: fetchHeaders
-                });
                 
-                if (!response.ok) {
-                    throw new Error(`抓取网页失败: ${response.status}`);
-                }
-                
-                const content = await response.text();
-                
+                // 如果Jina AI不可用或失败，返回基本信息
+                window.Logger?.warn(`网页爬取失败: ${cleanUrl}`);
                 return {
-                    url: url,
-                    title: this.extractTitle(content),
-                    content: this.stripHtmlTags(content).substring(0, 5000) // 限制内容长度
+                    url: cleanUrl,
+                    title: cleanUrl,
+                    content: `[无法获取网页内容，请手动访问: ${cleanUrl}]`
                 };
             } catch (error) {
+                window.Logger?.error('网页爬取异常', error);
                 window.ErrorHandler?.handle(error, {
                     type: window.ErrorType?.NETWORK,
                     showToast: false,
                     logError: true
                 });
-                throw error;
+                return {
+                    url: url,
+                    title: url,
+                    content: `[网页爬取失败: ${error.message}]`
+                };
             }
         },
 

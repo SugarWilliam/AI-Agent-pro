@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.0.0 - RAG文档解析与向量化模块
+ * AI Agent Pro v8.0.1 - RAG文档解析与向量化模块
  * 支持PDF、DOC、网页、文本的解析和语义检索
  */
 
@@ -201,9 +201,13 @@
         // 检查Jina AI是否可用
         isJinaAIAvailable() {
             if (window.AIAgentApp && typeof window.AIAgentApp.isJinaAIEnabled === 'function') {
-                return window.AIAgentApp.isJinaAIEnabled() && window.AIAgentApp.hasJinaAIKey();
+                const enabled = window.AIAgentApp.isJinaAIEnabled();
+                const hasKey = window.AIAgentApp.hasJinaAIKey();
+                window.Logger?.debug(`Jina AI检查: enabled=${enabled}, hasKey=${hasKey}`);
+                return enabled && hasKey;
             }
             // 如果没有配置，尝试使用（Jina AI可能支持无密钥的免费使用）
+            window.Logger?.debug('Jina AI检查: AIAgentApp未找到，使用默认值true');
             return true;
         },
 
@@ -211,35 +215,86 @@
         async parsePDF(file) {
             // 检查Jina AI是否可用
             if (!this.isJinaAIAvailable()) {
-                window.Logger?.warn('Jina AI未配置或已禁用，PDF解析将使用降级方案');
+                const apiKey = this.getJinaAIKey();
+                window.Logger?.warn(`Jina AI未配置或已禁用，PDF解析将使用降级方案。API Key: ${apiKey ? '已配置' : '未配置'}`);
                 return `[PDF文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：请配置Jina AI API密钥以启用PDF内容解析。获取密钥: https://jina.ai/)`;
             }
 
             try {
                 const apiKey = this.getJinaAIKey();
+                window.Logger?.info(`开始解析PDF: ${file.name}, API Key: ${apiKey ? '已配置(' + apiKey.substring(0, 20) + '...)' : '未配置'}`);
+                
+                // 根据Jina AI官方文档，PDF文件应该使用Base64编码
+                // 将文件转换为Base64
+                window.Logger?.debug(`转换PDF为Base64，文件大小: ${file.size} bytes`);
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        // 移除data:application/pdf;base64,前缀，只保留Base64字符串
+                        const base64String = reader.result.split(',')[1];
+                        resolve(base64String);
+                    };
+                    reader.onerror = (error) => {
+                        window.Logger?.error('Base64转换失败', error);
+                        reject(new Error('PDF文件Base64转换失败: ' + error.message));
+                    };
+                    reader.readAsDataURL(file);
+                });
+                
+                window.Logger?.debug(`Base64转换完成，长度: ${base64.length} 字符`);
+                
+                // 构建请求头
                 const headers = {
-                    'Content-Type': 'application/pdf',
+                    'Content-Type': 'application/json',
                     'X-Return-Format': 'text'
                 };
                 
                 // 如果配置了API密钥，添加到请求头
-                if (apiKey) {
-                    headers['Authorization'] = `Bearer ${apiKey}`;
+                if (apiKey && apiKey.trim().length > 0) {
+                    headers['Authorization'] = `Bearer ${apiKey.trim()}`;
                 }
                 
-                // 使用Jina AI Reader API解析PDF
+                // 使用Jina AI Reader API解析PDF（使用Base64方式）
+                window.Logger?.debug(`发送请求到 https://r.jina.ai/, Base64长度: ${base64.length} 字符`);
+                window.Logger?.debug(`请求头:`, headers);
+                window.Logger?.debug(`请求体大小: ${JSON.stringify({ pdf: base64 }).length} 字符`);
+                
                 const response = await fetch('https://r.jina.ai/', {
                     method: 'POST',
                     headers: headers,
-                    body: await file.arrayBuffer()
+                    body: JSON.stringify({ pdf: base64 })
                 });
+                
+                window.Logger?.debug(`收到响应: status=${response.status}, ok=${response.ok}, statusText=${response.statusText}`);
+                
+                // 记录响应头（用于调试）
+                const responseHeaders = {};
+                response.headers.forEach((value, key) => {
+                    responseHeaders[key] = value;
+                });
+                window.Logger?.debug(`响应头:`, responseHeaders);
                 
                 if (response.ok) {
                     const content = await response.text();
-                    window.Logger?.info(`PDF解析成功: ${file.name}, 内容长度: ${content.length}`);
+                    window.Logger?.info(`PDF解析成功: ${file.name}, 内容长度: ${content.length} 字符`);
+                    window.Logger?.debug(`PDF解析内容预览（前500字符）: ${content.substring(0, 500)}`);
+                    
+                    // 检查返回内容是否真的是PDF内容（而不是错误消息）
+                    if (content.length < 50) {
+                        window.Logger?.warn(`PDF解析返回内容过短，可能是错误: ${content.substring(0, 100)}`);
+                        // 如果内容太短，可能是错误消息，但先返回让上层判断
+                    }
+                    
+                    // 检查是否包含HTML错误页面（Jina AI可能返回HTML错误页面）
+                    if (content.trim().startsWith('<!DOCTYPE') || content.trim().startsWith('<html')) {
+                        window.Logger?.error(`PDF解析返回HTML错误页面: ${content.substring(0, 200)}`);
+                        throw new Error('PDF解析返回错误页面，请检查API密钥和网络连接');
+                    }
+                    
                     return content;
                 } else {
                     const errorText = await response.text().catch(() => '');
+                    window.Logger?.error(`PDF解析API错误: status=${response.status}, error=${errorText.substring(0, 200)}`);
                     if (response.status === 401 || response.status === 403) {
                         throw new Error(`Jina AI API密钥无效或已过期。请检查设置中的Jina AI API密钥配置。`);
                     } else if (response.status === 429) {
@@ -249,7 +304,7 @@
                     }
                 }
             } catch (error) {
-                window.Logger?.warn(`PDF解析失败，使用降级方案: ${error.message}`);
+                window.Logger?.error(`PDF解析异常: ${file.name}`, error);
                 // 降级方案：返回基本信息
                 return `[PDF文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：PDF内容解析失败 - ${error.message})`;
             }
@@ -264,34 +319,84 @@
 
             try {
                 const apiKey = this.getJinaAIKey();
+                window.Logger?.info(`开始解析Word文档: ${file.name}`);
+                
+                // 转换为Base64
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+                
                 const headers = {
-                    'Content-Type': file.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'Content-Type': 'application/json',
                     'X-Return-Format': 'text'
                 };
                 
-                if (apiKey) {
-                    headers['Authorization'] = `Bearer ${apiKey}`;
+                if (apiKey && apiKey.trim().length > 0) {
+                    headers['Authorization'] = `Bearer ${apiKey.trim()}`;
                 }
                 
-                const response = await fetch('https://r.jina.ai/', {
-                    method: 'POST',
-                    headers: headers,
-                    body: await file.arrayBuffer()
-                });
-                
-                if (response.ok) {
-                    const content = await response.text();
-                    window.Logger?.info(`Word文档解析成功: ${file.name}, 内容长度: ${content.length}`);
-                    return content;
-                } else {
-                    const errorText = await response.text().catch(() => '');
-                    if (response.status === 401 || response.status === 403) {
-                        throw new Error(`Jina AI API密钥无效或已过期。请检查设置中的Jina AI API密钥配置。`);
-                    } else if (response.status === 429) {
-                        throw new Error(`Jina AI API请求频率限制。请稍后重试。`);
-                    } else {
-                        throw new Error(`Word文档解析失败: ${response.status} ${errorText.substring(0, 100)}`);
+                // Jina AI Reader API可能不支持doc字段，尝试使用file字段或直接POST二进制
+                // 方法1: 尝试使用file字段（通用文件上传）
+                let response;
+                try {
+                    window.Logger?.debug(`尝试方法1: 使用file字段`);
+                    response = await fetch('https://r.jina.ai/', {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify({ file: base64 })
+                    });
+                    
+                    if (response.ok) {
+                        const content = await response.text();
+                        window.Logger?.info(`Word文档解析成功: ${file.name}, 内容长度: ${content.length}`);
+                        return content;
+                    } else if (response.status === 400) {
+                        // 如果400错误，尝试方法2
+                        window.Logger?.warn(`方法1失败(status=400)，尝试方法2`);
+                        throw new Error('Method 1 failed');
                     }
+                } catch (method1Error) {
+                    // 方法2: 直接POST二进制数据（类似PDF的方式）
+                    try {
+                        window.Logger?.debug(`尝试方法2: 直接POST二进制数据`);
+                        const binaryHeaders = {
+                            'Content-Type': file.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                            'X-Return-Format': 'text'
+                        };
+                        
+                        if (apiKey && apiKey.trim().length > 0) {
+                            binaryHeaders['Authorization'] = `Bearer ${apiKey.trim()}`;
+                        }
+                        
+                        response = await fetch('https://r.jina.ai/', {
+                            method: 'POST',
+                            headers: binaryHeaders,
+                            body: await file.arrayBuffer()
+                        });
+                        
+                        if (response.ok) {
+                            const content = await response.text();
+                            window.Logger?.info(`Word文档解析成功: ${file.name}, 内容长度: ${content.length}`);
+                            return content;
+                        }
+                    } catch (method2Error) {
+                        window.Logger?.warn(`方法2也失败，使用降级方案`);
+                    }
+                }
+                
+                // 如果所有方法都失败
+                const errorText = await response.text().catch(() => '');
+                window.Logger?.error(`Word文档解析失败: status=${response.status}, error=${errorText.substring(0, 200)}`);
+                
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error(`Jina AI API密钥无效或已过期。请检查设置中的Jina AI API密钥配置。`);
+                } else if (response.status === 429) {
+                    throw new Error(`Jina AI API请求频率限制。请稍后重试。`);
+                } else {
+                    throw new Error(`Word文档解析失败: ${response.status} ${errorText.substring(0, 100)}`);
                 }
             } catch (error) {
                 window.Logger?.warn(`Word文档解析失败，使用降级方案: ${error.message}`);
@@ -308,34 +413,82 @@
 
             try {
                 const apiKey = this.getJinaAIKey();
+                window.Logger?.info(`开始解析PPT: ${file.name}`);
+                
+                // 转换为Base64
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+                
                 const headers = {
-                    'Content-Type': file.type || 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                    'Content-Type': 'application/json',
                     'X-Return-Format': 'text'
                 };
                 
-                if (apiKey) {
-                    headers['Authorization'] = `Bearer ${apiKey}`;
+                if (apiKey && apiKey.trim().length > 0) {
+                    headers['Authorization'] = `Bearer ${apiKey.trim()}`;
                 }
                 
-                const response = await fetch('https://r.jina.ai/', {
-                    method: 'POST',
-                    headers: headers,
-                    body: await file.arrayBuffer()
-                });
-                
-                if (response.ok) {
-                    const content = await response.text();
-                    window.Logger?.info(`PPT解析成功: ${file.name}, 内容长度: ${content.length}`);
-                    return content;
-                } else {
-                    const errorText = await response.text().catch(() => '');
-                    if (response.status === 401 || response.status === 403) {
-                        throw new Error(`Jina AI API密钥无效或已过期。请检查设置中的Jina AI API密钥配置。`);
-                    } else if (response.status === 429) {
-                        throw new Error(`Jina AI API请求频率限制。请稍后重试。`);
-                    } else {
-                        throw new Error(`PPT解析失败: ${response.status} ${errorText.substring(0, 100)}`);
+                // 方法1: 尝试使用file字段（Base64）
+                let response;
+                try {
+                    window.Logger?.debug(`尝试方法1: 使用file字段（Base64）`);
+                    response = await fetch('https://r.jina.ai/', {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify({ file: base64 })
+                    });
+                    
+                    if (response.ok) {
+                        const content = await response.text();
+                        window.Logger?.info(`PPT解析成功: ${file.name}, 内容长度: ${content.length}`);
+                        return content;
+                    } else if (response.status === 400) {
+                        window.Logger?.warn(`方法1失败(status=400)，尝试方法2`);
+                        throw new Error('Method 1 failed');
                     }
+                } catch (method1Error) {
+                    // 方法2: 直接POST二进制数据
+                    try {
+                        window.Logger?.debug(`尝试方法2: 直接POST二进制数据`);
+                        const binaryHeaders = {
+                            'Content-Type': file.type || 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                            'X-Return-Format': 'text'
+                        };
+                        
+                        if (apiKey && apiKey.trim().length > 0) {
+                            binaryHeaders['Authorization'] = `Bearer ${apiKey.trim()}`;
+                        }
+                        
+                        response = await fetch('https://r.jina.ai/', {
+                            method: 'POST',
+                            headers: binaryHeaders,
+                            body: await file.arrayBuffer()
+                        });
+                        
+                        if (response.ok) {
+                            const content = await response.text();
+                            window.Logger?.info(`PPT解析成功: ${file.name}, 内容长度: ${content.length}`);
+                            return content;
+                        }
+                    } catch (method2Error) {
+                        window.Logger?.warn(`方法2也失败，使用降级方案`);
+                    }
+                }
+                
+                // 如果所有方法都失败
+                const errorText = await response.text().catch(() => '');
+                window.Logger?.error(`PPT解析失败: status=${response.status}, error=${errorText.substring(0, 200)}`);
+                
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error(`Jina AI API密钥无效或已过期。请检查设置中的Jina AI API密钥配置。`);
+                } else if (response.status === 429) {
+                    throw new Error(`Jina AI API请求频率限制。请稍后重试。`);
+                } else {
+                    throw new Error(`PPT解析失败: ${response.status} ${errorText.substring(0, 100)}`);
                 }
             } catch (error) {
                 window.Logger?.warn(`PPT解析失败，使用降级方案: ${error.message}`);
@@ -358,20 +511,75 @@
 
             try {
                 const apiKey = this.getJinaAIKey();
+                window.Logger?.info(`开始解析Excel: ${file.name}`);
+                
+                // 转换为Base64
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+                
                 const headers = {
-                    'Content-Type': file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'Content-Type': 'application/json',
                     'X-Return-Format': 'text'
                 };
                 
-                if (apiKey) {
-                    headers['Authorization'] = `Bearer ${apiKey}`;
+                if (apiKey && apiKey.trim().length > 0) {
+                    headers['Authorization'] = `Bearer ${apiKey.trim()}`;
                 }
                 
-                const response = await fetch('https://r.jina.ai/', {
-                    method: 'POST',
-                    headers: headers,
-                    body: await file.arrayBuffer()
-                });
+                // 方法1: 尝试使用file字段（Base64）
+                let response;
+                try {
+                    window.Logger?.debug(`尝试方法1: 使用file字段（Base64）`);
+                    response = await fetch('https://r.jina.ai/', {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify({ file: base64 })
+                    });
+                    
+                    if (response.ok) {
+                        const content = await response.text();
+                        window.Logger?.info(`Excel解析成功: ${file.name}, 内容长度: ${content.length}`);
+                        return content;
+                    } else if (response.status === 400) {
+                        window.Logger?.warn(`方法1失败(status=400)，尝试方法2`);
+                        throw new Error('Method 1 failed');
+                    }
+                } catch (method1Error) {
+                    // 方法2: 直接POST二进制数据
+                    try {
+                        window.Logger?.debug(`尝试方法2: 直接POST二进制数据`);
+                        const binaryHeaders = {
+                            'Content-Type': file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            'X-Return-Format': 'text'
+                        };
+                        
+                        if (apiKey && apiKey.trim().length > 0) {
+                            binaryHeaders['Authorization'] = `Bearer ${apiKey.trim()}`;
+                        }
+                        
+                        response = await fetch('https://r.jina.ai/', {
+                            method: 'POST',
+                            headers: binaryHeaders,
+                            body: await file.arrayBuffer()
+                        });
+                        
+                        if (response.ok) {
+                            const content = await response.text();
+                            window.Logger?.info(`Excel解析成功: ${file.name}, 内容长度: ${content.length}`);
+                            return content;
+                        }
+                    } catch (method2Error) {
+                        window.Logger?.warn(`方法2也失败，使用降级方案`);
+                    }
+                }
+                
+                // 如果所有方法都失败
+                const errorText = await response.text().catch(() => '');
+                window.Logger?.error(`Excel解析失败: status=${response.status}, error=${errorText.substring(0, 200)}`);
                 
                 if (response.ok) {
                     const content = await response.text();
@@ -426,36 +634,84 @@
             }
 
             try {
-                // 使用Jina AI Reader API解析图片
                 const apiKey = this.getJinaAIKey();
+                window.Logger?.info(`开始解析图片: ${file.name}`);
+                
+                // 转换为Base64
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+                
                 const headers = {
-                    'Content-Type': file.type,
+                    'Content-Type': 'application/json',
                     'X-Return-Format': 'text'
                 };
                 
-                if (apiKey) {
-                    headers['Authorization'] = `Bearer ${apiKey}`;
+                if (apiKey && apiKey.trim().length > 0) {
+                    headers['Authorization'] = `Bearer ${apiKey.trim()}`;
                 }
                 
-                const response = await fetch('https://r.jina.ai/', {
-                    method: 'POST',
-                    headers: headers,
-                    body: await file.arrayBuffer()
-                });
-                
-                if (response.ok) {
-                    const content = await response.text();
-                    window.Logger?.info(`图片解析成功: ${file.name}`);
-                    return `[图片: ${file.name}]\n${content}`;
-                } else {
-                    const errorText = await response.text().catch(() => '');
-                    if (response.status === 401 || response.status === 403) {
-                        throw new Error(`Jina AI API密钥无效或已过期。请检查设置中的Jina AI API密钥配置。`);
-                    } else if (response.status === 429) {
-                        throw new Error(`Jina AI API请求频率限制。请稍后重试。`);
-                    } else {
-                        throw new Error(`图片解析失败: ${response.status} ${errorText.substring(0, 100)}`);
+                // 方法1: 尝试使用image字段（Base64）
+                let response;
+                try {
+                    window.Logger?.debug(`尝试方法1: 使用image字段（Base64）`);
+                    response = await fetch('https://r.jina.ai/', {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify({ image: base64 })
+                    });
+                    
+                    if (response.ok) {
+                        const content = await response.text();
+                        window.Logger?.info(`图片解析成功: ${file.name}, 内容长度: ${content.length}`);
+                        return `[图片: ${file.name}]\n${content}`;
+                    } else if (response.status === 400) {
+                        // 如果400错误，尝试方法2
+                        window.Logger?.warn(`方法1失败(status=400)，尝试方法2`);
+                        throw new Error('Method 1 failed');
                     }
+                } catch (method1Error) {
+                    // 方法2: 直接POST二进制数据
+                    try {
+                        window.Logger?.debug(`尝试方法2: 直接POST二进制数据`);
+                        const binaryHeaders = {
+                            'Content-Type': file.type,
+                            'X-Return-Format': 'text'
+                        };
+                        
+                        if (apiKey && apiKey.trim().length > 0) {
+                            binaryHeaders['Authorization'] = `Bearer ${apiKey.trim()}`;
+                        }
+                        
+                        response = await fetch('https://r.jina.ai/', {
+                            method: 'POST',
+                            headers: binaryHeaders,
+                            body: await file.arrayBuffer()
+                        });
+                        
+                        if (response.ok) {
+                            const content = await response.text();
+                            window.Logger?.info(`图片解析成功: ${file.name}, 内容长度: ${content.length}`);
+                            return `[图片: ${file.name}]\n${content}`;
+                        }
+                    } catch (method2Error) {
+                        window.Logger?.warn(`方法2也失败，使用降级方案`);
+                    }
+                }
+                
+                // 如果所有方法都失败
+                const errorText = await response.text().catch(() => '');
+                window.Logger?.error(`图片解析失败: status=${response.status}, error=${errorText.substring(0, 200)}`);
+                
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error(`Jina AI API密钥无效或已过期。请检查设置中的Jina AI API密钥配置。`);
+                } else if (response.status === 429) {
+                    throw new Error(`Jina AI API请求频率限制。请稍后重试。`);
+                } else {
+                    throw new Error(`图片解析失败: ${response.status} ${errorText.substring(0, 100)}`);
                 }
             } catch (error) {
                 window.Logger?.warn(`图片解析失败，使用降级方案: ${error.message}`);

@@ -53,6 +53,12 @@ coverage/
 *.backup
 *.orig
 
+# SSH密钥（不要提交私钥）
+ssh_private_key
+*.pem
+*.key
+!*.pub
+
 # 项目特定
 docs/archive/
 test/*.md

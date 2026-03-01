@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.0.0 - 事件处理模块
+ * AI Agent Pro v8.0.1 - 事件处理模块
  * 未来科技感交互设计
  */
 
@@ -707,7 +707,21 @@
                         name: file.name,
                         data: base64
                     };
-                    content = `[图片: ${file.name}]`;
+                    // 使用RAGManager的Jina AI解析图片（OCR和描述）
+                    try {
+                        window.AIAgentUI?.showToast?.(`正在解析图片: ${file.name}...`, 'info');
+                        const imageContent = await window.RAGManager?.parseImage?.(file);
+                        if (imageContent && !imageContent.includes('[图片:') && !imageContent.includes('注意：')) {
+                            // 如果成功解析，使用解析内容
+                            content = `[图片: ${file.name}]\n\n${imageContent}`;
+                        } else {
+                            // 如果解析失败，只显示基本信息
+                            content = `[图片: ${file.name}]`;
+                        }
+                    } catch (error) {
+                        window.Logger?.error(`图片解析失败: ${file.name}`, error);
+                        content = `[图片: ${file.name}]`;
+                    }
                 } else if (file.type === 'text/plain' || file.type === 'text/markdown') {
                     content = await readFileAsText(file);
                     attachment = {
@@ -716,17 +730,74 @@
                         content: content.substring(0, 1000)
                     };
                 } else if (file.type === 'application/pdf') {
-                    content = await parsePDFFile(file);
+                    // 使用RAGManager的Jina AI解析功能
+                    try {
+                        window.AIAgentUI?.showToast?.(`正在解析PDF: ${file.name}...`, 'info');
+                        const rawContent = await window.RAGManager?.parsePDF?.(file);
+                        
+                        // 检查解析结果：更严格的判断逻辑
+                        // 1. 如果内容为空，解析失败
+                        // 2. 如果内容很短（<100字符）且包含明确的错误标记，解析失败
+                        // 3. 如果内容以错误标记开头，解析失败
+                        const errorMarkers = [
+                            '[PDF文档:',
+                            '(注意：请配置Jina AI',
+                            '(注意：PDF内容解析失败',
+                            'PDF解析失败',
+                            'Jina AI未配置或已禁用'
+                        ];
+                        
+                        const hasErrorMarker = errorMarkers.some(marker => 
+                            rawContent && rawContent.includes(marker)
+                        );
+                        
+                        const isShortError = rawContent && rawContent.length < 100 && hasErrorMarker;
+                        const startsWithError = rawContent && rawContent.trim().startsWith('[PDF文档:');
+                        
+                        if (!rawContent || isShortError || startsWithError) {
+                            // 解析失败，使用降级方案
+                            window.Logger?.warn(`PDF解析失败，返回占位符: ${file.name}`, {
+                                contentLength: rawContent?.length,
+                                hasErrorMarker,
+                                isShortError,
+                                startsWithError,
+                                contentPreview: rawContent?.substring(0, 200)
+                            });
+                            content = `[PDF文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n${rawContent || 'PDF解析失败，请检查Jina AI配置'}`;
+                        } else {
+                            // 解析成功，添加文件信息前缀
+                            window.Logger?.info(`PDF解析成功: ${file.name}, 内容长度: ${rawContent.length} 字符`);
+                            // 显示解析成功提示
+                            window.AIAgentUI?.showToast?.(`PDF解析成功: ${file.name} (${rawContent.length} 字符)`, 'success');
+                            content = `【文件: ${file.name}】\n\n${rawContent}`;
+                        }
+                    } catch (error) {
+                        window.Logger?.error(`PDF解析异常: ${file.name}`, error);
+                        window.AIAgentUI?.showToast?.(`PDF解析失败: ${error.message}`, 'error');
+                        content = `[PDF文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\nPDF解析失败: ${error.message}`;
+                    }
                     attachment = {
                         type: 'pdf',
                         name: file.name,
                         content: content.substring(0, 1000)
                     };
                 } else if (file.type.includes('word') || file.type.includes('document')) {
-                    content = `[Word文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB`;
+                    // 使用RAGManager的Jina AI解析功能
+                    try {
+                        window.AIAgentUI?.showToast?.(`正在解析Word文档: ${file.name}...`, 'info');
+                        content = await window.RAGManager?.parseDOC?.(file);
+                        if (!content || content.includes('[Word文档:') || content.includes('注意：')) {
+                            // 如果解析失败或返回占位符，使用降级方案
+                            content = `[Word文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n${content || 'Word文档解析失败，请检查Jina AI配置'}`;
+                        }
+                    } catch (error) {
+                        window.Logger?.error(`Word文档解析失败: ${file.name}`, error);
+                        content = `[Word文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\nWord文档解析失败: ${error.message}`;
+                    }
                     attachment = {
                         type: 'doc',
-                        name: file.name
+                        name: file.name,
+                        content: content.substring(0, 1000)
                     };
                 } else if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
                     content = await parseCSVFile(file);
@@ -737,17 +808,41 @@
                     };
                 } else if (file.type.includes('sheet') || file.type.includes('excel') || 
                            file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-                    content = `[电子表格: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n(支持CSV格式，Excel文件请转换为CSV后上传)`;
+                    // 使用RAGManager的Jina AI解析功能
+                    try {
+                        window.AIAgentUI?.showToast?.(`正在解析Excel: ${file.name}...`, 'info');
+                        content = await window.RAGManager?.parseExcel?.(file);
+                        if (!content || content.includes('[电子表格:') || content.includes('注意：')) {
+                            // 如果解析失败或返回占位符，使用降级方案
+                            content = `[电子表格: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n(支持CSV格式，Excel文件请转换为CSV后上传)\n\n${content || 'Excel解析失败，请检查Jina AI配置'}`;
+                        }
+                    } catch (error) {
+                        window.Logger?.error(`Excel解析失败: ${file.name}`, error);
+                        content = `[电子表格: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n(支持CSV格式，Excel文件请转换为CSV后上传)\n\nExcel解析失败: ${error.message}`;
+                    }
                     attachment = {
                         type: 'excel',
-                        name: file.name
+                        name: file.name,
+                        content: content.substring(0, 1000)
                     };
                 } else if (file.type.includes('presentation') || file.type.includes('powerpoint') ||
                            file.name.endsWith('.ppt') || file.name.endsWith('.pptx')) {
-                    content = `[演示文稿: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB`;
+                    // 使用RAGManager的Jina AI解析功能
+                    try {
+                        window.AIAgentUI?.showToast?.(`正在解析PPT: ${file.name}...`, 'info');
+                        content = await window.RAGManager?.parsePPT?.(file);
+                        if (!content || content.includes('[PowerPoint文档:') || content.includes('注意：')) {
+                            // 如果解析失败或返回占位符，使用降级方案
+                            content = `[演示文稿: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n${content || 'PPT解析失败，请检查Jina AI配置'}`;
+                        }
+                    } catch (error) {
+                        window.Logger?.error(`PPT解析失败: ${file.name}`, error);
+                        content = `[演示文稿: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\nPPT解析失败: ${error.message}`;
+                    }
                     attachment = {
                         type: 'ppt',
-                        name: file.name
+                        name: file.name,
+                        content: content.substring(0, 1000)
                     };
                 } else if (file.type === 'text/html' || file.name.endsWith('.html') || 
                            file.name.endsWith('.htm') || file.name.endsWith('.h5')) {
@@ -902,9 +997,14 @@
         }
     };
 
-    // 解析PDF文件
+    // 解析PDF文件（已废弃，使用RAGManager.parsePDF）
     async function parsePDFFile(file) {
-        return `[PDF文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n注意：完整PDF解析需要PDF.js库支持，当前显示基本信息。\n\n如需完整解析，请：\n1. 将PDF转换为文本格式\n2. 或使用支持PDF的在线工具提取内容后粘贴`;
+        // 此函数已废弃，现在使用RAGManager.parsePDF来解析PDF
+        // 保留此函数以防其他地方调用
+        if (window.RAGManager && typeof window.RAGManager.parsePDF === 'function') {
+            return await window.RAGManager.parsePDF(file);
+        }
+        return `[PDF文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n注意：请使用RAGManager.parsePDF解析PDF文件`;
     }
 
     // 解析CSV文件

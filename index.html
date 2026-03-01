@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, minimum-scale=1.0">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
     <meta name="theme-color" content="#000000">
-    <title>AI Agent Pro v8.0.0</title>
+    <title>AI Agent Pro v8.0.1</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -26,7 +27,7 @@
                 </div>
                 <h1 class="splash-title">AI Agent Pro</h1>
                 <p class="splash-subtitle">智能助手，未来已来</p>
-                <p class="splash-version">v8.0.0</p>
+                <p class="splash-version">v8.0.1</p>
                 <div class="splash-loading">
                     <div class="splash-loading-bar" id="splash-loading-bar"></div>
                 </div>
@@ -52,7 +53,7 @@
                     </div>
                     <div class="brand-info">
                         <div class="brand-name">AI Agent Pro</div>
-                        <div class="brand-version">v8.0.0</div>
+                        <div class="brand-version">v8.0.1</div>
                     </div>
                 </div>
                 <button id="close-sidebar" class="close-sidebar-btn">
@@ -483,64 +484,68 @@
                     <!-- 同步设置 -->
                     <div id="settings-sync" class="settings-panel">
                         <div class="settings-section-title"><i class="fas fa-sync"></i> 同步设置</div>
-                        <div class="form-group">
-                            <label class="form-label">服务器地址</label>
-                            <input type="text" id="sync-server-url" class="form-input" placeholder="https://sync.example.com">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">API密钥</label>
-                            <input type="password" id="sync-api-key" class="form-input" placeholder="your-api-key">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">同步间隔（分钟）</label>
-                            <input type="number" id="sync-interval" class="form-input" value="30" min="5" max="1440">
-                        </div>
-                        <div class="sync-status">
-                            <span id="sync-status-text">未配置</span>
-                            <span id="sync-last-time">上次同步: 从未</span>
-                        </div>
-                        <div class="form-actions">
-                            <button class="btn btn-secondary" id="sync-test-btn">测试连接</button>
-                            <button class="btn btn-primary" id="sync-save-btn">保存配置</button>
-                            <button class="btn btn-primary" id="sync-now-btn">立即同步</button>
-                        </div>
+                        <form id="sync-form" onsubmit="return false;">
+                            <div class="form-group">
+                                <label class="form-label">服务器地址</label>
+                                <input type="text" id="sync-server-url" class="form-input" placeholder="https://sync.example.com">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">API密钥</label>
+                                <input type="password" id="sync-api-key" class="form-input" placeholder="your-api-key" autocomplete="off">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">同步间隔（分钟）</label>
+                                <input type="number" id="sync-interval" class="form-input" value="30" min="5" max="1440">
+                            </div>
+                            <div class="sync-status">
+                                <span id="sync-status-text">未配置</span>
+                                <span id="sync-last-time">上次同步: 从未</span>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" id="sync-test-btn">测试连接</button>
+                                <button type="button" class="btn btn-primary" id="sync-save-btn">保存配置</button>
+                                <button type="button" class="btn btn-primary" id="sync-now-btn">立即同步</button>
+                            </div>
+                        </form>
                     </div>
 
                     <!-- Jina AI设置 -->
                     <div id="settings-jina" class="settings-panel">
                         <div class="settings-section-title"><i class="fas fa-file-alt"></i> Jina AI文档解析</div>
-                        <div class="form-group">
-                            <label class="form-label">API密钥</label>
-                            <input type="password" id="jina-api-key" class="form-input" placeholder="输入Jina AI API密钥">
-                            <small class="form-hint">
-                                用于解析PDF、DOC、PPT、Excel、图片、URL等文档格式。
-                                <a href="https://jina.ai/" target="_blank" rel="noopener">获取API密钥</a>
-                            </small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-checkbox">
-                                <input type="checkbox" id="jina-enabled" checked>
-                                <span>启用Jina AI文档解析</span>
-                            </label>
-                        </div>
-                        <div class="form-group">
-                            <div class="info-box">
-                                <strong>支持的格式：</strong>
-                                <ul>
-                                    <li>PDF文档（.pdf）</li>
-                                    <li>Word文档（.doc, .docx）</li>
-                                    <li>PowerPoint（.ppt, .pptx）</li>
-                                    <li>Excel表格（.xlsx, .xls）</li>
-                                    <li>图片文件（.jpg, .png, .gif等）</li>
-                                    <li>网页URL</li>
-                                </ul>
-                                <p><strong>注意：</strong>未配置API密钥时，这些格式将无法解析内容，仅保存文件基本信息。</p>
+                        <form id="jina-form" onsubmit="return false;">
+                            <div class="form-group">
+                                <label class="form-label">API密钥</label>
+                                <input type="password" id="jina-api-key" class="form-input" placeholder="输入Jina AI API密钥" autocomplete="off">
+                                <small class="form-hint">
+                                    用于解析PDF、DOC、PPT、Excel、图片、URL等文档格式。
+                                    <a href="https://jina.ai/" target="_blank" rel="noopener">获取API密钥</a>
+                                </small>
                             </div>
-                        </div>
-                        <div class="form-actions">
-                            <button class="btn btn-primary" id="jina-save-btn">保存配置</button>
-                            <button class="btn btn-secondary" id="jina-test-btn">测试连接</button>
-                        </div>
+                            <div class="form-group">
+                                <label class="form-checkbox">
+                                    <input type="checkbox" id="jina-enabled" checked>
+                                    <span>启用Jina AI文档解析</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <div class="info-box">
+                                    <strong>支持的格式：</strong>
+                                    <ul>
+                                        <li>PDF文档（.pdf）</li>
+                                        <li>Word文档（.doc, .docx）</li>
+                                        <li>PowerPoint（.ppt, .pptx）</li>
+                                        <li>Excel表格（.xlsx, .xls）</li>
+                                        <li>图片文件（.jpg, .png, .gif等）</li>
+                                        <li>网页URL</li>
+                                    </ul>
+                                    <p><strong>注意：</strong>未配置API密钥时，这些格式将无法解析内容，仅保存文件基本信息。</p>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-primary" id="jina-save-btn">保存配置</button>
+                                <button type="button" class="btn btn-secondary" id="jina-test-btn">测试连接</button>
+                            </div>
+                        </form>
                     </div>
 
                     <!-- 数据设置 -->

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF解析诊断工具</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+        .container {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        h1 { color: #4a9eff; margin-top: 0; }
+        h2 { color: #6ab7ff; margin-top: 20px; }
+        .status { padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .success { background: #2a4a2a; border-left: 4px solid #4a9eff; }
+        .error { background: #4a2a2a; border-left: 4px solid #ff4a4a; }
+        .warning { background: #4a4a2a; border-left: 4px solid #ffaa4a; }
+        .info { background: #2a2a4a; border-left: 4px solid #4a9eff; }
+        button {
+            padding: 10px 20px;
+            background: #4a9eff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover { background: #5aaeff; }
+        pre {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            padding: 5px;
+            margin: 2px 0;
+            border-left: 3px solid #4a4a4a;
+            padding-left: 10px;
+        }
+        .log-info { border-color: #4a9eff; }
+        .log-error { border-color: #ff4a4a; }
+        .log-warn { border-color: #ffaa4a; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 PDF解析完整诊断工具</h1>
+        <p>此工具将全面检查PDF解析功能的所有环节。</p>
+        
+        <button onclick="runFullDiagnostic()">🔍 运行完整诊断</button>
+        <button onclick="testPDFParse()">📄 测试PDF解析</button>
+        <button onclick="clearResults()">🗑️ 清空结果</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script src="js/utils/logger.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/rag.js"></script>
+
+    <script>
+        const logs = [];
+        
+        function log(type, message, data = null) {
+            const timestamp = new Date().toLocaleTimeString();
+            logs.push({ type, timestamp, message, data });
+            updateLogDisplay();
+        }
+
+        function updateLogDisplay() {
+            const resultsDiv = document.getElementById('results');
+            let html = '<h2>📋 诊断日志</h2><div id="log-container"></div>';
+            resultsDiv.innerHTML = html;
+            
+            const logContainer = document.getElementById('log-container');
+            logs.forEach(log => {
+                const div = document.createElement('div');
+                div.className = `log-entry log-${log.type}`;
+                div.innerHTML = `<strong>[${log.timestamp}]</strong> ${log.message}`;
+                if (log.data) {
+                    const pre = document.createElement('pre');
+                    pre.textContent = JSON.stringify(log.data, null, 2);
+                    div.appendChild(pre);
+                }
+                logContainer.appendChild(div);
+            });
+        }
+
+        async function runFullDiagnostic() {
+            logs.length = 0;
+            log('info', '开始完整诊断...');
+            
+            // 1. 检查模块加载
+            log('info', '检查模块加载状态...');
+            const modules = {
+                'Logger': typeof window.Logger !== 'undefined',
+                'AIAgentApp': typeof window.AIAgentApp !== 'undefined',
+                'RAGManager': typeof window.RAGManager !== 'undefined',
+                'AIAgentUI': typeof window.AIAgentUI !== 'undefined'
+            };
+            log('info', '模块加载状态', modules);
+            
+            // 2. 检查Jina AI配置
+            log('info', '检查Jina AI配置...');
+            if (window.AIAgentApp) {
+                const apiKey = window.AIAgentApp.getJinaAIKey?.() || '';
+                const hasKey = window.AIAgentApp.hasJinaAIKey?.() || false;
+                const enabled = window.AIAgentApp.isJinaAIEnabled?.() || false;
+                
+                log('info', 'Jina AI配置', {
+                    apiKey: apiKey ? `${apiKey.substring(0, 30)}...` : '未配置',
+                    hasKey,
+                    enabled,
+                    keyLength: apiKey.length
+                });
+                
+                if (!hasKey) {
+                    log('error', '❌ Jina AI API密钥未配置！');
+                } else if (!enabled) {
+                    log('error', '❌ Jina AI已禁用！');
+                } else {
+                    log('success', '✅ Jina AI配置正常');
+                }
+            } else {
+                log('error', '❌ AIAgentApp未加载！');
+            }
+            
+            // 3. 检查RAGManager方法
+            log('info', '检查RAGManager方法...');
+            if (window.RAGManager) {
+                const methods = {
+                    'parsePDF': typeof window.RAGManager.parsePDF === 'function',
+                    'isJinaAIAvailable': typeof window.RAGManager.isJinaAIAvailable === 'function',
+                    'getJinaAIKey': typeof window.RAGManager.getJinaAIKey === 'function'
+                };
+                log('info', 'RAGManager方法', methods);
+                
+                if (window.RAGManager.isJinaAIAvailable) {
+                    const available = window.RAGManager.isJinaAIAvailable();
+                    log(available ? 'success' : 'error', 
+                        available ? '✅ Jina AI可用' : '❌ Jina AI不可用');
+                }
+            } else {
+                log('error', '❌ RAGManager未加载！');
+            }
+            
+            // 4. 测试网络连接
+            log('info', '测试网络连接...');
+            try {
+                const testResponse = await fetch('https://r.jina.ai/', {
+                    method: 'OPTIONS'
+                });
+                log('success', `✅ 网络连接正常 (status: ${testResponse.status})`);
+            } catch (error) {
+                log('error', `❌ 网络连接失败: ${error.message}`);
+            }
+            
+            // 5. 测试API调用（使用小文件）
+            log('info', '准备测试API调用...');
+            log('info', '请选择一个PDF文件进行测试');
+            
+            updateLogDisplay();
+        }
+
+        async function testPDFParse() {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.pdf';
+            fileInput.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                log('info', `开始测试PDF解析: ${file.name}`);
+                log('info', `文件大小: ${file.size} bytes (${(file.size / 1024).toFixed(2)} KB)`);
+                
+                if (!window.RAGManager) {
+                    log('error', '❌ RAGManager未加载！');
+                    return;
+                }
+                
+                try {
+                    // 检查配置
+                    const apiKey = window.AIAgentApp?.getJinaAIKey?.() || '';
+                    log('info', `API Key: ${apiKey ? apiKey.substring(0, 30) + '...' : '未配置'}`);
+                    
+                    // 转换为Base64
+                    log('info', '正在转换为Base64...');
+                    const startTime = Date.now();
+                    const base64 = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            const base64String = reader.result.split(',')[1];
+                            resolve(base64String);
+                        };
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
+                    const base64Time = Date.now() - startTime;
+                    log('success', `✅ Base64转换完成 (耗时: ${base64Time}ms, 长度: ${base64.length})`);
+                    
+                    // 调用解析
+                    log('info', '正在调用Jina AI API...');
+                    const parseStartTime = Date.now();
+                    const content = await window.RAGManager.parsePDF(file);
+                    const parseTime = Date.now() - parseStartTime;
+                    
+                    log('info', `解析完成 (总耗时: ${parseTime}ms)`);
+                    log('info', `返回内容长度: ${content.length} 字符`);
+                    
+                    // 检查结果
+                    const errorMarkers = ['[PDF文档:', '(注意：', 'PDF解析失败'];
+                    const hasError = errorMarkers.some(m => content.includes(m));
+                    
+                    if (hasError || content.length < 100) {
+                        log('error', '❌ 解析失败 - 返回了错误信息');
+                        log('error', `内容预览: ${content.substring(0, 500)}`);
+                    } else {
+                        log('success', '✅ PDF解析成功！');
+                        log('info', `内容预览（前500字符）:\n${content.substring(0, 500)}`);
+                    }
+                    
+                } catch (error) {
+                    log('error', `❌ 解析异常: ${error.message}`);
+                    log('error', `错误堆栈: ${error.stack}`);
+                }
+                
+                updateLogDisplay();
+            };
+            fileInput.click();
+        }
+
+        function clearResults() {
+            logs.length = 0;
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // 页面加载时自动运行诊断
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (window.AIAgentApp && window.RAGManager) {
+                    log('success', '✅ 所有模块已加载');
+                } else {
+                    log('error', '⚠️ 部分模块未加载');
+                }
+                updateLogDisplay();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

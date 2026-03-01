@@ -1,12 +1,12 @@
 /**
- * AI Agent Pro v8.0.0 - 应用状态管理
+ * AI Agent Pro v8.0.1 - 应用状态管理
  * 多模态AI Agent - 支持输入输出多模态
  */
 
 (function() {
     'use strict';
 
-    const VERSION = '8.0.0';
+    const VERSION = '8.0.1';
     const STORAGE_KEY = 'ai_agent_state_v6';
     const CUSTOM_MODELS_KEY = 'ai_agent_custom_models_v6';
     const CUSTOM_SUBAGENTS_KEY = 'ai_agent_custom_subagents_v6';
@@ -41,7 +41,7 @@
         'deepseek-chat': 'sk-a135315b7bf248c1978dabca70819936',
         'deepseek-reasoner': 'sk-a135315b7bf248c1978dabca70819936',
         'qwen-max': 'sk-9eeb995cf93d441aa74869af1f2decd0',
-        'jina-ai': '' // Jina AI API密钥（用户需要自行配置）
+        'jina-ai': 'jina_8253cbd55ea0431ebf213f62e9719da3aIGR-0_4MAlgqwTVIDyKwTPUrEZQ' // Jina AI API密钥
     };
 
     // ==================== 内置模型配置 ====================
@@ -1801,7 +1801,7 @@ ${prompt}
         },
         ragVectors: {},
         jinaAI: {
-            apiKey: '', // Jina AI API密钥
+            apiKey: 'jina_8253cbd55ea0431ebf213f62e9719da3aIGR-0_4MAlgqwTVIDyKwTPUrEZQ', // Jina AI API密钥
             enabled: true // 是否启用Jina AI解析
         }
     };
@@ -1936,7 +1936,25 @@ ${prompt}
                 if (state.currentOutputFormat) AppState.currentOutputFormat = state.currentOutputFormat;
                 if (state.settings) AppState.settings = { ...AppState.settings, ...state.settings };
                 if (state.user) AppState.user = state.user;
-                if (state.resources) AppState.resources = { ...AppState.resources, ...state.resources };
+                // 智能合并资源：如果localStorage中的资源为空数组，保留内置资源
+                if (state.resources) {
+                    // RAG资源：如果localStorage中的资源为空，保留内置资源
+                    if (state.resources.rag && Array.isArray(state.resources.rag) && state.resources.rag.length > 0) {
+                        AppState.resources.rag = state.resources.rag;
+                    }
+                    // Skills资源：如果localStorage中的资源为空，保留内置资源
+                    if (state.resources.skills && Array.isArray(state.resources.skills) && state.resources.skills.length > 0) {
+                        AppState.resources.skills = state.resources.skills;
+                    }
+                    // MCP资源：如果localStorage中的资源为空，保留内置资源
+                    if (state.resources.mcp && Array.isArray(state.resources.mcp) && state.resources.mcp.length > 0) {
+                        AppState.resources.mcp = state.resources.mcp;
+                    }
+                    // Rules资源：如果localStorage中的资源为空，保留内置资源
+                    if (state.resources.rules && Array.isArray(state.resources.rules) && state.resources.rules.length > 0) {
+                        AppState.resources.rules = state.resources.rules;
+                    }
+                }
                 if (state.jinaAI) AppState.jinaAI = { ...AppState.jinaAI, ...state.jinaAI };
             }
         } catch (error) {
@@ -2112,8 +2130,21 @@ ${prompt}
         try {
             const saved = localStorage.getItem('ai_agent_jina_ai_config_v6');
             if (saved) {
-                AppState.jinaAI = { ...AppState.jinaAI, ...JSON.parse(saved) };
+                const savedConfig = JSON.parse(saved);
+                // 如果localStorage中有配置，使用localStorage的配置
+                // 但如果apiKey为空，使用默认值
+                if (savedConfig.apiKey && savedConfig.apiKey.trim().length > 0) {
+                    AppState.jinaAI = { ...AppState.jinaAI, ...savedConfig };
+                } else {
+                    // localStorage中的apiKey为空，保留默认值
+                    AppState.jinaAI = { 
+                        ...AppState.jinaAI, 
+                        ...savedConfig,
+                        apiKey: AppState.jinaAI.apiKey // 保留默认apiKey
+                    };
+                }
             }
+            // 如果localStorage中没有配置，使用AppState中的默认值（已在初始化时设置）
         } catch (e) {
             window.Logger?.error('加载Jina AI配置失败:', e);
         }
