@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.2.0 - LLM服务
+ * AI Agent Pro v8.2.1 - LLM服务
  * 多模态输入输出支持
  */
 

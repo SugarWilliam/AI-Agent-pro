@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.2.0 - 事件处理模块
+ * AI Agent Pro v8.2.1 - 事件处理模块
  * 未来科技感交互设计
  */
 
@@ -397,8 +397,9 @@
         // 页面可见性变化 - 支持后台运行
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') {
-                // 页面隐藏时保存状态
-                window.AIAgentApp?.saveState?.();
+                // 先同步当前对话消息到 chats，再保存
+                window.AIAgentEvents?.updateCurrentChat?.();
+                (window.AIAgentApp?.immediateSave ?? window.AIAgentApp?.saveState)?.();
                 // 标记为后台运行状态
                 window.AppState.isBackground = true;
             } else {
@@ -409,9 +410,10 @@
             }
         });
 
-        // 窗口关闭前保存
+        // 窗口关闭前保存（先同步消息，再立即保存，避免防抖未完成导致丢失）
         window.addEventListener('beforeunload', () => {
-            window.AIAgentApp?.saveState?.();
+            window.AIAgentEvents?.updateCurrentChat?.();
+            (window.AIAgentApp?.immediateSave ?? window.AIAgentApp?.saveState)?.();
         });
         
         // 页面失焦/获得焦点事件（额外支持）

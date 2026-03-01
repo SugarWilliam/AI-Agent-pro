@@ -1,12 +1,12 @@
 /**
- * AI Agent Pro v8.2.0 - 应用状态管理
+ * AI Agent Pro v8.2.1 - 应用状态管理
  * 多模态AI Agent - 支持输入输出多模态
  */
 
 (function() {
     'use strict';
 
-    const VERSION = '8.2.0';
+    const VERSION = '8.2.1';
     const STORAGE_KEY = 'ai_agent_state_v6';
     const CUSTOM_MODELS_KEY = 'ai_agent_custom_models_v6';
     const CUSTOM_SUBAGENTS_KEY = 'ai_agent_custom_subagents_v6';
@@ -1939,7 +1939,7 @@ ${prompt}
                 const state = JSON.parse(saved);
                 if (state.chats && Array.isArray(state.chats)) {
                     AppState.chats = state.chats;
-                    window.Logger?.debug(`加载了 ${state.chats.length} 个历史会话`);
+                    window.Logger?.debug(`加载了 ${state.chats.length} 个历史会话，currentChatId=${state.currentChatId || '无'}`);
                 }
                 if (state.plans) AppState.plans = state.plans;
                 if (state.tasks) AppState.tasks = state.tasks;
@@ -2002,6 +2002,9 @@ ${prompt}
             saveSubAgentConfigs();
         } catch (error) {
             window.Logger?.error('保存状态失败:', error);
+            if (error?.name === 'QuotaExceededError') {
+                window.Logger?.warn('localStorage 已满，将尝试保存精简数据');
+            }
             // 如果存储失败，尝试清理旧数据
             try {
                 const saved = localStorage.getItem(STORAGE_KEY);
@@ -2650,6 +2653,7 @@ ${prompt}
         BUILTIN_SUB_AGENTS,
         DEFAULT_API_KEYS,
         saveState,
+        immediateSave,
         loadState,
         saveSyncConfig,
         saveRagVectors,

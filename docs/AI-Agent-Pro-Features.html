@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent Pro - 功能说明书</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f5f7;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #00D4FF, #B829F7);
+            color: white;
+            padding: 60px 40px;
+            border-radius: 20px;
+            margin-bottom: 40px;
+        }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header p { font-size: 1.2em; opacity: 0.9; }
+        .section {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+        }
+        .section h2 {
+            color: #1a1a1a;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #00D4FF;
+        }
+        .section h3 {
+            color: #333;
+            font-size: 1.4em;
+            margin: 25px 0 15px;
+        }
+        .section h4 {
+            color: #555;
+            font-size: 1.2em;
+            margin: 20px 0 10px;
+        }
+        .section p { margin-bottom: 15px; color: #555; }
+        .section ul, .section ol {
+            margin-left: 25px;
+            margin-bottom: 15px;
+        }
+        .section li { margin-bottom: 8px; color: #555; }
+        .info-box {
+            background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(184,41,247,0.1));
+            border-left: 4px solid #00D4FF;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        .nav {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            max-width: 200px;
+        }
+        .nav a {
+            display: block;
+            padding: 8px 0;
+            color: #555;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .nav a:hover { color: #00D4FF; }
+        @media (max-width: 1400px) {
+            .nav { display: none; }
+        }
+        @media (max-width: 768px) {
+            .container { padding: 20px 10px; }
+            .section { padding: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <strong>目录</strong>
+        <a href="#core">1. 核心功能</a>
+        <a href="#modules">2. 功能模块</a>
+        <a href="#guide">3. 使用指南</a>
+        <a href="#advanced">4. 高级功能</a>
+        <a href="#faq">5. 常见问题</a>
+        <a href="#appendix">附录</a>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>AI Agent Pro 功能说明书</h1>
+            <p>版本 v8.2.1 · 更新日期 2026-03-01</p>
+        </div>
+
+        <div class="section" id="core">
+            <h2>1. 核心功能</h2>
+            <h3>1.1 多模型AI对话</h3>
+            <p><strong>支持模型</strong>：DeepSeek Chat/R1、GLM-4-Plus/Flash、Kimi、通义千问、GPT-4o、Claude 3、Auto模式</p>
+            <p><strong>特性</strong>：流式响应、思考过程显示、多轮对话、消息历史管理、消息操作（复制、下载、删除、编辑）</p>
+
+            <h3>1.2 智能SubAgent系统</h3>
+            <p>内置助手20+（通用、代码、写作、数据分析、学习导师、翻译专家等），支持创建自定义助手、配置系统提示词、关联资源、设置模型偏好。</p>
+
+            <h3>1.3 RAG知识库增强</h3>
+            <p>支持PDF、DOC、PPT、Excel、图片、HTML、Markdown、TXT、URL。内置知识库20+（金融、哲学、文学、嵌入式Linux、AI等）。</p>
+
+            <h3>1.4 任务与计划管理</h3>
+            <p>任务创建、优先级、完成跟踪；AI辅助生成计划、TODO列表、进度可视化。</p>
+
+            <h3>1.5 多模态输入输出</h3>
+            <p><strong>输入</strong>：文本、图片、文档、URL。<strong>输出</strong>：Markdown、HTML、表格、PDF、PPT、H5网页、图片。</p>
+
+            <h3>1.6 实时网络搜索（v8.1.0+）</h3>
+            <p>9个搜索源并行（DuckDuckGo、Bing、百度、今日头条、抖音、小红书、CNN、BBC），智能结果提取每个源至少5条，自动去重排序。</p>
+        </div>
+
+        <div class="section" id="modules">
+            <h2>2. 功能模块详解</h2>
+            <h3>2.1 对话系统</h3>
+            <h4>基本对话</h4>
+            <p>输入框输入消息，按Enter或点击发送。支持多轮对话、流式响应、思考过程、发送按钮中断、按钮状态自动恢复。</p>
+            <h4>消息操作</h4>
+            <p>复制、下载（Markdown/HTML/TXT/JSON/PDF）、删除、编辑、语音播放、重新生成。</p>
+
+            <h3>2.2 模型管理</h3>
+            <p>模型选择、Auto模式、API密钥配置、自定义模型添加。</p>
+
+            <h3>2.3 SubAgent系统</h3>
+            <p>助手选择、创建/编辑/删除自定义助手、配置系统提示词、关联Skills/Rules/MCP/RAG。</p>
+
+            <h3>2.4 资源管理</h3>
+            <p>Skills（20+）、Rules（8个）、MCP服务（6个）、RAG知识库。</p>
+
+            <h3>2.5 任务管理</h3>
+            <p>创建任务、设置优先级、完成/编辑/删除、查看任务列表。</p>
+
+            <h3>2.6 计划管理</h3>
+            <p>AI生成计划步骤和TODO、开始/继续计划、查看进度。</p>
+
+            <h3>2.7 设置系统</h3>
+            <p>主题、语言、快捷键、字体、模型配置、资源管理、助手设置、同步设置、数据导出/导入/清除。</p>
+        </div>
+
+        <div class="section" id="guide">
+            <h2>3. 使用指南</h2>
+            <h3>3.1 快速开始</h3>
+            <ol>
+                <li>打开应用，等待初始化完成</li>
+                <li>选择模型（默认Auto）</li>
+                <li>选择助手（默认通用助手）</li>
+                <li>输入消息开始对话</li>
+            </ol>
+            <h3>3.2 切换模式</h3>
+            <p>对话、任务、计划、创意、创作模式。</p>
+            <h3>3.3 使用SubAgent</h3>
+            <p>点击底部助手按钮，选择适合的助手，助手自动应用专业能力。</p>
+            <h3>3.4 管理资源</h3>
+            <p>设置→资源，选择资源类型，添加/编辑/删除，关联到助手。</p>
+        </div>
+
+        <div class="section" id="advanced">
+            <h2>4. 高级功能</h2>
+            <h3>4.1 文件上传</h3>
+            <p>支持PDF、DOC、PPT、Excel、图片、TXT、Markdown、HTML、URL。</p>
+            <h3>4.2 网络搜索</h3>
+            <p>自动网络搜索、网页爬取、结果整合、配置搜索参数。</p>
+            <h3>4.3 多模态输出</h3>
+            <p>Markdown（代码高亮、表格、Mermaid）、HTML、表格、PDF、PPT。</p>
+            <h3>4.4 数据同步</h3>
+            <p>配置同步服务器、自动/手动同步、导出备份、导入恢复。</p>
+        </div>
+
+        <div class="section" id="faq">
+            <h2>5. 常见问题</h2>
+            <h3>5.1 API配置</h3>
+            <p><strong>Q: 如何配置API Key？</strong> A: 设置→模型，点击对应模型配置按钮输入。</p>
+            <p><strong>Q: 支持哪些模型？</strong> A: DeepSeek、GLM、Kimi、通义千问、GPT-4o、Claude等。</p>
+            <p><strong>Q: Auto模式如何工作？</strong> A: 根据任务类型、助手偏好、API可用性自动选择。</p>
+            <h3>5.2 数据安全</h3>
+            <p><strong>Q: 数据存储在哪里？</strong> A: 浏览器LocalStorage，不上传服务器。</p>
+            <p><strong>Q: 如何备份？</strong> A: 设置→数据，导出数据保存JSON。</p>
+            <h3>5.3 功能使用</h3>
+            <p><strong>Q: 如何上传文档？</strong> A: 点击附件按钮选择文件。</p>
+            <p><strong>Q: 如何切换助手？</strong> A: 点击底部助手按钮选择。</p>
+            <h3>5.4 性能问题</h3>
+            <p><strong>Q: 响应慢？</strong> A: 检查网络、API配置，可尝试用快速模型如GLM-4-Flash。</p>
+        </div>
+
+        <div class="section" id="appendix">
+            <h2>附录</h2>
+            <h3>A. 快捷键</h3>
+            <table>
+                <tr><th>快捷键</th><th>功能</th></tr>
+                <tr><td>Enter</td><td>发送消息</td></tr>
+                <tr><td>Shift+Enter</td><td>换行</td></tr>
+                <tr><td>Ctrl+K</td><td>打开命令面板</td></tr>
+                <tr><td>Ctrl+/</td><td>快捷键帮助</td></tr>
+            </table>
+            <h3>B. 输出格式</h3>
+            <table>
+                <tr><th>格式</th><th>说明</th></tr>
+                <tr><td>Markdown</td><td>默认格式</td></tr>
+                <tr><td>HTML</td><td>网页展示</td></tr>
+                <tr><td>Spreadsheet</td><td>表格</td></tr>
+                <tr><td>PDF</td><td>正式文档</td></tr>
+                <tr><td>PPT</td><td>演示文稿</td></tr>
+                <tr><td>H5</td><td>移动端展示</td></tr>
+            </table>
+            <h3>C. 更新日志</h3>
+            <p><strong>v8.2.1</strong>：项目整理、清理冗余文件、状态持久化优化</p>
+            <p><strong>v8.2.0</strong>：状态持久化优化、修复刷新丢失</p>
+            <p><strong>v8.1.0</strong>：发送按钮中断、9源并行搜索、智能结果提取</p>
+            <p><strong>v8.0.1</strong>：通用设置修复、侧边栏重构、通义千问修复</p>
+        </div>
+
+        <div class="section">
+            <p class="info-box"><strong>文档版本</strong>：v8.2.1 · <strong>最后更新</strong>：2026-03-01 · <strong>维护者</strong>：AI Agent Pro Team</p>
+        </div>
+    </div>
+</body>
+</html>

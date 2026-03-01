@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-8.2.0-blue.svg)
+![Version](https://img.shields.io/badge/version-8.2.1-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Web-lightgrey.svg)
 
@@ -139,7 +139,7 @@ AI-Agent-pro/
 ├── docs/                   # 文档目录
 │   ├── AI-Agent-Pro-Design.html      # 设计文档
 │   ├── AI-Agent-Pro-Guide.html      # 部署指南
-│   ├── AI-Agent-Pro-Features.md     # 功能说明
+│   ├── AI-Agent-Pro-Features.html   # 功能说明书(H5)
 │   └── archive/           # 归档文档
 │
 └── test/                   # 测试文件
@@ -250,7 +250,7 @@ vercel
 
 - [设计文档](docs/DESIGN.md) - 详细的设计思想、架构、算法
 - [部署文档](docs/DEPLOYMENT.md) - 部署说明和配置
-- [功能文档](docs/FEATURES.md) - 功能使用指南
+- [功能说明书](docs/AI-Agent-Pro-Features.html) - 功能使用指南（H5格式）
 - [HTML版设计文档](docs/AI-Agent-Pro-Design.html) - 在线查看
 - [HTML版部署指南](docs/AI-Agent-Pro-Guide.html) - 在线查看
 
@@ -365,6 +365,12 @@ http://localhost:8080/test/comprehensive-test.html
 
 ## 📝 更新日志
 
+### v8.2.1 (2026-03-01)
+- ✅ 项目整理，清理冗余文档（FEATURES.md、AI-Agent-Pro-Features.md、历史版本更新文档）
+- ✅ 功能说明书合并为 H5 格式
+- ✅ 状态持久化优化（刷新/关闭前同步保存）
+- ✅ 统一版本号至 8.2.1
+
 ### v8.2.0 (2026-03-01)
 - ✅ 深度评审与代码优化
 - ✅ 文件附件解析状态改为小字显示，移除遮挡输入框的 Toast
@@ -373,7 +379,7 @@ http://localhost:8080/test/comprehensive-test.html
 - ✅ PDF 解析多方法降级（pdf/file/二进制）
 - ✅ 网页爬取改用 POST+url，支持 URL 编码
 - ✅ 合并冗余部署脚本，归档 SSH 文档
-- ✅ 统一版本号至 8.2.0
+- ✅ 深度评审与优化
 
 ### v8.1.0 (2026-03-01)
 - ✅ 更新功能说明书
