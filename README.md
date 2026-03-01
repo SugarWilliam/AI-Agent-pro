@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-8.0.1-blue.svg)
+![Version](https://img.shields.io/badge/version-8.1.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Web-lightgrey.svg)
 
@@ -248,9 +248,11 @@ vercel
 
 ## 📚 文档
 
-- [设计文档](docs/AI-Agent-Pro-Design.html) - 详细的设计思想、架构、算法
-- [部署指南](docs/AI-Agent-Pro-Guide.html) - 部署说明和配置
-- [功能说明](docs/AI-Agent-Pro-Features.md) - 功能使用指南
+- [设计文档](docs/DESIGN.md) - 详细的设计思想、架构、算法
+- [部署文档](docs/DEPLOYMENT.md) - 部署说明和配置
+- [功能文档](docs/FEATURES.md) - 功能使用指南
+- [HTML版设计文档](docs/AI-Agent-Pro-Design.html) - 在线查看
+- [HTML版部署指南](docs/AI-Agent-Pro-Guide.html) - 在线查看
 
 ---
 
@@ -363,13 +365,28 @@ http://localhost:8080/test/comprehensive-test.html
 
 ## 📝 更新日志
 
-### v8.0.0 (2026-03-01)
+### v8.1.0 (2026-03-01)
+- ✅ 更新功能说明书
+- ✅ 优化菜单文档链接
+- ✅ 完善文档系统
+
+### v8.1.0 (2026-03-01)
+- ✅ 更新功能说明书
+- ✅ 优化菜单文档链接
+- ✅ 完善文档系统
+
+### v8.0.1 (2026-03-01)
 - ✅ 修复消息操作按钮点击问题
 - ✅ 支持多文件选择和上传
 - ✅ 改进PDF和下载按钮功能
 - ✅ 优化RAG向量化算法
 - ✅ 增强Jina AI API支持
 - ✅ 完善文档系统
+- ✅ 修复发送按钮中断功能
+- ✅ 优化搜索源结果提取（每个源至少5条）
+- ✅ 添加内容质量检测
+- ✅ 更新所有文档版本号到v8.0.1
+- ✅ 清理和归档冗余文档
 
 ### v7.9.0
 - ✅ 重构SubAgent资源管理UI
@@ -398,6 +415,6 @@ MIT License
 
 **Made with ❤️ by AI Agent Pro Team**
 
-[⭐ Star this repo](https://github.com/yourusername/ai-agent-pro) • [📖 Read the docs](docs/) • [🐛 Report Bug](https://github.com/yourusername/ai-agent-pro/issues)
+[⭐ Star this repo](https://github.com/yourusername/ai-agent-pro) • [📖 Read the docs](docs/) • [🐛 Report Bug](https://github.com/yourusername/ai-agent-pro/issues) • [📥 Download Source](https://github.com/yourusername/ai-agent-pro/archive/refs/heads/main.zip)
 
 </div>

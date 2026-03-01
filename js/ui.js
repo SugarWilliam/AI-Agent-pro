@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.0.1 - UI渲染模块
+ * AI Agent Pro v8.1.0 - UI渲染模块
  * 未来科技感UI
  */
 
@@ -236,6 +236,10 @@
                     <span class="message-time">${formatTime(Date.now())}</span>
                 </div>
                 <div class="message-body">
+                    <div class="search-status" id="search-status" style="display: none;">
+                        <i class="fas fa-search"></i>
+                        <span class="search-status-text">准备搜索...</span>
+                    </div>
                     <div class="thinking-indicator">
                         <span class="thinking-dot"></span>
                         <span class="thinking-dot"></span>
@@ -249,8 +253,27 @@
         messagesList.appendChild(div);
         currentStreamMessageEl = div;
         currentStreamContentEl = div.querySelector('.stream-content');
+        
+        // 存储搜索状态元素的引用
+        window.currentSearchStatusEl = div.querySelector('#search-status');
 
         scrollToBottom();
+    }
+    
+    function showSearchStatus(text) {
+        if (window.currentSearchStatusEl) {
+            window.currentSearchStatusEl.style.display = 'flex';
+            const textEl = window.currentSearchStatusEl.querySelector('.search-status-text');
+            if (textEl) {
+                textEl.textContent = text;
+            }
+        }
+    }
+    
+    function hideSearchStatus() {
+        if (window.currentSearchStatusEl) {
+            window.currentSearchStatusEl.style.display = 'none';
+        }
     }
 
     function streamMessageUpdate(content) {
@@ -278,14 +301,24 @@
         if (messageBody) {
             let thinkingHtml = '';
             if (thinking && window.AppState.settings?.showThinking !== false) {
+                // 使用与 createMessageElement 相同的HTML结构
+                const thinkingLines = thinking.split('\n').filter(line => line.trim());
+                const hasMore = thinkingLines.length > 3;
+                const previewText = thinkingLines.slice(0, 3).join('\n') + (hasMore ? '\n...' : '');
+                const fullText = thinkingLines.join('\n');
+                
                 thinkingHtml = `
                     <div class="thinking-section" data-message-id="${msgId}">
                         <div class="thinking-header" onclick="AIAgentUI.toggleThinking('${msgId}')">
                             <i class="fas fa-brain"></i>
                             <span>思考过程</span>
+                            <span class="thinking-count">${thinkingLines.length} 步</span>
                             <i class="fas fa-chevron-down thinking-toggle-icon" style="margin-left: auto; font-size: 10px;"></i>
                         </div>
-                        <div class="thinking-content collapsed">${escapeHtml(thinking)}</div>
+                        <div class="thinking-content collapsed">
+                            <div class="thinking-preview"><pre>${escapeHtml(previewText)}</pre></div>
+                            <div class="thinking-full" style="display: none;"><pre>${escapeHtml(fullText)}</pre></div>
+                        </div>
                     </div>
                 `;
             }
@@ -329,6 +362,7 @@
 
         currentStreamMessageEl = null;
         currentStreamContentEl = null;
+        window.currentSearchStatusEl = null;
 
         scrollToBottom();
         
@@ -3124,25 +3158,36 @@ ${ex.content}`).join('\n\n')}
     // ==================== 思考过程展开/收起 ====================
     function toggleThinking(messageId) {
         const section = document.querySelector(`.thinking-section[data-message-id="${messageId}"]`);
-        if (!section) return;
-        
+        if (!section) {
+            window.Logger?.warn(`未找到思考过程区域，messageId: ${messageId}`);
+            return;
+        }
+
         const content = section.querySelector('.thinking-content');
         const preview = section.querySelector('.thinking-preview');
         const full = section.querySelector('.thinking-full');
         const icon = section.querySelector('.thinking-toggle-icon');
         
+        // 安全检查：如果元素不存在，使用降级方案
+        if (!content) {
+            window.Logger?.warn(`思考内容元素不存在，messageId: ${messageId}`);
+            return;
+        }
+        
         const isCollapsed = content.classList.contains('collapsed');
         
         if (isCollapsed) {
             content.classList.remove('collapsed');
-            preview.style.display = 'none';
-            full.style.display = 'block';
-            icon.style.transform = 'rotate(180deg)';
+            content.classList.add('expanded');
+            if (preview) preview.style.display = 'none';
+            if (full) full.style.display = 'block';
+            if (icon) icon.style.transform = 'rotate(180deg)';
         } else {
             content.classList.add('collapsed');
-            preview.style.display = 'block';
-            full.style.display = 'none';
-            icon.style.transform = 'rotate(0deg)';
+            content.classList.remove('expanded');
+            if (preview) preview.style.display = 'block';
+            if (full) full.style.display = 'none';
+            if (icon) icon.style.transform = 'rotate(0deg)';
         }
     }
 
@@ -3647,6 +3692,9 @@ ${ex.content}`).join('\n\n')}
         toggleTask,
         // 思考过程
         toggleThinking,
+        // 搜索状态
+        showSearchStatus,
+        hideSearchStatus,
         // 计划模式
         renderPlanManager,
         renderPlanCard,

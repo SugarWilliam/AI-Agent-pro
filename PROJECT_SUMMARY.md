@@ -1,7 +1,7 @@
 # AI Agent Pro 项目整理总结
 
 **日期**: 2026-03-01  
-**版本**: v8.0.0
+**版本**: v8.1.0
 
 ---
 
@@ -226,7 +226,7 @@ AI-Agent-pro/
    ```bash
    git init
    git add .
-   git commit -m "Initial commit: AI Agent Pro v8.0.0"
+   git commit -m "Initial commit: AI Agent Pro v8.1.0"
    ```
 
 2. **创建GitHub仓库**
@@ -305,4 +305,4 @@ AI-Agent-pro/
 
 **整理完成时间**: 2026-03-01  
 **整理人员**: AI Agent Pro Team  
-**项目版本**: v8.0.0
+**项目版本**: v8.1.0

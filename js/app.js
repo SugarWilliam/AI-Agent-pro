@@ -1,12 +1,12 @@
 /**
- * AI Agent Pro v8.0.1 - 应用状态管理
+ * AI Agent Pro v8.1.0 - 应用状态管理
  * 多模态AI Agent - 支持输入输出多模态
  */
 
 (function() {
     'use strict';
 
-    const VERSION = '8.0.1';
+    const VERSION = '8.1.0';
     const STORAGE_KEY = 'ai_agent_state_v6';
     const CUSTOM_MODELS_KEY = 'ai_agent_custom_models_v6';
     const CUSTOM_SUBAGENTS_KEY = 'ai_agent_custom_subagents_v6';

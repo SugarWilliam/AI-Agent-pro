@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.0.0 - 未来科技风格样式
+ * AI Agent Pro v8.1.0 - 未来科技风格样式
  * AI时代智能化界面设计
  */
 
@@ -1567,6 +1567,48 @@ body {
 
 .send-btn:active {
     transform: scale(0.95);
+}
+
+.send-btn.processing {
+    background: linear-gradient(135deg, var(--warning), var(--error));
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.send-btn.processing:hover {
+    background: linear-gradient(135deg, var(--error), var(--warning));
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* 搜索状态显示 */
+.search-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    background: rgba(0, 212, 255, 0.1);
+    border-left: 3px solid var(--primary);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--primary);
+}
+
+.search-status i {
+    font-size: 12px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.search-status-text {
+    flex: 1;
 }
 
 /* ==================== 模态框 ==================== */

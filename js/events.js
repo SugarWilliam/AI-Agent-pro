@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.0.1 - 事件处理模块
+ * AI Agent Pro v8.1.0 - 事件处理模块
  * 未来科技感交互设计
  */
 
@@ -177,8 +177,18 @@
         messageInput?.addEventListener('input', autoResizeTextarea);
         messageInput?.addEventListener('keydown', handleInputKeydown);
 
-        // 发送按钮
-        document.getElementById('send-btn')?.addEventListener('click', sendMessage);
+        // 发送按钮 - 支持打断功能
+        const sendBtn = document.getElementById('send-btn');
+        if (sendBtn) {
+            sendBtn.addEventListener('click', () => {
+                // 如果正在处理中，点击则打断
+                if (sendBtn.classList.contains('processing')) {
+                    cancelCurrentRequest();
+                } else {
+                    sendMessage();
+                }
+            });
+        }
 
         // 文件上传
         document.getElementById('upload-btn')?.addEventListener('click', () => {
@@ -551,13 +561,79 @@
         window.AIAgentApp?.saveState?.();
     }
 
+    // ==================== 取消当前请求 ====================
+    function cancelCurrentRequest() {
+        const sendBtn = document.getElementById('send-btn');
+        if (!sendBtn) return;
+        
+        // 如果按钮不在processing状态，直接返回
+        if (!sendBtn.classList.contains('processing')) {
+            return;
+        }
+        
+        // 中断LLM请求
+        if (window.LLMService?.currentController) {
+            try {
+                window.LLMService.currentController.abort();
+            } catch (e) {
+                window.Logger?.warn('中断请求时出错:', e);
+            }
+            window.LLMService.currentController = null;
+        }
+        
+        // 立即更新按钮状态（确保UI立即响应）
+        sendBtn.classList.remove('processing');
+        sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+        sendBtn.title = '发送';
+        
+        // 隐藏搜索状态
+        window.AIAgentUI?.hideSearchStatus?.();
+        
+        // 显示提示
+        window.AIAgentUI?.showToast?.('已取消请求', 'info');
+        
+        // 完成流式消息（显示已取消）
+        if (window.AIAgentUI?.currentStreamMessageEl) {
+            const errorMessageId = 'msg_' + Date.now();
+            window.AIAgentUI?.finalizeStreamMessage?.('请求已被用户取消。', '', errorMessageId);
+            
+            // 添加取消消息到AppState
+            const cancelMessage = {
+                id: errorMessageId,
+                role: 'assistant',
+                content: '请求已被用户取消。',
+                timestamp: Date.now()
+            };
+            if (!window.AppState.messages) window.AppState.messages = [];
+            window.AppState.messages.push(cancelMessage);
+            updateCurrentChat();
+            window.AIAgentApp?.saveState?.();
+        }
+        
+        // 清理流式消息引用
+        if (window.AIAgentUI) {
+            window.AIAgentUI.currentStreamMessageEl = null;
+        }
+    }
+    
     // ==================== 发送消息 ====================
     async function sendMessage() {
         const input = document.getElementById('message-input');
-        if (!input) return;
+        const sendBtn = document.getElementById('send-btn');
+        if (!input || !sendBtn) return;
 
         const content = input.value.trim();
         if (!content && (!window.AppState.uploadedFiles || window.AppState.uploadedFiles.length === 0)) return;
+        
+        // 如果正在处理中，不允许重复发送
+        if (sendBtn.classList.contains('processing')) {
+            return;
+        }
+        
+        // 更新按钮状态为处理中
+        sendBtn.classList.add('processing');
+        sendBtn.innerHTML = '<i class="fas fa-stop"></i>';
+        sendBtn.title = '点击取消';
 
         // 创建新对话（如果没有）
         if (!window.AppState.currentChatId) {
@@ -617,6 +693,12 @@
                 window.AIAgentUI?.streamMessageUpdate
             );
 
+            // 恢复按钮状态
+            sendBtn.classList.remove('processing');
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            sendBtn.title = '发送';
+            window.AIAgentUI?.hideSearchStatus?.();
+
             // 生成消息ID（在finalizeStreamMessage之前生成，确保ID一致）
             const aiMessageId = 'msg_' + Date.now();
             
@@ -637,6 +719,19 @@
             window.AIAgentApp?.saveState?.();
 
         } catch (error) {
+            // 恢复按钮状态（无论什么错误都要恢复）
+            sendBtn.classList.remove('processing');
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            sendBtn.title = '发送';
+            window.AIAgentUI?.hideSearchStatus?.();
+            
+            // 检查是否是用户中断
+            if (error.message && (error.message.includes('中断') || error.message.includes('取消') || error.name === 'AbortError')) {
+                // 用户中断，不显示错误提示
+                window.Logger?.info('请求已被用户中断');
+                return;
+            }
+            
             window.ErrorHandler?.handle(error, {
                 type: window.ErrorType?.API,
                 showToast: true,
