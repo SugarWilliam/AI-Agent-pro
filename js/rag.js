@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.2.1 - RAG文档解析与向量化模块
+ * AI Agent Pro v8.2.2 - RAG文档解析与向量化模块
  * 支持PDF、DOC、网页、文本的解析和语义检索
  */
 
@@ -1285,7 +1285,7 @@
         async queryRAGKnowledgeBase(query, ragList) {
             if (!ragList || ragList.length === 0) {
                 window.Logger?.debug('RAG查询: 无RAG知识库配置');
-                return '';
+                return { context: '', usedRagNames: [] };
             }
 
             const startTime = performance.now();
@@ -1400,7 +1400,9 @@
             context = contextParts.join('\n');
 
             const endTime = performance.now();
-            const matchedCount = ragResults.filter(r => r !== null).length;
+            const matchedResults = ragResults.filter(r => r !== null);
+            const matchedCount = matchedResults.length;
+            const usedRagNames = matchedResults.map(r => r.source || r.rag?.name).filter(Boolean);
             
             // 记录使用统计
             window.Logger?.info(`RAG查询完成:`, {
@@ -1427,7 +1429,7 @@
             this.usageStats.totalMatches += matchedCount;
             this.usageStats.avgDuration = (this.usageStats.avgDuration * (this.usageStats.totalQueries - 1) + (endTime - startTime)) / this.usageStats.totalQueries;
 
-            return context;
+            return { context, usedRagNames };
         },
 
         // 计算关键词匹配度

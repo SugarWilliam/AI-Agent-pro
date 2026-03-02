@@ -119,7 +119,7 @@
     <div class="container">
         <div class="header">
             <h1>AI Agent Pro 功能说明书</h1>
-            <p>版本 v8.2.1 · 更新日期 2026-03-01</p>
+            <p>版本 v8.2.2 · 更新日期 2026-03-01</p>
         </div>
 
         <div class="section" id="core">
@@ -156,18 +156,21 @@
             <p>模型选择、Auto模式、API密钥配置、自定义模型添加。</p>
 
             <h3>2.3 SubAgent系统</h3>
-            <p>助手选择、创建/编辑/删除自定义助手、配置系统提示词、关联Skills/Rules/MCP/RAG。</p>
+            <p>助手选择、创建/编辑/删除自定义助手、配置系统提示词、关联Skills/Rules/MCP/RAG。工作秘书支持 delegateTo 配置（关联超级决策/计划大师/任务助手），发送时自动走 Workflow 链；支持 serviceTarget、ignoreInfoDesc 信息筛选。</p>
 
-            <h3>2.4 资源管理</h3>
-            <p>Skills（20+）、Rules（8个）、MCP服务（6个）、RAG知识库。</p>
+            <h3>2.4 工作秘书（v8.2.2+）</h3>
+            <p>研发项目管理协调、可绑定调用超级决策/计划大师/任务助手；利用海量知识提供合理化思路和可行方案。支持问题闭环/扩散/变迁/泛化识别。配置 delegateTo 后，发送消息自动按 Workflow 链执行。</p>
 
-            <h3>2.5 任务管理</h3>
+            <h3>2.5 资源管理</h3>
+            <p>Skills（20+，含问题演化识别）、Rules（8个）、MCP服务（6个）、RAG知识库（含问题演化与闭环）。</p>
+
+            <h3>2.6 任务管理</h3>
             <p>创建任务、设置优先级、完成/编辑/删除、查看任务列表。</p>
 
-            <h3>2.6 计划管理</h3>
+            <h3>2.7 计划管理</h3>
             <p>AI生成计划步骤和TODO、开始/继续计划、查看进度。</p>
 
-            <h3>2.7 设置系统</h3>
+            <h3>2.8 设置系统</h3>
             <p>主题、语言、快捷键、字体、模型配置、资源管理、助手设置、同步设置、数据导出/导入/清除。</p>
         </div>
 
@@ -186,6 +189,8 @@
             <p>点击底部助手按钮，选择适合的助手，助手自动应用专业能力。</p>
             <h3>3.4 管理资源</h3>
             <p>设置→资源，选择资源类型，添加/编辑/删除，关联到助手。</p>
+            <h3>3.5 工作秘书配置</h3>
+            <p>选择工作秘书→编辑：配置服务对象（serviceTarget）、忽略信息描述（ignoreInfoDesc）、关联助手（delegateTo）。配置 delegateTo 后，发送消息将自动按 Workflow 链依次执行。</p>
         </div>
 
         <div class="section" id="advanced">
@@ -198,6 +203,8 @@
             <p>Markdown（代码高亮、表格、Mermaid）、HTML、表格、PDF、PPT。</p>
             <h3>4.4 数据同步</h3>
             <p>配置同步服务器、自动/手动同步、导出备份、导入恢复。</p>
+            <h3>4.5 问题演化识别</h3>
+            <p>工作秘书可识别问题闭环性、扩散性、变迁与泛化，给出判断依据和应对建议。</p>
         </div>
 
         <div class="section" id="faq">
@@ -237,14 +244,15 @@
                 <tr><td>H5</td><td>移动端展示</td></tr>
             </table>
             <h3>C. 更新日志</h3>
-            <p><strong>v8.2.1</strong>：项目整理、清理冗余文件、状态持久化优化</p>
+            <p><strong>v8.2.2</strong>：工程评审与文档同步</p>
+            <p><strong>v8.2.1</strong>：项目整理、状态持久化优化；工作秘书 delegateTo 可配置、问题演化识别</p>
             <p><strong>v8.2.0</strong>：状态持久化优化、修复刷新丢失</p>
             <p><strong>v8.1.0</strong>：发送按钮中断、9源并行搜索、智能结果提取</p>
             <p><strong>v8.0.1</strong>：通用设置修复、侧边栏重构、通义千问修复</p>
         </div>
 
         <div class="section">
-            <p class="info-box"><strong>文档版本</strong>：v8.2.1 · <strong>最后更新</strong>：2026-03-01 · <strong>维护者</strong>：AI Agent Pro Team</p>
+            <p class="info-box"><strong>文档版本</strong>：v8.2.2 · <strong>最后更新</strong>：2026-03-01 · <strong>维护者</strong>：AI Agent Pro Team</p>
         </div>
     </div>
 </body>

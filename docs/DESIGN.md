@@ -1,6 +1,6 @@
 # AI Agent Pro 详细设计文档
 
-**版本**: v8.2.1  
+**版本**: v8.2.2  
 **日期**: 2026-03-01  
 **文档类型**: 详细设计文档（可用于移动端复刻）
 
@@ -1107,6 +1107,10 @@ interface SubAgent {
     rag: string[];                 // RAG ID列表
     color: string;                 // 主题色
     isCustom: boolean;             // 是否自定义
+    // 扩展字段（工作秘书等）
+    delegateTo?: string[];         // 关联助手ID列表，发送时自动走Workflow链
+    serviceTarget?: string;        // 服务对象描述，用于信息筛选
+    ignoreInfoDesc?: string;       // 忽略信息描述，用于信息筛选
 }
 ```
 
@@ -1700,6 +1704,25 @@ async function sendMessage() {
 
 ---
 
-**文档版本**: v8.2.0  
+**文档版本**: v8.2.2  
 **最后更新**: 2026-03-01  
 **维护者**: AI Agent Pro Team
+
+---
+
+## 13. 工作秘书与问题演化（v8.2.2+）
+
+### 13.1 工作秘书（work_secretary）
+
+- **定位**：研发项目管理协调，可绑定超级决策/计划大师/任务助手
+- **delegateTo**：可配置关联助手，发送消息时自动走 Workflow 链
+- **serviceTarget**：服务对象描述，用于信息筛选（如“AI Agent Pro”）
+- **ignoreInfoDesc**：忽略信息描述（如“八卦、娱乐新闻”）
+- **Skills**：PMP、WBS、根因分析、风险识别、甘特图、依赖、时序、计划、MECE、Mermaid、Bug 分析、测试策略、问题演化识别
+- **RAG**：PMP、华为 RDPM、WBS、根因、风险、软件 PM、Linux、C/C++、内存、嵌入式、图像质量、H264/H265、AI 安全、Bug 调试、测试、问题演化、逻辑、时序逻辑
+
+### 13.2 问题演化识别
+
+- **Skill**：`skill_problem_evolution` — 闭环性、扩散性、变迁与泛化判断
+- **RAG**：`rag_problem_evolution` — 闭环、扩散、变迁泛化知识
+- **能力**：判断问题是否闭环、是否扩散、是否变迁/泛化

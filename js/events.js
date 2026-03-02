@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.2.1 - 事件处理模块
+ * AI Agent Pro v8.2.2 - 事件处理模块
  * 未来科技感交互设计
  */
 
@@ -112,11 +112,16 @@
                 chat: '对话',
                 task: '任务',
                 plan: '计划',
-                creative: '创意',
-                creation: '创作'
+                creative: '创作',
+                workflow: 'Workflow',
+                writing: '创作'
             };
             modeBadge.textContent = modeNames[window.AppState.currentMode] || '对话';
         }
+        document.querySelectorAll('.mode-option').forEach(btn => {
+            const mode = window.AppState?.currentMode || 'chat';
+            btn.classList.toggle('active', btn.dataset.mode === mode || (mode === 'writing' && btn.dataset.mode === 'creative'));
+        });
     }
 
     // ==================== 事件绑定 ====================
@@ -171,8 +176,8 @@
         document.getElementById('add-subagent-btn')?.addEventListener('click', showAddSubAgentDialog);
         document.getElementById('add-custom-subagent-btn')?.addEventListener('click', showAddSubAgentDialog);
 
-        // 模式选择器
-        document.querySelectorAll('.mode-option').forEach(btn => {
+        // 模式选择器（仅对有 data-mode 的按钮切换模式，避免 tools/search 等误触发）
+        document.querySelectorAll('.mode-option[data-mode]').forEach(btn => {
             btn.addEventListener('click', () => switchMode(btn.dataset.mode));
         });
 
@@ -232,6 +237,47 @@
         // 新建计划按钮
         document.getElementById('new-plan-btn')?.addEventListener('click', () => {
             window.AIAgentUI?.showCreatePlanDialog?.();
+        });
+
+        // Workflow 模板和运行按钮
+        document.querySelectorAll('.workflow-template').forEach(tpl => {
+            tpl.addEventListener('click', () => {
+                const placeholders = { research: '例如：分析2024年AI行业发展趋势', analysis: '例如：对比分析几种技术方案的优劣', creative: '例如：为新产品构思10个创意营销方案' };
+                const inp = document.getElementById('workflow-input');
+                if (inp) inp.placeholder = placeholders[tpl.dataset.workflow] || inp.placeholder;
+            });
+        });
+        initWorkflowChainEvents();
+        document.getElementById('run-workflow-btn')?.addEventListener('click', () => {
+            const inp = document.getElementById('workflow-input');
+            const task = inp?.value?.trim();
+            if (task) {
+                window.AppState.currentMode = 'workflow';
+                updateModeBadge();
+                window.AIAgentUI?.closeModal?.('workflow-modal');
+                let prefix = '[Workflow]';
+                if (workflowChain && workflowChain.length > 0) {
+                    if (selectedCustomWorkflowId) {
+                        prefix = `[Workflow:custom:${selectedCustomWorkflowId}]`;
+                    } else {
+                        const parts = workflowChain.map(s => {
+                            const inst = (s.instruction || '').replace(/\|/g, '｜').replace(/\n/g, ' ').trim();
+                            return inst ? `${s.agentId}|${inst}` : s.agentId;
+                        });
+                        prefix = `[Workflow:${parts.join(',')}]`;
+                    }
+                }
+                document.getElementById('message-input').value = `${prefix} ${task}`;
+                document.getElementById('message-input').focus();
+                window.AIAgentUI?.showToast?.(
+                    workflowChain.length > 0
+                        ? `已填入流程（${workflowChain.length}步），点击发送执行`
+                        : '已填入输入框，点击发送执行 Workflow',
+                    'success'
+                );
+            } else {
+                window.AIAgentUI?.showToast?.('请输入任务描述', 'warning');
+            }
         });
 
         // Sub Agent按钮（已移到顶部栏）
@@ -516,8 +562,8 @@
             chat: () => window.AIAgentUI?.showToast?.('切换到对话模式', 'success'),
             task: () => openTaskModal(),
             plan: () => openPlanModal(),
-            creative: () => window.AIAgentUI?.showToast?.('切换到创意模式', 'success'),
-            creation: () => window.AIAgentUI?.showToast?.('切换到创作模式', 'success')
+            creative: () => window.AIAgentUI?.showToast?.('切换到创作模式', 'success'),
+            workflow: () => openWorkflowModal()
         };
         
         modeActions[mode]?.();
@@ -531,6 +577,252 @@
     function openPlanModal() {
         window.AIAgentUI?.renderPlans?.();
         window.AIAgentUI?.openModal?.('plan-modal');
+    }
+
+    // 自定义流程链：{ agentId, instruction }，instruction 规范该步骤 SubAgent 的行为
+    let workflowChain = [];
+    let selectedCustomWorkflowId = null; // 当前选中的已保存自定义流程 ID
+
+    const WORKFLOW_PRESETS = {
+        research: [
+            { agentId: 'general', instruction: '利用通用助手搜集信息' }
+        ],
+        analysis: [
+            { agentId: 'general', instruction: '搜集信息' },
+            { agentId: 'super_decision', instruction: '认知分析，综合上一级输出' }
+        ],
+        creative: [
+            { agentId: 'general', instruction: '搜集信息' },
+            { agentId: 'creative', instruction: '头脑风暴与方案筛选' }
+        ]
+    };
+
+    function openWorkflowModal() {
+        window.AIAgentUI?.openModal?.('workflow-modal');
+        const input = document.getElementById('workflow-input');
+        if (input) input.value = '';
+        renderWorkflowChainSelect();
+        renderWorkflowChainList();
+        renderWorkflowSavedList();
+        document.querySelectorAll('.workflow-template').forEach(t => t.classList.remove('selected'));
+    }
+
+    function renderWorkflowChainSelect() {
+        const sel = document.getElementById('workflow-add-agent');
+        if (!sel) return;
+        const agents = window.AppState?.subAgents || {};
+        const currentOpts = sel.querySelectorAll('option:not(:first-child)');
+        currentOpts.forEach(o => o.remove());
+        Object.entries(agents).forEach(([id, agent]) => {
+            if (!agent?.name) return;
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = agent.name;
+            sel.appendChild(opt);
+        });
+    }
+
+    function renderWorkflowChainList() {
+        const list = document.getElementById('workflow-chain-list');
+        if (!list) return;
+        list.innerHTML = '';
+        workflowChain.forEach((step, i) => {
+            const agent = window.AppState?.subAgents?.[step.agentId];
+            const agentName = agent?.name || step.agentId;
+            const instVal = (step.instruction || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const item = document.createElement('div');
+            item.className = 'workflow-chain-row';
+            const agentOpts = Object.entries(window.AppState?.subAgents || {}).map(([id, a]) =>
+                `<option value="${id}" ${id === step.agentId ? 'selected' : ''}>${(a?.name || id).replace(/</g, '&lt;')}</option>`
+            ).join('');
+            const hasAgent = step.agentId && window.AppState?.subAgents?.[step.agentId];
+            const fallbackOpt = !hasAgent && step.agentId
+                ? `<option value="${step.agentId}" selected>${step.agentId}（已移除）</option>` : '';
+            item.innerHTML = `
+                <span class="chain-order">${i + 1}</span>
+                <select class="workflow-step-agent" data-index="${i}">
+                    ${fallbackOpt}${agentOpts}
+                </select>
+                <input type="text" class="workflow-chain-instruction" value="${instVal}" placeholder="该步骤需执行的任务（规范 Agent 行为）" data-index="${i}">
+                <span class="chain-remove" data-index="${i}" title="移除">×</span>
+            `;
+            list.appendChild(item);
+            if (i < workflowChain.length - 1) {
+                const arrow = document.createElement('span');
+                arrow.className = 'workflow-chain-arrow';
+                arrow.textContent = '→';
+                list.appendChild(arrow);
+            }
+        });
+        list.querySelectorAll('.chain-remove').forEach(el => {
+            el.addEventListener('click', () => {
+                workflowChain.splice(parseInt(el.dataset.index), 1);
+                renderWorkflowChainList();
+                document.querySelectorAll('.workflow-template').forEach(t => t.classList.remove('selected'));
+                selectedCustomWorkflowId = null;
+            });
+        });
+        list.querySelectorAll('.workflow-step-agent').forEach(sel => {
+            sel.addEventListener('change', () => {
+                const i = parseInt(sel.dataset.index);
+                if (workflowChain[i]) workflowChain[i].agentId = sel.value;
+                selectedCustomWorkflowId = null;
+            });
+        });
+        list.querySelectorAll('.workflow-chain-instruction').forEach(inp => {
+            inp.addEventListener('change', () => {
+                const i = parseInt(inp.dataset.index);
+                if (workflowChain[i]) workflowChain[i].instruction = inp.value.trim() || workflowChain[i].instruction;
+                selectedCustomWorkflowId = null;
+            });
+            inp.addEventListener('blur', () => {
+                const i = parseInt(inp.dataset.index);
+                if (workflowChain[i]) workflowChain[i].instruction = inp.value.trim() || workflowChain[i].instruction;
+                selectedCustomWorkflowId = null;
+            });
+        });
+    }
+
+    function renderWorkflowSavedList() {
+        const list = document.getElementById('workflow-saved-list');
+        if (!list) return;
+        const workflows = window.AppState?.customWorkflows || [];
+        list.innerHTML = '';
+        workflows.forEach(w => {
+            const item = document.createElement('div');
+            item.className = 'workflow-saved-item' + (selectedCustomWorkflowId === w.id ? ' selected' : '');
+            item.dataset.workflowId = w.id;
+            item.innerHTML = `
+                <span class="workflow-saved-name">${(w.name || '未命名').replace(/</g, '&lt;')}</span>
+                <span class="workflow-saved-actions">
+                    <button type="button" class="btn-icon workflow-saved-use" title="使用"><i class="fas fa-play"></i></button>
+                    <button type="button" class="btn-icon workflow-saved-edit" title="编辑"><i class="fas fa-edit"></i></button>
+                    <button type="button" class="btn-icon workflow-saved-del" title="删除"><i class="fas fa-trash"></i></button>
+                </span>
+            `;
+            list.appendChild(item);
+        });
+        list.querySelectorAll('.workflow-saved-item').forEach(el => {
+            el.querySelector('.workflow-saved-use')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                loadCustomWorkflow(el.dataset.workflowId);
+            });
+            el.querySelector('.workflow-saved-edit')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                loadCustomWorkflow(el.dataset.workflowId);
+            });
+            el.querySelector('.workflow-saved-del')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteCustomWorkflow(el.dataset.workflowId);
+            });
+        });
+    }
+
+    function loadCustomWorkflow(workflowId) {
+        const w = (window.AppState?.customWorkflows || []).find(x => x.id === workflowId);
+        if (!w) return;
+        selectedCustomWorkflowId = workflowId;
+        workflowChain = (w.steps || []).map(s => ({ agentId: s.agentId, instruction: s.instruction || '' }));
+        document.getElementById('workflow-purpose')?.setAttribute('value', w.name || '');
+        const purposeInput = document.getElementById('workflow-purpose');
+        if (purposeInput) purposeInput.value = w.name || '';
+        renderWorkflowChainList();
+        renderWorkflowSavedList();
+        document.querySelectorAll('.workflow-template').forEach(t => t.classList.remove('selected'));
+        window.AIAgentUI?.showToast?.('已加载自定义流程', 'success');
+    }
+
+    function deleteCustomWorkflow(workflowId) {
+        if (!confirm('确定删除此自定义流程？')) return;
+        if (!window.AppState.customWorkflows) window.AppState.customWorkflows = [];
+        window.AppState.customWorkflows = window.AppState.customWorkflows.filter(w => w.id !== workflowId);
+        if (selectedCustomWorkflowId === workflowId) {
+            selectedCustomWorkflowId = null;
+            workflowChain = [];
+            document.getElementById('workflow-purpose')?.setAttribute('value', '');
+            const purposeInput = document.getElementById('workflow-purpose');
+            if (purposeInput) purposeInput.value = '';
+            renderWorkflowChainList();
+        }
+        renderWorkflowSavedList();
+        window.AIAgentApp?.saveState?.();
+        window.AIAgentUI?.showToast?.('已删除', 'success');
+    }
+
+    function saveCustomWorkflow() {
+        const purposeInput = document.getElementById('workflow-purpose');
+        const name = purposeInput?.value?.trim() || '未命名流程';
+        if (!workflowChain || workflowChain.length === 0) {
+            window.AIAgentUI?.showToast?.('请先添加至少一个步骤', 'warning');
+            return;
+        }
+        const steps = workflowChain.map(s => ({ agentId: s.agentId, instruction: s.instruction || '' }));
+        if (!window.AppState.customWorkflows) window.AppState.customWorkflows = [];
+        if (selectedCustomWorkflowId) {
+            const idx = window.AppState.customWorkflows.findIndex(w => w.id === selectedCustomWorkflowId);
+            if (idx >= 0) {
+                window.AppState.customWorkflows[idx] = { id: selectedCustomWorkflowId, name, steps };
+                window.AIAgentUI?.showToast?.('已更新自定义流程', 'success');
+            }
+        } else {
+            const id = 'wf_' + Date.now();
+            window.AppState.customWorkflows.push({ id, name, steps });
+            selectedCustomWorkflowId = id;
+            window.AIAgentUI?.showToast?.('已保存自定义流程', 'success');
+        }
+        renderWorkflowSavedList();
+        window.AIAgentApp?.saveState?.();
+    }
+
+    function applyWorkflowPreset(presetId) {
+        const preset = WORKFLOW_PRESETS[presetId];
+        if (!preset) return;
+        workflowChain = preset.map(s => ({ ...s }));
+        selectedCustomWorkflowId = null;
+        document.getElementById('workflow-purpose')?.setAttribute('value', '');
+        const purposeInput = document.getElementById('workflow-purpose');
+        if (purposeInput) purposeInput.value = '';
+        renderWorkflowChainList();
+        renderWorkflowSavedList();
+        document.querySelectorAll('.workflow-template').forEach(t => {
+            t.classList.toggle('selected', t.dataset.workflow === presetId);
+        });
+        const placeholders = {
+            research: '例如：分析2024年AI行业发展趋势',
+            analysis: '例如：对比分析几种技术方案的优劣',
+            creative: '例如：为新产品构思10个创意营销方案'
+        };
+        const inp = document.getElementById('workflow-input');
+        if (inp) inp.placeholder = placeholders[presetId] || inp.placeholder;
+        window.AIAgentUI?.showToast?.(`已应用「${presetId === 'research' ? '研究调研' : presetId === 'analysis' ? '深度分析' : '创意创作'}」流程`, 'success');
+    }
+
+    function initWorkflowChainEvents() {
+        document.querySelectorAll('.workflow-template').forEach(tpl => {
+            tpl.addEventListener('click', () => applyWorkflowPreset(tpl.dataset.workflow));
+        });
+        document.getElementById('workflow-add-agent')?.addEventListener('change', (e) => {
+            const id = e.target.value;
+            if (id) {
+                const agent = window.AppState?.subAgents?.[id];
+                workflowChain.push({ agentId: id, instruction: agent?.name || '' });
+                renderWorkflowChainList();
+                document.querySelectorAll('.workflow-template').forEach(t => t.classList.remove('selected'));
+                selectedCustomWorkflowId = null;
+            }
+            e.target.value = '';
+        });
+        document.getElementById('workflow-clear-chain')?.addEventListener('click', () => {
+            workflowChain = [];
+            selectedCustomWorkflowId = null;
+            document.getElementById('workflow-purpose')?.setAttribute('value', '');
+            const purposeInput = document.getElementById('workflow-purpose');
+            if (purposeInput) purposeInput.value = '';
+            renderWorkflowChainList();
+            renderWorkflowSavedList();
+            document.querySelectorAll('.workflow-template').forEach(t => t.classList.remove('selected'));
+        });
+        document.getElementById('workflow-save-btn')?.addEventListener('click', saveCustomWorkflow);
     }
 
     // ==================== 新建对话 ====================
@@ -600,8 +892,9 @@
         sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
         sendBtn.title = '发送';
         
-        // 隐藏搜索状态
+        // 隐藏搜索状态和 Workflow 进展
         window.AIAgentUI?.hideSearchStatus?.();
+        window.AIAgentUI?.hideWorkflowStepProgress?.();
         
         // 显示提示
         window.AIAgentUI?.showToast?.('已取消请求', 'info');
@@ -654,8 +947,48 @@
             createNewChat();
         }
 
+        // 处理 Workflow 模式：剥离 [Workflow] 或 [Workflow:agent1|指令1,agent2] 或 [Workflow:custom:id] 前缀
+        const workflowChainMatch = content.match(/^\[Workflow(?::([^\]]+))?\]\s*/i);
+        let messageContent = content.replace(/^\[Workflow(?::[^\]]+)?\]\s*/i, '').trim() || content;
+        const isWorkflow = !!workflowChainMatch;
+        let workflowChainSteps = (() => {
+            if (!workflowChainMatch || !workflowChainMatch[1]) return [];
+            const raw = workflowChainMatch[1].trim();
+            if (raw.startsWith('custom:')) {
+                const workflowId = raw.slice(7).trim();
+                const w = (window.AppState?.customWorkflows || []).find(x => x.id === workflowId);
+                return (w?.steps || []).map(s => ({ agentId: s.agentId, label: s.instruction || '', instruction: s.instruction || '' }));
+            }
+            return raw.split(',').map(s => {
+                const t = s.trim();
+                if (!t) return null;
+                const pipe = t.indexOf('|');
+                if (pipe >= 0) {
+                    const inst = t.slice(pipe + 1).trim();
+                    return { agentId: t.slice(0, pipe).trim(), label: inst, instruction: inst };
+                }
+                return { agentId: t, label: '', instruction: '' };
+            }).filter(Boolean);
+        })();
+        // 工作秘书 + delegateTo：无 Workflow 前缀时，自动走 Workflow 链
+        let autoWorkflow = false;
+        if (workflowChainSteps.length === 0) {
+            const agent = window.AppState?.subAgents?.[window.AppState?.currentSubAgent];
+            const subAgents = window.AppState?.subAgents || {};
+            if (agent?.id === 'work_secretary' && agent.delegateTo?.length > 0) {
+                const validDelegates = agent.delegateTo.filter(id => subAgents[id]);
+                if (validDelegates.length > 0) {
+                    workflowChainSteps = [
+                        { agentId: 'work_secretary', label: '工作秘书', instruction: '分析任务并协调' },
+                        ...validDelegates.map(id => ({ agentId: id, label: '', instruction: '' }))
+                    ];
+                    autoWorkflow = true;
+                }
+            }
+        }
+        const enableWebSearch = isWorkflow || autoWorkflow || (window.AppState.settings?.webSearchEnabled || false);
+        
         // 处理文件附件
-        let messageContent = content;
         let attachments = [];
         
         if (window.AppState.uploadedFiles && window.AppState.uploadedFiles.length > 0) {
@@ -699,19 +1032,31 @@
         window.AIAgentUI?.createStreamMessageElement?.();
 
         try {
-            // 获取响应
-            const response = await window.LLMService?.sendMessage?.(
-                window.AppState.messages,
-                window.AppState.currentModel,
-                window.AppState.settings?.webSearchEnabled || false,
-                window.AIAgentUI?.streamMessageUpdate
-            );
+            let response;
+            if (workflowChainSteps.length > 0) {
+                response = await window.LLMService?.runWorkflowChain?.(
+                    workflowChainSteps,
+                    messageContent,
+                    window.AppState.messages,
+                    window.AppState.currentModel,
+                    window.AIAgentUI?.streamMessageUpdate
+                );
+            } else {
+                response = await window.LLMService?.sendMessage?.(
+                    window.AppState.messages,
+                    window.AppState.currentModel,
+                    enableWebSearch,
+                    window.AIAgentUI?.streamMessageUpdate,
+                    isWorkflow
+                );
+            }
 
             // 恢复按钮状态
             sendBtn.classList.remove('processing');
             sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
             sendBtn.title = '发送';
             window.AIAgentUI?.hideSearchStatus?.();
+            window.AIAgentUI?.hideWorkflowStepProgress?.();
 
             // 生成消息ID（在finalizeStreamMessage之前生成，确保ID一致）
             const aiMessageId = 'msg_' + Date.now();
@@ -738,6 +1083,7 @@
             sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
             sendBtn.title = '发送';
             window.AIAgentUI?.hideSearchStatus?.();
+            window.AIAgentUI?.hideWorkflowStepProgress?.();
             
             // 检查是否是用户中断
             if (error.message && (error.message.includes('中断') || error.message.includes('取消') || error.name === 'AbortError')) {

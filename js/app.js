@@ -1,12 +1,12 @@
 /**
- * AI Agent Pro v8.2.1 - 应用状态管理
+ * AI Agent Pro v8.2.2 - 应用状态管理
  * 多模态AI Agent - 支持输入输出多模态
  */
 
 (function() {
     'use strict';
 
-    const VERSION = '8.2.1';
+    const VERSION = '8.2.2';
     const STORAGE_KEY = 'ai_agent_state_v6';
     const CUSTOM_MODELS_KEY = 'ai_agent_custom_models_v6';
     const CUSTOM_SUBAGENTS_KEY = 'ai_agent_custom_subagents_v6';
@@ -461,6 +461,100 @@ flowchart TD
 \\\`\\\`\\\`
 
 请根据用户需求选择合适的图表类型，提供清晰、专业的可视化方案。`,
+            outputFormat: 'markdown'
+        },
+        {
+            id: 'skill_pmp',
+            name: 'PMP项目管理',
+            description: 'PMP知识体系、项目管理五大过程组、十大知识领域',
+            enabled: true,
+            skillMD: generateSkillMD('PMP项目管理', 'PMP知识体系、项目管理', `你是一位PMP认证项目管理专家，精通PMBOK知识体系。请帮助用户进行项目规划、执行、监控和收尾，遵循项目管理最佳实践。`, ['pmp', 'project', 'management']),
+            prompt: '你是一位PMP项目管理专家，精通五大过程组（启动、规划、执行、监控、收尾）和十大知识领域。请帮助用户进行项目规划、风险识别、干系人管理、进度控制。',
+            outputFormat: 'markdown'
+        },
+        {
+            id: 'skill_wbs',
+            name: 'WBS工作分解',
+            description: '工作分解结构、可交付成果、任务层级',
+            enabled: true,
+            skillMD: generateSkillMD('WBS工作分解', '工作分解结构', `你是一位WBS专家，擅长将项目分解为可管理的工作包。请使用MECE原则确保分解相互独立、完全穷尽，输出清晰的WBS结构。`, ['wbs', 'breakdown', 'structure']),
+            prompt: '你是一位WBS工作分解专家，擅长将项目分解为可交付成果和工作包。请确保分解层次清晰、可管理、可估算，使用树状或列表形式展示WBS。',
+            outputFormat: 'markdown'
+        },
+        {
+            id: 'skill_root_cause',
+            name: '根因分析',
+            description: '5Why、鱼骨图、根因定位、问题溯源',
+            enabled: true,
+            skillMD: generateSkillMD('根因分析', '根因分析、5Why、鱼骨图', `你是一位根因分析专家，擅长使用5Why、鱼骨图、故障树等方法定位问题根本原因。请帮助用户找到问题的真正根源而非表面症状。`, ['root-cause', '5why', 'fishbone']),
+            prompt: '你是一位根因分析专家，擅长使用5Why、鱼骨图、故障树等方法。请帮助用户追溯问题根本原因，区分表面症状与深层原因，提供可验证的根因结论。',
+            outputFormat: 'markdown'
+        },
+        {
+            id: 'skill_risk_identification',
+            name: '风险识别',
+            description: '风险识别、风险评估、风险应对、风险登记册',
+            enabled: true,
+            skillMD: generateSkillMD('风险识别', '风险识别、风险评估', `你是一位风险管理专家，擅长识别项目和技术风险。请帮助用户全面识别风险、评估影响与概率、制定应对策略，输出风险登记册。`, ['risk', 'identification', 'assessment']),
+            prompt: '你是一位风险识别专家，擅长识别技术风险、项目风险、市场风险。请帮助用户建立风险清单，评估风险等级，制定缓解和应对措施。',
+            outputFormat: 'markdown'
+        },
+        {
+            id: 'skill_gantt',
+            name: '甘特图与进度',
+            description: '甘特图、项目进度、里程碑、关键路径',
+            enabled: true,
+            skillMD: generateSkillMD('甘特图与进度', '甘特图、项目进度', `你是一位项目进度专家，擅长使用甘特图规划项目时间线。请帮助用户制定项目进度计划，识别关键路径和里程碑，使用mermaid gantt输出。`, ['gantt', 'schedule', 'timeline']),
+            prompt: '你是一位甘特图与进度管理专家。请帮助用户制定项目时间线，识别任务依赖和关键路径，使用 mermaid gantt 代码块输出甘特图。',
+            outputFormat: 'markdown'
+        },
+        {
+            id: 'skill_dependency',
+            name: '依赖关系分析',
+            description: '任务依赖、前置关系、FS/SS/FF/SF、依赖图',
+            enabled: true,
+            skillMD: generateSkillMD('依赖关系分析', '任务依赖、前置关系', `你是一位依赖关系分析专家，擅长识别任务间的FS(完成-开始)、SS(开始-开始)、FF(完成-完成)、SF(开始-完成)等依赖关系。请帮助用户建立准确的依赖网络。`, ['dependency', 'precedence', 'network']),
+            prompt: '你是一位依赖关系分析专家，擅长识别任务间的逻辑依赖（FS/SS/FF/SF）。请帮助用户建立任务依赖图，识别关键路径，输出依赖关系表或mermaid图。',
+            outputFormat: 'markdown'
+        },
+        {
+            id: 'skill_temporal_relation',
+            name: '时序关系分析',
+            description: '时序逻辑、因果顺序、时间约束、关键路径',
+            enabled: true,
+            skillMD: generateSkillMD('时序关系分析', '时序逻辑、因果顺序', `你是一位时序关系分析专家，擅长分析任务和事件的时间顺序、因果链、时间约束。请帮助用户理清时序逻辑，识别关键时间节点。`, ['temporal', 'sequence', 'timing']),
+            prompt: '你是一位时序关系分析专家，擅长分析事件和任务的先后顺序、因果链、时间窗口。请帮助用户建立时序图，识别关键时间节点和约束。',
+            outputFormat: 'markdown'
+        },
+        {
+            id: 'skill_bug_analysis',
+            name: 'Bug分析与定位',
+            description: 'Bug复现、根因定位、修复思路、调试策略',
+            enabled: true,
+            skillMD: generateSkillMD('Bug分析与定位', 'Bug复现、根因定位、修复思路', `你是一位资深调试专家，擅长Bug复现、根因定位和修复。请提供系统化的排查思路、可执行的调试步骤和修复建议。`, ['bug', 'debug', 'troubleshoot']),
+            prompt: '你是一位Bug分析与定位专家。请提供：1.复现步骤与最小复现用例 2.根因分析思路（日志、断点、二分法）3.修复方案与验证步骤 4.预防建议。',
+            outputFormat: 'markdown'
+        },
+        {
+            id: 'skill_testing_strategy',
+            name: '测试策略',
+            description: '测试计划、用例设计、覆盖率、自动化测试',
+            enabled: true,
+            skillMD: generateSkillMD('测试策略', '测试计划、用例设计', `你是一位测试策略专家，擅长制定测试计划、设计测试用例、评估测试覆盖率。请提供可执行的测试策略和用例设计思路。`, ['testing', 'qa', 'coverage']),
+            prompt: '你是一位测试策略专家。请提供：1.测试范围与优先级 2.用例设计思路（等价类、边界值、场景）3.自动化/手工策略 4.覆盖率与质量门禁建议。',
+            outputFormat: 'markdown'
+        },
+        {
+            id: 'skill_problem_evolution',
+            name: '问题演化识别',
+            description: '问题闭环性、扩散性、变迁与泛化的识别与判断',
+            enabled: true,
+            skillMD: generateSkillMD('问题演化识别', '闭环、扩散、变迁、泛化', `你是一位问题演化分析专家，擅长识别问题的闭环性、扩散性、变迁与泛化。请帮助用户判断问题状态和发展趋势。`, ['problem', 'evolution', 'closed-loop', 'diffusion']),
+            prompt: `你是一位问题演化识别专家，擅长判断：
+1. 问题是否闭环：问题是否已完整定义、边界清晰、可验证闭环
+2. 是否扩散：问题是否在扩大、蔓延、影响范围是否在增加
+3. 变迁与泛化：问题是否在演变、是否从个案泛化为普遍现象
+请给出识别结论、判断依据和应对建议。`,
             outputFormat: 'markdown'
         }
     ];
@@ -1203,6 +1297,294 @@ ${prompt}
    - 投资机会：政策支持领域、重点投资项目
    - 风险提示：政策风险、合规要求、监管变化
    - 战略建议：基于政策导向的战略建议`
+        },
+        {
+            id: 'rag_pmp',
+            name: 'PMP项目管理',
+            description: 'PMP知识体系、PMBOK、五大过程组、十大知识领域',
+            enabled: true,
+            category: '项目管理',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [
+                { name: 'PMI', url: 'https://www.pmi.org/', type: 'website', description: 'PMI项目管理协会' }
+            ],
+            defaultContent: `PMP项目管理知识体系：
+1. 五大过程组：启动、规划、执行、监控、收尾
+2. 十大知识领域：整合、范围、进度、成本、质量、资源、沟通、风险、采购、干系人
+3. 项目管理最佳实践：变更管理、配置管理、绩效测量
+4. 敏捷与混合方法：Scrum、Kanban、混合项目管理`
+        },
+        {
+            id: 'rag_huawei_rdpm',
+            name: '华为RDPM',
+            description: '华为研发项目管理、IPD、研发流程',
+            enabled: true,
+            category: '项目管理',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [],
+            defaultContent: `华为RDPM研发项目管理：
+1. IPD集成产品开发：概念、计划、开发、验证、发布、生命周期
+2. 研发流程：需求管理、技术评审、变更控制、质量门禁
+3. 项目管理：WBS、甘特图、里程碑、关键路径
+4. 团队协作：跨职能团队、决策评审、绩效管理`
+        },
+        {
+            id: 'rag_wbs',
+            name: 'WBS工作分解',
+            description: '工作分解结构、可交付成果、任务层级',
+            enabled: true,
+            category: '项目管理',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [],
+            defaultContent: `WBS工作分解结构知识：
+1. WBS原则：100%规则、可交付成果导向、层级清晰
+2. 分解方法：按可交付成果、按阶段、按子系统
+3. 工作包定义：可估算、可分配、可测量
+4. WBS词典：工作包描述、责任分配、验收标准`
+        },
+        {
+            id: 'rag_root_cause',
+            name: '根因分析',
+            description: '5Why、鱼骨图、故障树、根因定位',
+            enabled: true,
+            category: '问题分析',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [],
+            defaultContent: `根因分析方法论：
+1. 5Why分析法：连续追问为什么，直至根本原因
+2. 鱼骨图（石川图）：人机料法环分类分析
+3. 故障树分析（FTA）：逻辑门、顶事件、底事件
+4. 帕累托分析：识别关键少数原因`
+        },
+        {
+            id: 'rag_risk_identification',
+            name: '风险识别',
+            description: '风险识别、风险评估、风险应对',
+            enabled: true,
+            category: '风险管理',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [],
+            defaultContent: `风险识别与管理知识：
+1. 风险类型：技术风险、进度风险、成本风险、质量风险、外部风险
+2. 识别技术：头脑风暴、检查表、SWOT、专家访谈
+3. 风险评估：概率影响矩阵、定性定量分析
+4. 应对策略：规避、转移、减轻、接受`
+        },
+        {
+            id: 'rag_software_pm',
+            name: '高质量软件项目管理',
+            description: '软件项目管理、Prenhall、软件工程',
+            enabled: true,
+            category: '项目管理',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [
+                { name: 'Prenhall软件项目管理', url: 'https://www.prenhall.com/', type: 'website', description: '高质量软件项目管理' }
+            ],
+            defaultContent: `高质量软件项目管理知识：
+1. 软件开发生命周期：瀑布、迭代、敏捷、DevOps
+2. 需求管理：需求 elicitation、分析、验证、变更控制
+3. 估算与计划：功能点、故事点、COCOMO
+4. 质量保证：评审、测试、持续集成`
+        },
+        {
+            id: 'rag_ccpp',
+            name: 'C/C++编程',
+            description: 'C/C++语言、内存管理、嵌入式C',
+            enabled: true,
+            category: '技术',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [
+                { name: 'cppreference', url: 'https://en.cppreference.com/', type: 'website', description: 'C/C++参考' }
+            ],
+            defaultContent: `C/C++编程知识：
+1. C语言：指针、内存管理、结构体、预处理器
+2. C++：面向对象、STL、智能指针、RAII
+3. 嵌入式C：寄存器操作、位操作、volatile、内存对齐
+4. 最佳实践：内存安全、线程安全、性能优化`
+        },
+        {
+            id: 'rag_memory_analysis',
+            name: '内存分析',
+            description: '内存泄漏、内存碎片、Valgrind、调试',
+            enabled: true,
+            category: '技术',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [],
+            defaultContent: `内存分析知识：
+1. 内存泄漏：检测方法、常见原因、修复策略
+2. 内存碎片：内部碎片、外部碎片、缓解方法
+3. 工具：Valgrind、AddressSanitizer、LeakSanitizer
+4. 嵌入式内存：静态分配、堆管理、内存池`
+        },
+        {
+            id: 'rag_embedded',
+            name: '嵌入式知识',
+            description: '嵌入式系统、ARM、RTOS、驱动开发',
+            enabled: true,
+            category: '技术',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [
+                { name: 'ELinux', url: 'https://elinux.org/', type: 'website', description: '嵌入式Linux' }
+            ],
+            defaultContent: `嵌入式系统知识：
+1. 硬件：ARM架构、MCU、外设接口、总线
+2. 软件：裸机、RTOS(FreeRTOS/RT-Thread)、嵌入式Linux
+3. 驱动：字符设备、块设备、设备树、中断
+4. 调试：JTAG、串口、逻辑分析仪`
+        },
+        {
+            id: 'rag_image_quality',
+            name: '图像质量分析',
+            description: '图像质量评估、PSNR、SSIM、主观评价',
+            enabled: true,
+            category: '技术',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [],
+            defaultContent: `图像质量分析知识：
+1. 客观指标：PSNR、SSIM、VMAF、MSE
+2. 主观评价：MOS、DMOS、双刺激法
+3. 压缩失真：块效应、振铃、模糊
+4. 应用：编码质量评估、算法对比`
+        },
+        {
+            id: 'rag_h264_h265',
+            name: 'H264/H265编码',
+            description: 'H.264、H.265/HEVC、视频编码、码率控制',
+            enabled: true,
+            category: '技术',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [],
+            defaultContent: `H.264/H.265视频编码知识：
+1. H.264/AVC：帧内预测、帧间预测、变换量化、熵编码
+2. H.265/HEVC：CTU、CU/PU/TU、SAO、去块滤波
+3. 码率控制：CBR、VBR、CRF、码率失真优化
+4. 应用：安防监控、流媒体、存储`
+        },
+        {
+            id: 'rag_ai_security',
+            name: 'AI与安防行业',
+            description: 'AI+安防、智能监控、行业知识',
+            enabled: true,
+            category: '行业',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [
+                { name: '安防行业网', url: 'https://www.asmag.com.cn/', type: 'website', description: '安防行业资讯' }
+            ],
+            defaultContent: `AI与安防行业知识：
+1. 智能监控：人脸识别、行为分析、周界防范、视频结构化
+2. 技术栈：深度学习、目标检测、ReID、多模态融合
+3. 产品形态：智能NVR、边缘盒子、云边协同
+4. 行业应用：智慧城市、智慧交通、金融、零售`
+        },
+        {
+            id: 'rag_bug_debug',
+            name: 'Bug调试与修复',
+            description: 'Bug复现、根因分析、调试技巧、修复策略',
+            enabled: true,
+            category: '技术',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [],
+            defaultContent: `Bug调试与修复知识：
+1. 复现策略：最小复现用例、环境隔离、日志与断点
+2. 根因分析：二分法、假设验证、调用栈分析、内存/竞态
+3. 调试工具：GDB、Valgrind、strace、perf、core dump
+4. 修复原则：最小改动、回归验证、文档更新`
+        },
+        {
+            id: 'rag_testing',
+            name: '测试策略与用例',
+            description: '测试计划、用例设计、覆盖率、自动化',
+            enabled: true,
+            category: '技术',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [],
+            defaultContent: `测试策略与用例设计知识：
+1. 测试类型：单元测试、集成测试、系统测试、回归测试
+2. 用例设计：等价类、边界值、场景法、正交表
+3. 覆盖率：语句、分支、条件、路径覆盖
+4. 自动化：单元框架、CI集成、Mock与桩`
+        },
+        {
+            id: 'rag_problem_evolution',
+            name: '问题演化与闭环',
+            description: '问题闭环性、扩散性、变迁、泛化的识别与判断',
+            enabled: true,
+            category: '问题分析',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'h5', 'image', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [],
+            defaultContent: `问题演化与闭环判断知识：
+1. 闭环性识别：
+   - 问题定义是否完整、边界是否清晰
+   - 输入输出是否可验证、反馈回路是否形成
+   - 闭环标准：可度量、可验证、可收尾
+2. 扩散性判断：
+   - 影响范围是否扩大、关联问题是否增多
+   - 时间维度：是否持续发酵、是否反复出现
+   - 空间维度：是否跨模块、跨系统、跨组织
+3. 变迁与泛化：
+   - 问题形态是否演变、根因是否迁移
+   - 从个案到普遍：是否具有代表性、可复制性
+   - 泛化风险：局部问题是否可能演变为系统性问题`
         }
     ];
 
@@ -1211,40 +1593,24 @@ ${prompt}
         general: {
             id: 'general',
             name: '通用助手',
-            description: '全能型助手，适合日常对话和通用任务',
+            description: '简易输出范式，直接给出结论与洞察',
             icon: 'fa-user',
-            systemPrompt: `你是一位全能型AI助手，可以帮助用户解决各种问题。
+            systemPrompt: `你是一位高效AI助手，采用【简易输出范式】。
 
-【核心能力框架】
+【输出原则】
+1. 直接输出结论或结果，不写分析过程
+2. 给出深刻洞察和关键要点，避免冗余信息
+3. 语言精炼，条理清晰，一针见血
+4. 不展开背景铺垫、不重复用户已知内容
+5. 默认 Markdown 格式，必要时用列表或表格
 
-一、逻辑严密性（基于逻辑学知识库）
-1. 形式逻辑验证：
-   - 检查论证的有效性（演绎推理）
-   - 评估归纳推理的可靠性
-   - 识别逻辑谬误
-2. 论证结构分析：
-   - 明确前提和结论
-   - 识别隐含假设
-   - 评估证据充分性
+【禁止】
+- 冗长的分析过程、逐步推导
+- 重复用户问题或已知信息
+- 无实质内容的客套话
 
-二、脑科学辅助（基于脑科学知识库）
-1. 认知负荷管理：
-   - 信息分块呈现
-   - 避免认知过载
-   - 使用记忆辅助技巧
-2. 注意力引导：
-   - 重点突出
-   - 结构化呈现
-   - 视觉层次清晰
-
-三、输出规范
-1. 专业、准确、有用的回答
-2. 友好、耐心的态度
-3. 清晰简洁的语言表达
-4. 默认输出格式为Markdown
-
-请根据用户的需求，提供高质量的回复。`,
-            capabilities: ['日常对话', '问答咨询', '通用建议', '信息查询', '逻辑分析', '认知优化'],
+请直接、高效地回应用户需求。`,
+            capabilities: ['直接结论', '深刻洞察', '精炼回答', '信息查询', '要点提炼'],
             modelPreference: ['auto', 'deepseek-chat', 'glm-4-flash'],
             skills: ['skill_writer', 'skill_translator', 'skill_summarizer'],
             rules: ['rule_format', 'rule_tone', 'rule_safety', 'rule_multimodal'],
@@ -1750,6 +2116,63 @@ ${prompt}
             mcp: ['mcp_web_search', 'mcp_calculator'],
             rag: ['rag_psychology', 'rag_neuroscience', 'rag_first_principles', 'rag_iceberg_model', 'rag_social'],
             color: '#14b8a6'
+        },
+        work_secretary: {
+            id: 'work_secretary',
+            name: '工作秘书',
+            description: '研发项目管理协调、可绑定调用超级决策/计划大师/任务助手；利用海量知识提供合理化思路和切实可行的方案（技术、策略、方法、决策）',
+            icon: 'fa-briefcase',
+            delegateTo: ['super_decision', 'plan', 'task'],
+            serviceTarget: '',
+            ignoreInfoDesc: '',
+            systemPrompt: `你是工作秘书，负责研发项目管理协调，并利用海量知识提供合理化思路和切实可行的方案。
+
+【核心定位】
+1. 研发项目管理协调：可绑定调用超级决策（深度决策分析）、计划大师（项目规划）、任务助手（任务管理），整合多助手能力输出
+2. 利用所关联的知识库、技能，提供：
+- 技术方案：具体、可落地的技术实现思路
+- 策略建议：基于行业、政策、市场的战略与战术建议
+- 方法指导：可执行的方法论、流程、工具
+- 决策支持：多方案对比、风险评估、决策建议
+
+【研发项目管理能力】
+1. PMP知识体系：五大过程组、十大知识领域、项目管理最佳实践
+2. WBS工作分解：可交付成果导向、层级清晰、MECE原则
+3. 根因分析：5Why、鱼骨图、故障树、问题溯源
+4. 风险识别：风险清单、概率影响矩阵、应对策略
+5. 甘特图与进度：项目时间线、关键路径、里程碑
+6. 依赖关系：FS/SS/FF/SF、依赖网络、关键路径
+7. 时序关系：因果顺序、时间约束、关键节点
+
+【技术领域知识】
+- Linux系统、C/C++、内存分析、嵌入式开发
+- 图像质量分析、H.264/H.265编码
+- AI与安防行业知识
+
+【单点问题专业解决】
+针对Bug、测试等单点问题，提供专业的方法和思路：
+- Bug：复现步骤、根因定位、调试策略、修复方案、预防建议
+- 测试：测试计划、用例设计、覆盖率策略、自动化建议
+
+【问题演化识别】
+识别与判断问题状态和发展趋势：
+- 闭环性：问题是否完整定义、边界清晰、可验证闭环
+- 扩散性：问题是否在扩大、蔓延、影响范围是否增加
+- 变迁与泛化：问题是否在演变、是否从个案泛化为普遍现象
+
+【输出规范】
+1. 合理化思路：基于知识库和逻辑，给出清晰的分析路径和推理过程
+2. 切实可行：方案需具体、可执行，含步骤、交付物、验收标准
+3. 结构化输出：使用列表、表格、Mermaid图表
+4. 整合多维度：技术+策略+方法+决策，避免空泛建议
+5. 风险前置：识别并标注关键风险`,
+            capabilities: ['研发项目管理协调', '绑定调用超级决策/计划大师/任务助手', '海量知识整合', '合理化思路', '切实可行方案', '技术策略方法决策', '问题闭环/扩散/变迁/泛化识别', 'PMP', 'WBS', '根因分析', '风险识别', '研发技术'],
+            modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
+            skills: ['skill_pmp', 'skill_wbs', 'skill_root_cause', 'skill_risk_identification', 'skill_gantt', 'skill_dependency', 'skill_temporal_relation', 'skill_planner', 'skill_mece', 'skill_mermaid_visualization', 'skill_bug_analysis', 'skill_testing_strategy', 'skill_problem_evolution'],
+            rules: ['rule_format', 'rule_structure', 'rule_accuracy', 'rule_examples'],
+            mcp: ['mcp_web_search'],
+            rag: ['rag_pmp', 'rag_huawei_rdpm', 'rag_wbs', 'rag_root_cause', 'rag_risk_identification', 'rag_software_pm', 'rag_linux', 'rag_ccpp', 'rag_memory_analysis', 'rag_embedded', 'rag_image_quality', 'rag_h264_h265', 'rag_ai_security', 'rag_bug_debug', 'rag_testing', 'rag_problem_evolution', 'rag_logic', 'rag_temporal_logic'],
+            color: '#0ea5e9'
         }
     };
 
@@ -1792,6 +2215,7 @@ ${prompt}
         },
         subAgents: {},
         customSubAgents: {},
+        customWorkflows: [],
         syncConfig: {
             serverUrl: '',
             apiKey: '',
@@ -1945,7 +2369,9 @@ ${prompt}
                 if (state.tasks) AppState.tasks = state.tasks;
                 if (state.todos) AppState.todos = state.todos;
                 if (state.currentChatId) AppState.currentChatId = state.currentChatId;
-                if (state.currentMode) AppState.currentMode = state.currentMode;
+                if (state.currentMode) {
+                    AppState.currentMode = state.currentMode === 'writing' ? 'creative' : state.currentMode;
+                }
                 if (state.currentModel) AppState.currentModel = state.currentModel;
                 if (state.currentSubAgent) AppState.currentSubAgent = state.currentSubAgent;
                 if (state.currentOutputFormat) AppState.currentOutputFormat = state.currentOutputFormat;
@@ -1971,6 +2397,9 @@ ${prompt}
                     }
                 }
                 if (state.jinaAI) AppState.jinaAI = { ...AppState.jinaAI, ...state.jinaAI };
+                if (state.customWorkflows && Array.isArray(state.customWorkflows)) {
+                    AppState.customWorkflows = state.customWorkflows;
+                }
             }
         } catch (error) {
             window.Logger?.error('加载状态失败:', error);
@@ -1993,6 +2422,7 @@ ${prompt}
                 user: AppState.user,
                 resources: AppState.resources, // 保存资源配置
                 jinaAI: AppState.jinaAI, // 保存Jina AI配置
+                customWorkflows: AppState.customWorkflows || [], // 自定义 Workflow
                 savedAt: Date.now(),
                 version: AppState.version
             };
@@ -2042,7 +2472,10 @@ ${prompt}
                         rules: agent.rules || [],
                         mcp: agent.mcp || [],
                         rag: agent.rag || [],
-                        modelPreference: agent.modelPreference || []
+                        modelPreference: agent.modelPreference || [],
+                        serviceTarget: agent.serviceTarget,
+                        ignoreInfoDesc: agent.ignoreInfoDesc,
+                        delegateTo: agent.delegateTo
                     };
                 }
             });
@@ -2066,6 +2499,9 @@ ${prompt}
                         if (config.mcp) AppState.subAgents[id].mcp = config.mcp;
                         if (config.rag) AppState.subAgents[id].rag = config.rag;
                         if (config.modelPreference) AppState.subAgents[id].modelPreference = config.modelPreference;
+                        if (config.serviceTarget !== undefined) AppState.subAgents[id].serviceTarget = config.serviceTarget;
+                        if (config.ignoreInfoDesc !== undefined) AppState.subAgents[id].ignoreInfoDesc = config.ignoreInfoDesc;
+                        if (config.delegateTo !== undefined) AppState.subAgents[id].delegateTo = Array.isArray(config.delegateTo) ? config.delegateTo : [];
                     }
                 });
             }

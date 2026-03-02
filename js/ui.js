@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.2.1 - UI渲染模块
+ * AI Agent Pro v8.2.2 - UI渲染模块
  * 未来科技感UI
  */
 
@@ -236,9 +236,11 @@
                     <span class="message-time">${formatTime(Date.now())}</span>
                 </div>
                 <div class="message-body">
-                    <div class="search-status" id="search-status" style="display: none;">
-                        <i class="fas fa-search"></i>
-                        <span class="search-status-text">准备搜索...</span>
+                    <div class="search-status search-todo" id="search-status" style="display: none;">
+                        <div class="search-todo-steps" id="search-todo-steps"></div>
+                    </div>
+                    <div class="workflow-step-progress" id="workflow-step-progress" style="display: none;">
+                        <div class="workflow-steps" id="workflow-steps"></div>
                     </div>
                     <div class="thinking-indicator">
                         <span class="thinking-dot"></span>
@@ -254,25 +256,91 @@
         currentStreamMessageEl = div;
         currentStreamContentEl = div.querySelector('.stream-content');
         
-        // 存储搜索状态元素的引用
+        // 存储搜索状态和 Workflow 步骤元素的引用
         window.currentSearchStatusEl = div.querySelector('#search-status');
+        window.currentWorkflowProgressEl = div.querySelector('#workflow-step-progress');
 
         scrollToBottom();
     }
     
-    function showSearchStatus(text) {
-        if (window.currentSearchStatusEl) {
-            window.currentSearchStatusEl.style.display = 'flex';
-            const textEl = window.currentSearchStatusEl.querySelector('.search-status-text');
-            if (textEl) {
-                textEl.textContent = text;
+    /** 搜索状态 todolist：done=✔, in_progress=转圈, pending=○ */
+    function showSearchTodoSteps(steps) {
+        if (!window.currentSearchStatusEl) return;
+        const container = window.currentSearchStatusEl.querySelector('#search-todo-steps');
+        if (!container) return;
+        window.currentSearchStatusEl.style.display = 'block';
+        container.innerHTML = steps.map((s, i) => {
+            let icon = '<i class="far fa-circle search-step-icon"></i>';
+            if (s.status === 'done') {
+                icon = '<i class="fas fa-check-circle search-step-icon search-step-done"></i>';
+            } else if (s.status === 'in_progress') {
+                icon = '<i class="fas fa-spinner fa-spin search-step-icon search-step-spin"></i>';
             }
-        }
+            let detailHtml = '';
+            if (s.searchQuery) {
+                detailHtml = `<div class="search-query-row"><span class="search-query-label">搜索词：</span><span class="search-query-value">${escapeHtml(s.searchQuery)}</span></div>`;
+            } else if (s.detail) {
+                detailHtml = ` <span class="search-step-detail">${escapeHtml(s.detail)}</span>`;
+            }
+            return `<div class="search-todo-item search-todo-${s.status}">${icon}<div class="search-step-content"><span class="search-step-text">${escapeHtml(s.text)}</span>${detailHtml}</div></div>`;
+        }).join('');
     }
-    
+
+    /** @deprecated 兼容旧调用，转为单步 todolist */
+    function showSearchStatus(text) {
+        showSearchTodoSteps([{ status: 'in_progress', text }]);
+    }
+
     function hideSearchStatus() {
         if (window.currentSearchStatusEl) {
             window.currentSearchStatusEl.style.display = 'none';
+        }
+    }
+
+    /** Workflow 步骤进展：步骤状态 + 部分信息滚动展示，默认折叠，点击展开 */
+    function showWorkflowStepProgress(steps) {
+        if (!window.currentWorkflowProgressEl) return;
+        const container = window.currentWorkflowProgressEl.querySelector('#workflow-steps');
+        if (!container) return;
+        window.currentWorkflowProgressEl.style.display = 'block';
+        const thinkingIndicator = currentStreamMessageEl?.querySelector('.thinking-indicator');
+        if (thinkingIndicator) thinkingIndicator.style.display = 'none';
+        container.innerHTML = steps.map((s, i) => {
+            let icon = '<i class="far fa-circle search-step-icon"></i>';
+            if (s.status === 'done') {
+                icon = '<i class="fas fa-check-circle search-step-icon search-step-done"></i>';
+            } else if (s.status === 'in_progress') {
+                icon = '<i class="fas fa-spinner fa-spin search-step-icon search-step-spin"></i>';
+            }
+            let previewHtml = '';
+            const hasPreview = s.preview && s.preview.trim();
+            if (hasPreview) {
+                const safeTitle = escapeHtml(s.preview.replace(/"/g, '&quot;').substring(0, 300));
+                previewHtml = `<div class="workflow-step-preview" title="${safeTitle}">${escapeHtml(s.preview)}</div>`;
+            }
+            const showToggle = hasPreview && s.status === 'done';
+            const toggleIcon = showToggle ? '<i class="fas fa-chevron-right workflow-step-toggle"></i>' : '';
+            const agentHtml = s.agentDisplayName ? `<span class="workflow-step-res" title="助手"><i class="fas fa-user-astronaut"></i> ${escapeHtml(s.agentDisplayName)}</span>` : '';
+            const ragHtml = (s.rag && s.rag.length) ? `<span class="workflow-step-res" title="RAG"><i class="fas fa-book"></i> ${s.rag.map(n => escapeHtml(n)).join(', ')}</span>` : '';
+            const mcpHtml = (s.mcp && s.mcp.length) ? `<span class="workflow-step-res" title="MCP"><i class="fas fa-plug"></i> ${s.mcp.map(n => escapeHtml(n)).join(', ')}</span>` : '';
+            const skillHtml = (s.skills && s.skills.length) ? `<span class="workflow-step-res" title="Skills"><i class="fas fa-magic"></i> ${s.skills.map(n => escapeHtml(n)).join(', ')}</span>` : '';
+            const resHtml = (agentHtml || ragHtml || mcpHtml || skillHtml) ? `<div class="workflow-step-resources">${agentHtml}${ragHtml}${mcpHtml}${skillHtml}</div>` : '';
+            return `<div class="workflow-step-item workflow-step-${s.status}" data-step-index="${i}">${icon}<div class="workflow-step-content"><div class="workflow-step-label-btn"><span class="workflow-step-label">步骤 ${i + 1}/${steps.length}：${escapeHtml(s.agentName)}</span>${toggleIcon}</div>${resHtml}${previewHtml}</div></div>`;
+        }).join('');
+        container.querySelectorAll('.workflow-step-item').forEach(item => {
+            const preview = item.querySelector('.workflow-step-preview');
+            const labelBtn = item.querySelector('.workflow-step-label-btn');
+            const toggle = item.querySelector('.workflow-step-toggle');
+            if (preview && toggle) {
+                labelBtn.addEventListener('click', () => item.classList.toggle('workflow-step-expanded'));
+            }
+        });
+        scrollToBottom();
+    }
+
+    function hideWorkflowStepProgress() {
+        if (window.currentWorkflowProgressEl) {
+            window.currentWorkflowProgressEl.style.display = 'none';
         }
     }
 
@@ -363,6 +431,7 @@
         currentStreamMessageEl = null;
         currentStreamContentEl = null;
         window.currentSearchStatusEl = null;
+        window.currentWorkflowProgressEl = null;
 
         scrollToBottom();
         
@@ -2771,6 +2840,27 @@ ${ex.content}`).join('\n\n')}
                         <label>描述</label>
                         <input type="text" id="edit-subagent-desc" value="${escapeHtml(agent.description || '')}" placeholder="输入助手描述...">
                     </div>
+                    ${agentId === 'work_secretary' ? `
+                    <div class="form-group">
+                        <label>服务对象</label>
+                        <input type="text" id="edit-subagent-service-target" value="${escapeHtml(agent.serviceTarget || '')}" placeholder="AI Agent Pro（占位符，可填老板、项目名等任意内容）">
+                        <small class="form-hint">根据填入内容的相关性筛选信息，无关内容可忽略</small>
+                    </div>
+                    <div class="form-group">
+                        <label>忽略信息描述</label>
+                        <input type="text" id="edit-subagent-ignore-info" value="${escapeHtml(agent.ignoreInfoDesc || '')}" placeholder="例如：八卦、娱乐新闻、与工作无关的闲聊">
+                        <small class="form-hint">填写要忽略的信息类型或描述，用于过滤无关内容</small>
+                    </div>
+                    <div class="form-group">
+                        <label>关联助手（Workflow 链）</label>
+                        <div class="delegate-to-select" id="edit-subagent-delegate-to">
+                            ${Object.entries(window.AppState?.subAgents || {}).filter(([id]) => id !== 'work_secretary').map(([id, a]) => `
+                                <label class="delegate-to-item"><input type="checkbox" value="${id}" ${(agent.delegateTo || []).includes(id) ? 'checked' : ''}> ${escapeHtml(a.name || id)}</label>
+                            `).join('')}
+                        </div>
+                        <small class="form-hint">选择后，发送消息将自动按 Workflow 链执行：工作秘书 → 所选助手依次执行</small>
+                    </div>
+                    ` : ''}
                     <div class="form-group">
                         <label>系统提示词</label>
                         <textarea id="edit-subagent-prompt" rows="3" placeholder="输入系统提示词...">${escapeHtml(agent.systemPrompt || '')}</textarea>
@@ -2837,6 +2927,16 @@ ${ex.content}`).join('\n\n')}
             agent.name = dialog.querySelector('#edit-subagent-name').value.trim();
             agent.description = dialog.querySelector('#edit-subagent-desc').value.trim();
             agent.systemPrompt = dialog.querySelector('#edit-subagent-prompt').value.trim();
+            if (agentId === 'work_secretary') {
+                const st = dialog.querySelector('#edit-subagent-service-target');
+                agent.serviceTarget = st?.value?.trim() || '';
+                const ign = dialog.querySelector('#edit-subagent-ignore-info');
+                agent.ignoreInfoDesc = ign?.value?.trim() || '';
+                const delegateEl = dialog.querySelector('#edit-subagent-delegate-to');
+                if (delegateEl) {
+                    agent.delegateTo = Array.from(delegateEl.querySelectorAll('input:checked')).map(cb => cb.value);
+                }
+            }
             
             // 收集选中的资源
             agent.skills = Array.from(selectedSkills);
@@ -3592,7 +3692,8 @@ ${ex.content}`).join('\n\n')}
                         modalId !== 'subagent-modal' && 
                         modalId !== 'tools-modal' &&
                         modalId !== 'plan-modal' &&
-                        modalId !== 'task-modal') {
+                        modalId !== 'task-modal' &&
+                        modalId !== 'workflow-modal') {
                         modal.remove();
                     }
                 }, 300);
@@ -3755,7 +3856,11 @@ ${ex.content}`).join('\n\n')}
         toggleThinking,
         // 搜索状态
         showSearchStatus,
+        showSearchTodoSteps,
         hideSearchStatus,
+        // Workflow 步骤进展
+        showWorkflowStepProgress,
+        hideWorkflowStepProgress,
         // 计划模式
         renderPlanManager,
         renderPlanCard,

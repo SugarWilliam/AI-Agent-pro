@@ -222,14 +222,24 @@ body {
     animation: logo-ring 2.5s ease-in-out infinite;
 }
 
+.splash-logo i,
+.splash-logo .app-logo {
+    position: relative;
+    z-index: 1;
+    animation: logo-float 2.5s ease-in-out infinite;
+}
+
 .splash-logo i {
     font-size: 48px;
     background: linear-gradient(135deg, var(--primary), var(--secondary));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    position: relative;
-    z-index: 1;
-    animation: logo-float 2.5s ease-in-out infinite;
+}
+
+.splash-logo .app-logo {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
 }
 
 /* 光晕动画 */
@@ -1730,32 +1740,185 @@ body {
     to { transform: rotate(360deg); }
 }
 
-/* 搜索状态显示 */
-.search-status {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
+/* 搜索状态 todolist - 与 Workflow 执行步骤共用外框样式 */
+.search-status.search-todo,
+.workflow-step-progress {
+    padding: 10px 14px;
     margin-bottom: 8px;
-    background: rgba(0, 212, 255, 0.1);
+    background: rgba(0, 212, 255, 0.08);
     border-left: 3px solid var(--primary);
     border-radius: var(--radius-sm);
     font-size: 12px;
+}
+
+.search-todo-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.search-todo-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    color: var(--text-secondary);
+}
+
+.search-todo-item.search-todo-in_progress {
     color: var(--primary);
 }
 
-.search-status i {
-    font-size: 12px;
-    animation: spin 1s linear infinite;
+.search-todo-item.search-todo-done {
+    color: var(--success, #22c55e);
 }
 
-@keyframes spin {
+.search-step-icon {
+    flex-shrink: 0;
+    width: 14px;
+    font-size: 12px;
+    text-align: center;
+    margin-top: 2px;
+}
+
+.search-step-done {
+    color: var(--success, #22c55e);
+}
+
+.search-step-spin {
+    color: var(--primary);
+}
+
+.search-step-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.search-step-text {
+    display: block;
+}
+
+.search-step-detail {
+    color: var(--text-muted);
+    font-size: 11px;
+    word-break: break-all;
+}
+
+.search-query-row {
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: rgba(0, 212, 255, 0.06);
+    border-radius: 4px;
+    font-size: 12px;
+    word-break: break-all;
+}
+
+.search-query-label {
+    color: var(--text-muted);
+    margin-right: 4px;
+}
+
+.search-query-value {
+    color: var(--primary);
+    font-weight: 500;
+}
+
+/* Workflow 步骤进展 - 横向流程图布局 */
+.workflow-step-progress .fa-spinner.fa-spin {
+    animation: workflow-spin 1s linear infinite;
+}
+@keyframes workflow-spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
-
-.search-status-text {
+.workflow-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.workflow-step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    color: var(--text-secondary);
+}
+.workflow-step-item.workflow-step-in_progress {
+    color: var(--primary);
+}
+.workflow-step-item.workflow-step-done {
+    color: var(--success, #22c55e);
+}
+.workflow-step-content {
     flex: 1;
+    min-width: 0;
+}
+.workflow-step-label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+.workflow-step-label-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+}
+.workflow-step-label-btn .workflow-step-label {
+    flex: 1;
+    min-width: 0;
+}
+.workflow-step-label-btn .workflow-step-toggle {
+    flex-shrink: 0;
+}
+.workflow-step-label-btn:hover {
+    opacity: 0.9;
+}
+.workflow-step-resources {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+}
+.workflow-step-resources .workflow-step-res {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.workflow-step-resources .workflow-step-res i {
+    color: var(--primary);
+    opacity: 0.8;
+}
+.workflow-step-toggle {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    transition: transform 0.2s;
+}
+.workflow-step-item.workflow-step-expanded .workflow-step-toggle {
+    transform: rotate(90deg);
+}
+.workflow-step-preview {
+    margin-top: 2px;
+    padding: 6px 8px;
+    max-height: 7.5em;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+    display: none;
+}
+.workflow-step-item.workflow-step-in_progress .workflow-step-preview {
+    display: block;
+}
+.workflow-step-item.workflow-step-expanded .workflow-step-preview {
+    display: block;
 }
 
 /* ==================== 模态框 ==================== */
@@ -2544,6 +2707,23 @@ body {
     text-decoration: underline;
 }
 
+.delegate-to-select {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+}
+.delegate-to-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+.delegate-to-item input {
+    flex-shrink: 0;
+}
+
 /* 设置页表单内勾选框（与 resource-checkbox-item 风格一致） */
 .form-group .resource-checkbox-item {
     display: flex;
@@ -3160,6 +3340,283 @@ body {
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+
+/* Workflow 模态框 */
+.workflow-desc {
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+.workflow-presets-section {
+    margin-bottom: 24px;
+}
+.workflow-section-title {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-bottom: 10px;
+}
+.workflow-section-title i {
+    margin-right: 6px;
+}
+.workflow-templates {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+}
+.workflow-template {
+    padding: 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-align: center;
+}
+.workflow-template:hover {
+    border-color: var(--primary);
+    background: rgba(0, 212, 255, 0.08);
+}
+.workflow-template.selected {
+    border-color: var(--primary);
+    background: rgba(0, 212, 255, 0.12);
+    box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2);
+}
+.workflow-template i {
+    display: block;
+    font-size: 24px;
+    color: var(--primary);
+    margin-bottom: 8px;
+}
+.workflow-template span {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+.workflow-template small {
+    display: block;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    line-height: 1.3;
+}
+
+/* 自定义流程 */
+.workflow-custom-section {
+    margin-bottom: 20px;
+    padding: 14px;
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--border);
+    background: rgba(0, 212, 255, 0.04);
+}
+.workflow-custom-section h4 {
+    font-size: 13px;
+    margin-bottom: 6px;
+    color: var(--primary);
+}
+.workflow-custom-section h4 i {
+    margin-right: 6px;
+}
+.workflow-custom-purpose {
+    margin-bottom: 12px;
+}
+.workflow-custom-purpose label,
+.workflow-chain-builder > label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+.workflow-custom-purpose input {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 13px;
+}
+.workflow-chain-builder {
+    margin-bottom: 12px;
+}
+.workflow-chain-list {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    min-height: 36px;
+    margin-bottom: 10px;
+}
+.workflow-chain-list .workflow-chain-row {
+    width: 100%;
+}
+.workflow-chain-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    font-size: 12px;
+}
+.workflow-chain-row .chain-order {
+    color: var(--primary);
+    font-weight: 600;
+    flex-shrink: 0;
+}
+.workflow-chain-row .workflow-step-agent {
+    min-width: 100px;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 12px;
+}
+.workflow-chain-row .workflow-chain-label,
+.workflow-chain-row .workflow-chain-instruction {
+    min-width: 140px;
+    max-width: 240px;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 12px;
+}
+.workflow-chain-row .chain-agent {
+    color: var(--text-tertiary);
+    font-size: 11px;
+}
+.workflow-chain-row .chain-remove {
+    cursor: pointer;
+    color: var(--text-tertiary);
+    padding: 0 2px;
+}
+.workflow-chain-row .chain-remove:hover {
+    color: var(--danger, #ef4444);
+}
+.workflow-chain-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    font-size: 12px;
+}
+.workflow-chain-item .chain-order {
+    color: var(--primary);
+    font-weight: 600;
+}
+.workflow-chain-item .chain-remove {
+    cursor: pointer;
+    color: var(--text-tertiary);
+    padding: 0 2px;
+}
+.workflow-chain-item .chain-remove:hover {
+    color: var(--danger, #ef4444);
+}
+.workflow-chain-list .workflow-chain-arrow {
+    color: var(--text-tertiary);
+    font-size: 12px;
+    margin-left: 12px;
+}
+.workflow-chain-arrow {
+    color: var(--text-tertiary);
+    font-size: 12px;
+}
+.workflow-chain-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.workflow-save-actions {
+    margin-top: 14px;
+}
+.workflow-save-actions .workflow-saved-list-wrap {
+    margin-top: 12px;
+}
+.workflow-save-actions .workflow-saved-list-wrap label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+.workflow-saved-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 120px;
+    overflow-y: auto;
+}
+.workflow-saved-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    font-size: 12px;
+}
+.workflow-saved-item.selected {
+    border-color: var(--primary);
+    background: rgba(0, 212, 255, 0.08);
+}
+.workflow-saved-item .workflow-saved-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.workflow-saved-item .workflow-saved-actions {
+    display: flex;
+    gap: 4px;
+}
+.workflow-saved-item .btn-icon {
+    padding: 2px 6px;
+    font-size: 11px;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+}
+.workflow-saved-item .btn-icon:hover {
+    color: var(--primary);
+}
+.workflow-agent-select {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.workflow-input-area label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+.workflow-input-area textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    resize: vertical;
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+.workflow-input-area textarea:focus {
+    outline: none;
+    border-color: var(--primary);
 }
 
 .plan-item, .task-item {

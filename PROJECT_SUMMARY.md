@@ -1,7 +1,7 @@
 # AI Agent Pro 项目整理总结
 
 **日期**: 2026-03-01  
-**版本**: v8.2.1
+**版本**: v8.2.2
 
 ---
 
@@ -50,10 +50,10 @@ AI-Agent-pro/
 ├── docs/                   # 文档目录
 │   ├── DESIGN.md          # 详细设计文档
 │   ├── DEPLOYMENT.md      # 部署文档
-│   ├── FEATURES.md        # 功能文档
+│   ├── AI-Agent-Pro-Features.html  # 功能说明书（H5）
 │   ├── AI-Agent-Pro-Design.html
 │   ├── AI-Agent-Pro-Guide.html
-│   ├── AI-Agent-Pro-Features.md
+│   ├── PROJECT_REVIEW.md  # 工程评审报告
 │   └── archive/          # 归档文档
 │
 └── test/                   # 测试文件
@@ -138,14 +138,14 @@ AI-Agent-pro/
 - ✅ 完整的故障排查指南
 - ✅ 性能优化建议
 
-### 2.4 功能文档 (FEATURES.md)
+### 2.4 功能说明书 (AI-Agent-Pro-Features.html)
 
-**位置**: `/docs/FEATURES.md`
+**位置**: `/docs/AI-Agent-Pro-Features.html`
 
 **内容**：
 - 核心功能
-- 功能模块详解
-- 使用指南
+- 功能模块详解（含工作秘书、问题演化识别）
+- 使用指南（含工作秘书配置）
 - 高级功能
 - 常见问题
 
@@ -153,6 +153,7 @@ AI-Agent-pro/
 - ✅ 完整的功能列表
 - ✅ 详细的使用说明
 - ✅ 常见问题解答
+- ✅ H5 格式，支持移动端
 
 ---
 
@@ -169,7 +170,7 @@ AI-Agent-pro/
 ### 3.2 功能特点
 
 - ✅ **多模型支持**：8+主流AI模型
-- ✅ **智能SubAgent**：20+内置助手
+- ✅ **智能SubAgent**：20+内置助手（含工作秘书、delegateTo 可配置）
 - ✅ **RAG知识库**：向量化检索增强
 - ✅ **多模态支持**：文本、图片、文档、URL
 - ✅ **任务管理**：完整的任务和计划系统
@@ -204,10 +205,10 @@ AI-Agent-pro/
 
 - **内置模型**: 8+个
 - **内置SubAgent**: 20+个
-- **内置Skills**: 20+个
+- **内置Skills**: 20+个（含问题演化识别）
 - **内置Rules**: 8个
 - **内置MCP**: 6个
-- **内置RAG知识库**: 20+个
+- **内置RAG知识库**: 20+个（含问题演化与闭环）
 
 ---
 
@@ -305,4 +306,4 @@ AI-Agent-pro/
 
 **整理完成时间**: 2026-03-01  
 **整理人员**: AI Agent Pro Team  
-**项目版本**: v8.2.0
+**项目版本**: v8.2.2

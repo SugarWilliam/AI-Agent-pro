@@ -4,6 +4,23 @@
 
 ---
 
+## [8.2.2] - 2026-03-01
+
+### 工程评审与文档同步
+
+**主要变更**
+
+- **工程评审**
+  - 新增 docs/PROJECT_REVIEW.md 工程评审报告
+  - 架构、代码质量、近期变更评审
+
+- **文档更新**
+  - DESIGN.md：SubAgent 扩展字段、工作秘书、问题演化
+  - AI-Agent-Pro-Features.html：工作秘书、问题演化、delegateTo 配置
+  - PROJECT_SUMMARY、README 文档引用
+
+---
+
 ## [8.2.1] - 2026-03-01
 
 ### 正式发布版本
@@ -52,5 +69,6 @@
 
 ---
 
+[8.2.2]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.2
 [8.2.1]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.1
 [8.2.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.0

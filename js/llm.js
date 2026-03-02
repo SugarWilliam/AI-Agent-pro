@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.2.1 - LLM服务
+ * AI Agent Pro v8.2.2 - LLM服务
  * 多模态输入输出支持
  */
 
@@ -93,7 +93,9 @@
                 enableWebSearch = false,
                 onStream = null,
                 outputFormat = 'markdown',
-                taskType = 'general'
+                taskType = 'general',
+                isWorkflow = false,
+                subAgentId = null
             } = options;
 
             // 1. 分析任务类型
@@ -104,12 +106,15 @@
                 ? window.AIAgentApp.autoSelectModel(messages, taskAnalysis.type)
                 : modelId;
             
-            // 3. 获取Sub Agent资源
-            const subAgent = window.AIAgentApp.getCurrentSubAgent();
+            // 3. 获取Sub Agent资源（支持指定 subAgentId 用于流程链）
+            const subAgent = subAgentId
+                ? (window.AppState?.subAgents?.[subAgentId] || window.AIAgentApp.getCurrentSubAgent())
+                : window.AIAgentApp.getCurrentSubAgent();
             const resources = window.AIAgentApp.getSubAgentResources(subAgent.id);
             
             // 4. 调用相关Skills
             const skillPrompts = this.buildSkillPrompts(resources.skills, taskAnalysis);
+            const usedSkillNames = (resources.skills || []).filter(s => s?.prompt).map(s => s.name).filter(Boolean);
             
             // 5. 应用Rules
             const rulesPrompt = this.buildRulesPrompt(resources.rules);
@@ -120,32 +125,51 @@
             // 7. 调用MCP工具 - 增强网络搜索功能
             let mcpResults = [];
             let searchThinking = '';
+            let usedMcpNames = [];
             const lastMessage = messages[messages.length - 1]?.content || '';
             
             // 如果启用网络搜索且subagent支持，自动进行搜索和网页爬取
             const hasWebSearchMCP = resources.mcp && resources.mcp.some(m => m && m.id === 'mcp_web_search');
             window.Logger?.info(`🔍 网络搜索检查: enableWebSearch=${enableWebSearch}, hasWebSearchMCP=${hasWebSearchMCP}, 当前SubAgent: ${subAgent?.id || 'unknown'}`);
             
-            // 显示搜索状态到chat界面
+            // 显示搜索状态 todolist
+            const updateSearchTodo = (steps) => window.AIAgentUI?.showSearchTodoSteps?.(steps);
+            
             if (enableWebSearch && hasWebSearchMCP) {
-                window.AIAgentUI?.showSearchStatus?.('正在检查搜索条件...');
+                updateSearchTodo([
+                    { status: 'in_progress', text: '分析问题并生成搜索词' },
+                    { status: 'pending', text: '执行网络搜索' },
+                    { status: 'pending', text: '爬取网页内容' }
+                ]);
             }
             
             if (enableWebSearch && hasWebSearchMCP) {
                 try {
-                    // 提取搜索关键词（从用户消息中提取）
-                    window.AIAgentUI?.showSearchStatus?.('正在提取搜索关键词...');
-                    const searchQuery = this.extractSearchQuery(lastMessage);
-                    window.Logger?.info(`🔑 提取搜索关键词: ${searchQuery || '未提取到关键词'}`);
+                    const searchQuery = this.analyzeAndGenerateSearchQuery(lastMessage);
+                    window.Logger?.info(`🔑 生成搜索关键词: ${searchQuery || '未生成'}`);
                     
                     // 如果没有提取到关键词，但启用了网络搜索，尝试使用整个消息作为搜索关键词
                     const finalSearchQuery = searchQuery || (lastMessage.trim().length > 0 ? lastMessage.trim().substring(0, 100) : null);
                     
                     if (finalSearchQuery && finalSearchQuery.trim().length > 0) {
-                        // 执行网络搜索
-                        window.AIAgentUI?.showSearchStatus?.(`正在搜索: ${finalSearchQuery.substring(0, 30)}...`);
+                        const onSearchProgress = (sourceName, completed, total, resultCount, completedSources) => {
+                            const parts = completedSources.map(s => `${s.name}${s.count > 0 ? `(${s.count})` : ''}✓`).join(' ');
+                            const suffix = completed < total ? ` · ${completed}/${total} 个源` : '';
+                            updateSearchTodo([
+                                { status: 'done', text: '分析问题并生成搜索词', searchQuery: finalSearchQuery },
+                                { status: completed < total ? 'in_progress' : 'done', text: '执行网络搜索', detail: (parts + suffix).trim() || `已完成 ${completed}/${total}` },
+                                { status: 'pending', text: '爬取网页内容' }
+                            ]);
+                        };
+                        updateSearchTodo([
+                            { status: 'done', text: '分析问题并生成搜索词', searchQuery: finalSearchQuery },
+                            { status: 'in_progress', text: '执行网络搜索', detail: '多源并行搜索中...' },
+                            { status: 'pending', text: '爬取网页内容' }
+                        ]);
                         window.Logger?.info(`🔍 开始执行网络搜索: ${finalSearchQuery}`);
-                        const searchResults = await this.performWebSearch(finalSearchQuery);
+                        const webSearchMcp = resources.mcp?.find(m => m?.id === 'mcp_web_search');
+                        if (webSearchMcp?.name) usedMcpNames.push(webSearchMcp.name);
+                        const searchResults = await this.performWebSearch(finalSearchQuery, 0, { onSearchProgress });
                         window.Logger?.info(`✅ 网络搜索完成，返回${searchResults.length}个结果`);
                         
                         // 检查是否是错误提示结果
@@ -154,29 +178,50 @@
                              searchResults[0].title.includes('搜索失败'));
                         
                         if (searchResults.length > 0 && !isErrorResult) {
-                            window.AIAgentUI?.showSearchStatus?.(`找到 ${searchResults.length} 个搜索结果（来自${new Set(searchResults.map(r => r.source)).size}个搜索源），正在并行爬取网页内容...`);
+                            const getSearchDetail = () => {
+                                const srcCount = new Set(searchResults.map(r => r.source)).size;
+                                return `找到 ${searchResults.length} 个结果（${srcCount}个源）`;
+                            };
+                            updateSearchTodo([
+                                { status: 'done', text: '分析问题并生成搜索词', searchQuery: finalSearchQuery },
+                                { status: 'done', text: '执行网络搜索', detail: getSearchDetail() },
+                                { status: 'in_progress', text: '爬取网页内容' }
+                            ]);
                             mcpResults.push({ type: 'search', data: searchResults });
                             
                             // 并行爬取前5个搜索结果的内容（增加数量以利用多源信息）
                             const crawlPromises = [];
                             const maxCrawl = Math.min(5, searchResults.length);
-                            
+                            let crawlCompleted = 0;
                             for (let i = 0; i < maxCrawl; i++) {
+                                const item = searchResults[i];
+                                const sourceName = item.source || '未知';
                                 crawlPromises.push(
                                     (async () => {
                                         try {
-                                            window.AIAgentUI?.showSearchStatus?.(`正在爬取第 ${i + 1}/${maxCrawl} 个结果: ${searchResults[i].title.substring(0, 20)}... (${searchResults[i].source || '未知来源'})`);
-                                            const pageContent = await this.fetchWebPage(searchResults[i].url);
+                                            const pageContent = await this.fetchWebPage(item.url);
+                                            crawlCompleted++;
+                                            updateSearchTodo([
+                                                { status: 'done', text: '分析问题并生成搜索词', searchQuery: finalSearchQuery },
+                                                { status: 'done', text: '执行网络搜索', detail: getSearchDetail() },
+                                                { status: 'in_progress', text: '爬取网页内容', detail: `${crawlCompleted}/${maxCrawl} ${sourceName}` }
+                                            ]);
                                             if (pageContent && pageContent.content) {
                                                 return {
-                                                    title: searchResults[i].title,
-                                                    url: searchResults[i].url,
-                                                    source: searchResults[i].source || '未知',
+                                                    title: item.title,
+                                                    url: item.url,
+                                                    source: sourceName,
                                                     content: pageContent.content.substring(0, 2000) // 限制内容长度
                                                 };
                                             }
                                         } catch (err) {
-                                            window.Logger?.warn(`爬取网页失败 [${searchResults[i].source}]:`, searchResults[i].url, err);
+                                            crawlCompleted++;
+                                            updateSearchTodo([
+                                                { status: 'done', text: '分析问题并生成搜索词', searchQuery: finalSearchQuery },
+                                                { status: 'done', text: '执行网络搜索', detail: getSearchDetail() },
+                                                { status: 'in_progress', text: '爬取网页内容', detail: `${crawlCompleted}/${maxCrawl} ${sourceName}(失败)` }
+                                            ]);
+                                            window.Logger?.warn(`爬取网页失败 [${sourceName}]:`, item.url, err);
                                             return null;
                                         }
                                     })()
@@ -190,9 +235,17 @@
                                 .map(r => r.value);
                             
                             if (crawledContents.length > 0) {
-                                window.AIAgentUI?.showSearchStatus?.(`✅ 搜索完成，已获取 ${crawledContents.length} 个网页内容`);
+                                updateSearchTodo([
+                                    { status: 'done', text: '分析问题并生成搜索词', searchQuery: finalSearchQuery },
+                                    { status: 'done', text: '执行网络搜索', detail: getSearchDetail() },
+                                    { status: 'done', text: '爬取网页内容', detail: `已获取 ${crawledContents.length}/${maxCrawl} 个` }
+                                ]);
                             } else {
-                                window.AIAgentUI?.showSearchStatus?.('⚠️ 搜索完成，但未能爬取网页内容');
+                                updateSearchTodo([
+                                    { status: 'done', text: '分析问题并生成搜索词', searchQuery: finalSearchQuery },
+                                    { status: 'done', text: '执行网络搜索', detail: getSearchDetail() },
+                                    { status: 'done', text: '爬取网页内容', detail: '未能爬取' }
+                                ]);
                             }
                             
                             // 将搜索结果和爬取内容格式化为思考过程（多源格式）
@@ -245,25 +298,38 @@
                                     ragContext += `【${item.title}】[来源: ${item.source || '未知'}] (${item.url})\n${item.content}\n\n`;
                                 });
                                 
-                                ragContext += '⚠️ 重要提示：\n';
-                                ragContext += '1. 请优先使用上述实时搜索结果中的最新信息回答问题\n';
-                                ragContext += '2. 多个搜索源的结果可以互相印证，提高信息准确性\n';
-                                ragContext += '3. 如果不同来源的信息有冲突，请标注并说明\n';
-                                ragContext += '4. 不要依赖训练数据中的旧信息\n';
+                                ragContext += '⚠️ 网络搜索使用说明：\n';
+                                ragContext += '1. 网络信息仅用于弥补模型自身知识的滞后性（如新闻、近期事件、时效性信息）\n';
+                                ragContext += '2. 以你的专业知识和推理能力为基础回答问题\n';
+                                ragContext += '3. 当自身知识与最新信息存在冲突时：先分析新知识的时效性与真实性，再酌情采用（例如：2026年奥巴马已非总统，应以最新信息为准）\n';
+                                ragContext += '4. 多个搜索源的结果可互相印证，提高信息准确性\n';
+                                ragContext += '5. 若不同来源信息有冲突，请标注并说明\n';
                                 
                                 window.Logger?.info(`✅ 多源搜索结果已添加到RAG上下文，内容长度: ${ragContext.length} 字符，来源数: ${Object.keys(resultsBySource).length}`);
                             }
                         } else {
-                            window.AIAgentUI?.showSearchStatus?.('⚠️ 搜索未返回有效结果');
+                            updateSearchTodo([
+                                { status: 'done', text: '分析问题并生成搜索词', searchQuery: finalSearchQuery },
+                                { status: 'done', text: '执行网络搜索', detail: '未返回有效结果' },
+                                { status: 'done', text: '爬取网页内容', detail: '跳过' }
+                            ]);
                             window.Logger?.warn(`搜索未返回有效结果，结果数量: ${searchResults.length}, 是否错误: ${isErrorResult}`);
                         }
                     } else {
-                        window.AIAgentUI?.showSearchStatus?.('⚠️ 无法提取搜索关键词，跳过网络搜索');
+                        updateSearchTodo([
+                            { status: 'done', text: '分析问题并生成搜索词', detail: '无法提取关键词' },
+                            { status: 'done', text: '执行网络搜索', detail: '跳过' },
+                            { status: 'done', text: '爬取网页内容', detail: '跳过' }
+                        ]);
                         window.Logger?.warn(`无法提取搜索关键词，跳过网络搜索。原始消息: ${lastMessage.substring(0, 50)}`);
                     }
                 } catch (error) {
                     window.Logger?.error('网络搜索失败:', error);
-                    window.AIAgentUI?.showSearchStatus?.('❌ 网络搜索失败: ' + error.message);
+                    updateSearchTodo([
+                        { status: 'done', text: '分析问题并生成搜索词' },
+                        { status: 'done', text: '执行网络搜索', detail: '失败' },
+                        { status: 'done', text: '爬取网页内容', detail: (error.message || '').substring(0, 30) }
+                    ]);
                     // 搜索失败不影响主流程
                 }
             } else {
@@ -279,8 +345,11 @@
             window.AIAgentUI?.hideSearchStatus?.();
             
             // 8. 查询RAG知识库（如果搜索结果已添加到ragContext，这里会追加）
+            let usedRagNames = [];
             if (resources.rag && resources.rag.length > 0) {
-                const ragKnowledge = await this.queryRAG(messages[messages.length - 1]?.content, resources.rag);
+                const ragRet = await this.queryRAG(messages[messages.length - 1]?.content, resources.rag);
+                const ragKnowledge = ragRet.context || ragRet;
+                usedRagNames = ragRet.usedRagNames || [];
                 if (ragKnowledge) {
                     // 如果已有搜索结果，追加RAG知识库内容
                     if (ragContext) {
@@ -299,7 +368,8 @@
                 rulesPrompt,
                 mcpResults,
                 ragContext,
-                outputFormat
+                outputFormat,
+                isWorkflow
             });
 
             // 10. 调用LLM
@@ -319,6 +389,7 @@
                 window.Logger?.info(`✅ 搜索结果已添加到思考过程，长度=${searchThinking.length}`);
             }
 
+            result.usedResources = { rag: usedRagNames, mcp: usedMcpNames, skills: usedSkillNames };
             return result;
         },
 
@@ -371,38 +442,53 @@
             return sortedRules.map(r => `- ${r.content}`).join('\n');
         },
 
-        // 查询RAG知识库（优化版，使用真正的向量搜索）
+        // 查询RAG知识库（优化版，使用真正的向量搜索），返回 { context, usedRagNames }
         async queryRAG(query, ragList) {
             if (!query || !ragList || ragList.length === 0) {
-                return '';
+                return { context: '', usedRagNames: [] };
             }
 
             try {
                 // 使用RAGManager的queryRAGKnowledgeBase方法
                 if (window.RAGManager && typeof window.RAGManager.queryRAGKnowledgeBase === 'function') {
-                    const context = await window.RAGManager.queryRAGKnowledgeBase(query, ragList);
-                    window.Logger?.debug(`RAG查询结果长度: ${context.length} 字符`);
-                    return context;
+                    const ret = await window.RAGManager.queryRAGKnowledgeBase(query, ragList);
+                    const context = typeof ret === 'object' && ret !== null ? (ret.context || '') : ret;
+                    const usedRagNames = typeof ret === 'object' && ret !== null && Array.isArray(ret.usedRagNames) ? ret.usedRagNames : [];
+                    window.Logger?.debug(`RAG查询结果长度: ${context.length} 字符，调用: ${usedRagNames.join(', ') || '无'}`);
+                    return { context, usedRagNames };
                 } else {
                     // 降级方案：使用buildRAGContext
                     if (window.RAGManager && typeof window.RAGManager.buildRAGContext === 'function') {
                         const contexts = await window.RAGManager.buildRAGContext(query, ragList);
-                        return contexts.map(c => `【${c.source}】\n${c.content}`).join('\n\n');
+                        const usedRagNames = contexts.map(c => c.source).filter(Boolean);
+                        return { context: contexts.map(c => `【${c.source}】\n${c.content}`).join('\n\n'), usedRagNames };
                     } else {
                         window.Logger?.warn('RAGManager未初始化，无法查询RAG知识库');
-                        return '';
+                        return { context: '', usedRagNames: [] };
                     }
                 }
             } catch (error) {
                 window.Logger?.error('RAG查询失败:', error);
-                // 返回空字符串，不影响主流程
-                return '';
+                return { context: '', usedRagNames: [] };
             }
         },
 
         // 构建增强系统提示词
-        buildEnhancedSystemPrompt({ subAgent, skillPrompts, rulesPrompt, mcpResults, ragContext, outputFormat }) {
+        buildEnhancedSystemPrompt({ subAgent, skillPrompts, rulesPrompt, mcpResults, ragContext, outputFormat, isWorkflow = false }) {
             let prompt = `你是「${subAgent.name}」，${subAgent.description}\n\n`;
+            if (subAgent.id === 'work_secretary') {
+                const target = subAgent.serviceTarget?.trim();
+                const ignoreDesc = subAgent.ignoreInfoDesc?.trim();
+                if (target || ignoreDesc) {
+                    const parts = [];
+                    if (target) parts.push(`根据与「${target}」的相关性筛选，仅关注与之相关的内容`);
+                    if (ignoreDesc) parts.push(`忽略以下信息：${ignoreDesc}`);
+                    prompt += `【信息筛选】${parts.join('；')}。无关内容可省略。\n\n`;
+                }
+            }
+            if (isWorkflow) {
+                prompt += `【Workflow 模式】请按以下流程执行：1.分析用户问题 2.以自身知识为主，网络搜索仅弥补知识滞后（如新闻）；若与自身知识冲突，先判断新知识时效性与真实性再酌情采用 3.整合信息 4.输出结论与洞察。直接给出结果，避免冗长分析过程。\n\n`;
+            }
             prompt += subAgent.systemPrompt + '\n\n';
             
             if (rulesPrompt) {
@@ -413,15 +499,15 @@
                 prompt += `【技能指引】\n${skillPrompts}\n`;
             }
             
-            // 优先显示网络搜索结果（实时信息）
+            // 网络搜索结果：弥补模型知识滞后性（如新闻、时效性信息）
             if (ragContext && ragContext.includes('【网络搜索结果')) {
-                prompt += `【重要：实时搜索结果】\n`;
+                prompt += `【补充信息：网络搜索结果（弥补知识滞后，如新闻/时效性信息；与自身知识冲突时请先判断新知识的时效性与真实性再酌情采用）】\n`;
                 prompt += ragContext.split('【知识库参考】')[0] + '\n\n';
-                window.Logger?.info(`✅ 已将实时搜索结果添加到系统提示词`);
+                window.Logger?.info(`✅ 已将网络搜索结果作为补充信息添加到系统提示词`);
             }
             
             if (mcpResults.length > 0) {
-                prompt += `【工具结果】\n`;
+                prompt += `【补充信息：工具搜索结果】\n`;
                 mcpResults.forEach(result => {
                     if (result.type === 'search') {
                         prompt += this.formatSearchResults(result.data) + '\n';
@@ -901,7 +987,7 @@
         },
 
         // ==================== 网络搜索 ====================
-        async performWebSearch(query, retryCount = 0) {
+        async performWebSearch(query, retryCount = 0, options = {}) {
             const MAX_RETRIES = 2;
             try {
                 window.Logger?.info(`开始网络搜索: ${query}${retryCount > 0 ? ` (重试 ${retryCount}/${MAX_RETRIES})` : ''}`);
@@ -914,7 +1000,7 @@
                 window.Logger?.debug(`搜索配置检查: webSearchEnabled=${webSearchEnabled}, hasWebSearchMCP=${hasWebSearchMCP}, subAgent=${currentSubAgent?.id}`);
                 
                 // 并行搜索：同时使用多个搜索源
-                const allResults = await this.performParallelWebSearch(query, retryCount);
+                const allResults = await this.performParallelWebSearch(query, retryCount, options?.onSearchProgress);
                 if (allResults && allResults.length > 0) {
                     window.Logger?.info(`并行搜索完成，共获得${allResults.length}个结果`);
                     return allResults.slice(0, 10); // 返回前10个结果
@@ -1201,7 +1287,7 @@
         },
         
         // ==================== 并行网络搜索 ====================
-        async performParallelWebSearch(query, retryCount = 0) {
+        async performParallelWebSearch(query, retryCount = 0, onSearchProgress = null) {
             const jinaApiKey = window.AIAgentApp?.getJinaAIKey?.() || '';
             const timeoutMs = 20000 + (retryCount * 5000);
             
@@ -1337,20 +1423,29 @@
             }
             
             // 并行执行所有搜索
-            window.Logger?.info(`开始并行搜索，共${searchSources.length}个搜索源`);
+            const totalSources = searchSources.length;
+            let completedCount = 0;
+            const completedSources = [];
+            window.Logger?.info(`开始并行搜索，共${totalSources}个搜索源`);
             const searchPromises = searchSources.map(source => 
                 this.searchSingleSource(source, query, timeoutMs, jinaApiKey)
                     .then(results => {
-                        window.Logger?.info(`${source.name}: 返回${results?.length || 0}个结果`);
+                        const count = results?.length || 0;
+                        window.Logger?.info(`${source.name}: 返回${count}个结果`);
+                        completedCount++;
+                        completedSources.push({ name: source.name, count });
+                        onSearchProgress?.(source.name, completedCount, totalSources, count, completedSources);
                         return results || [];
                     })
                     .catch(error => {
-                        // 超时或错误时，有多少算多少，不强制要求
-                        if (error.message.includes('超时') || error.message.includes('timeout')) {
+                        if (error.message?.includes('超时') || error.message?.includes('timeout')) {
                             window.Logger?.info(`${source.name}: 搜索超时，已返回${0}个结果（符合预期）`);
                         } else {
                             window.Logger?.warn(`${source.name}: 搜索失败 - ${error.message}`);
                         }
+                        completedCount++;
+                        completedSources.push({ name: source.name, count: 0 });
+                        onSearchProgress?.(source.name, completedCount, totalSources, 0, completedSources);
                         return [];
                     })
             );
@@ -2626,7 +2721,38 @@
             return false;
         },
 
-        // 提取搜索关键词
+        // 搜索增强：分析问题并生成精准搜索词
+        analyzeAndGenerateSearchQuery(message) {
+            if (!message || typeof message !== 'string') return null;
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            const urls = message.match(urlRegex);
+            if (urls && urls.length > 0) return urls[0];
+            const msg = message.trim();
+            if (msg.length < 2) return null;
+            const clean = (s) => (s || '').replace(/[?？。，、；：""''（）]/g, ' ').replace(/\s+/g, ' ').trim();
+            let query = msg;
+            if (/分析|研究|调研|探讨/.test(msg)) {
+                // 保留完整主题（含「分析」前的关键词如 reolink），避免丢失主语
+                query = clean(msg) + ' 最新';
+            } else if (/对比|比较|区别|差异/.test(msg)) {
+                const parts = msg.split(/对比|比较|区别|差异|和|与/).map(clean).filter(Boolean);
+                query = parts.join(' ') + ' 对比';
+            } else if (/如何|怎么|怎样/.test(msg)) {
+                const m = msg.match(/(?:如何|怎么|怎样)([^？?]+)/);
+                query = clean(m ? m[1] : msg) + ' 方法';
+            } else if (/为什么|为何/.test(msg)) {
+                const m = msg.match(/(?:为什么|为何)([^？?]+)/);
+                query = clean(m ? m[1] : msg) + ' 原因';
+            } else {
+                query = clean(msg);
+            }
+            query = query.replace(/^(请|帮|能|可以|要|想|给|告诉)?(搜索|查找|查询)?/gi, '').trim();
+            if (query.length < 2) query = msg.substring(0, 100);
+            if (query.length > 100) query = query.substring(0, 100);
+            return query || null;
+        },
+
+        // 提取搜索关键词（兼容旧逻辑）
         extractSearchQuery(message) {
             if (!message || typeof message !== 'string') return null;
             
@@ -2875,15 +3001,121 @@
         },
 
         // ==================== 简化版sendMessage（兼容旧接口）====================
-        async sendMessage(messages, modelId, enableWebSearch = false, onStream = null) {
-            // 使用智能调用引擎发送消息
+        async sendMessage(messages, modelId, enableWebSearch = false, onStream = null, isWorkflow = false) {
             return await this.invokeIntelligentAgent(messages, {
                 modelId: modelId || 'auto',
                 enableWebSearch,
                 onStream,
                 outputFormat: 'markdown',
-                taskType: 'general'
+                taskType: 'general',
+                isWorkflow
             });
+        },
+
+        // ==================== 自定义流程链式执行 ====================
+        _extractPreview(text, maxLines = 5, forStreaming = false) {
+            if (!text || typeof text !== 'string') return '';
+            const lines = text.trim().split('\n').filter(Boolean);
+            if (lines.length === 0) return '';
+            if (forStreaming && lines.length > maxLines) {
+                return lines.slice(-maxLines).join('\n').substring(0, 300);
+            }
+            return lines.slice(0, maxLines).join('\n').substring(0, 300);
+        },
+
+        _updateWorkflowStepProgress(chainSteps, currentIndex, stepOutputs, stepUsedResources = []) {
+            const steps = chainSteps.map((s, i) => {
+                const step = typeof s === 'string' ? { agentId: s, instruction: '', label: '' } : s;
+                const agent = window.AppState?.subAgents?.[step.agentId];
+                const agentName = (step.instruction || step.label) || agent?.name || step.agentId;
+                const agentDisplayName = agent?.name || step.agentId;
+                const used = stepUsedResources[i] || {};
+                const ragNames = used.rag || [];
+                const mcpNames = used.mcp || [];
+                const skillNames = used.skills || [];
+                let status = 'pending';
+                if (i < currentIndex) status = 'done';
+                else if (i === currentIndex) status = 'in_progress';
+                const isStreaming = (i === currentIndex && stepOutputs[i]);
+                const preview = (stepOutputs[i] && (status === 'done' || status === 'in_progress'))
+                    ? this._extractPreview(stepOutputs[i], 5, isStreaming) : '';
+                return { agentName, agentDisplayName, status, preview, agentId: step.agentId, rag: ragNames, mcp: mcpNames, skills: skillNames };
+            });
+            window.AIAgentUI?.showWorkflowStepProgress?.(steps);
+        },
+
+        async runWorkflowChain(chainSteps, task, _messages, modelId, onStream) {
+            const chain = Array.isArray(chainSteps) ? chainSteps : [];
+            const steps = chain.map(s => typeof s === 'string' ? { agentId: s, label: '' } : { agentId: s?.agentId || '', label: s?.label || '' });
+            if (steps.length === 0 || steps.every(s => !s.agentId)) {
+                return await this.sendMessage(
+                    [{ role: 'user', content: task }],
+                    modelId,
+                    true,
+                    onStream,
+                    true
+                );
+            }
+            const originalSubAgent = window.AppState?.currentSubAgent;
+            let lastContent = '';
+            let allThinking = '';
+            const stepOutputs = [];
+            const stepUsedResources = [];
+            try {
+                this._updateWorkflowStepProgress(steps, 0, stepOutputs, stepUsedResources);
+                for (let i = 0; i < steps.length; i++) {
+                    const step = steps[i];
+                    const agentId = step.agentId;
+                    const instruction = step.instruction || step.label || '';
+                    const agent = window.AppState?.subAgents?.[agentId];
+                    if (!agent) {
+                        window.Logger?.warn(`Workflow 链中 SubAgent 不存在: ${agentId}`);
+                        continue;
+                    }
+                    const stepLabel = instruction || agent.name || agentId;
+                    window.AppState.currentSubAgent = agentId;
+                    const isFirst = i === 0;
+                    const isLast = i === steps.length - 1;
+                    this._updateWorkflowStepProgress(steps, i, stepOutputs, stepUsedResources);
+                    let messages;
+                    const instructionPrefix = instruction ? `【本步骤要求】${instruction}\n\n` : '';
+                    if (isFirst) {
+                        messages = [{ role: 'user', content: instructionPrefix + (instruction ? `【用户任务】\n${task}` : task) }];
+                    } else {
+                        const prevLabel = (steps[i - 1].instruction || steps[i - 1].label) || window.AppState.subAgents?.[steps[i - 1].agentId]?.name || steps[i - 1].agentId;
+                        messages = [
+                            { role: 'user', content: task },
+                            { role: 'assistant', content: lastContent },
+                            { role: 'user', content: instructionPrefix + `【上一步（${prevLabel}）的输出】\n\n${lastContent}\n\n请基于以上内容，结合本步骤要求，继续执行${isLast ? '并输出最终结果' : '，为下一步提供输入'}` }
+                        ];
+                    }
+                    const streamCallback = (content) => {
+                        stepOutputs[i] = content;
+                        this._updateWorkflowStepProgress(steps, i, stepOutputs, stepUsedResources);
+                        if (isLast && onStream) onStream(content);
+                    };
+                    const result = await this.invokeIntelligentAgent(messages, {
+                        modelId: modelId || 'auto',
+                        enableWebSearch: isFirst,
+                        onStream: streamCallback,
+                        outputFormat: 'markdown',
+                        taskType: 'general',
+                        isWorkflow: true,
+                        subAgentId: agentId
+                    });
+                    lastContent = result?.content || '';
+                    stepOutputs[i] = lastContent;
+                    stepUsedResources[i] = result?.usedResources || {};
+                    this._updateWorkflowStepProgress(steps, i + 1, stepOutputs, stepUsedResources);
+                    if (result?.thinking) {
+                        allThinking += `\n\n--- ${stepLabel} 思考过程 ---\n${result.thinking}`;
+                    }
+                }
+                this._updateWorkflowStepProgress(steps, steps.length, stepOutputs, stepUsedResources);
+                return { content: lastContent, thinking: allThinking.trim() };
+            } finally {
+                if (originalSubAgent) window.AppState.currentSubAgent = originalSubAgent;
+            }
         }
     };
 
