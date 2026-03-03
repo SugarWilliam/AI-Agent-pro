@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.2.2 - UI渲染模块
+ * AI Agent Pro v8.2.4 - UI渲染模块
  * 未来科技感UI
  */
 
@@ -448,7 +448,16 @@
             .replace(/&amp;lt;/g, '<').replace(/&amp;gt;/g, '>')
             .replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 
-        // 保存代码块，避免被其他规则处理
+        // 【关键】先提取图表类代码块（mermaid/chart/decision-matrix 等），必须在通用代码块之前
+        // 否则会被通用正则当作普通代码块处理，导致图表无法渲染
+        const diagramBlocks = [];
+        const diagramRegex = /```(mermaid|chart|decision-matrix|probability|decision-chain)\n([\s\S]*?)```/g;
+        text = text.replace(diagramRegex, (match, dtype, code) => {
+            diagramBlocks.push({ type: dtype, raw: match, code: code.trim() });
+            return `\x00DIAGRAM${diagramBlocks.length - 1}\x00`;
+        });
+
+        // 保存通用代码块，避免被其他规则处理
         const codeBlocks = [];
         text = text.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
             codeBlocks.push(`<pre class="code-block"><code class="language-${lang || 'text'}">${escapeHtml(code.trim())}</code></pre>`);
@@ -543,35 +552,16 @@
         // 恢复代码块
         text = text.replace(/\x00CODEBLOCK(\d+)\x00/g, (match, index) => codeBlocks[index]);
 
-        // 图表处理
-        // 坐标曲线图
-        text = text.replace(/```chart\n([\s\S]*?)```/g, (match, json) => {
-            const chartHtml = renderChart(match);
-            return chartHtml || match;
-        });
-
-        // 决策矩阵
-        text = text.replace(/```decision-matrix\n([\s\S]*?)```/g, (match) => {
-            const matrixHtml = renderDecisionMatrix(match);
-            return matrixHtml || match;
-        });
-
-        // 概率分布
-        text = text.replace(/```probability\n([\s\S]*?)```/g, (match) => {
-            const probHtml = renderProbabilityDistribution(match);
-            return probHtml || match;
-        });
-
-        // 决策链
-        text = text.replace(/```decision-chain\n([\s\S]*?)```/g, (match) => {
-            const chainHtml = renderDecisionChain(match);
-            return chainHtml || match;
-        });
-
-        // Mermaid图表
-        text = text.replace(/```mermaid\n([\s\S]*?)```/g, (match) => {
-            const mermaidHtml = renderMermaid(match);
-            return mermaidHtml || match;
+        // 恢复并渲染图表块（流程图、甘特图、决策矩阵等）
+        text = text.replace(/\x00DIAGRAM(\d+)\x00/g, (match, index) => {
+            const d = diagramBlocks[index];
+            if (!d) return '';
+            if (d.type === 'mermaid') return renderMermaid('```mermaid\n' + d.code + '\n```') || d.raw;
+            if (d.type === 'chart') return renderChart('```chart\n' + d.code + '\n```') || d.raw;
+            if (d.type === 'decision-matrix') return renderDecisionMatrix('```decision-matrix\n' + d.code + '\n```') || d.raw;
+            if (d.type === 'probability') return renderProbabilityDistribution('```probability\n' + d.code + '\n```') || d.raw;
+            if (d.type === 'decision-chain') return renderDecisionChain('```decision-chain\n' + d.code + '\n```') || d.raw;
+            return d.raw;
         });
 
         // 段落和换行处理
@@ -788,7 +778,19 @@
                 }
             }, 100);
             
-            return `<div class="chart-container" style="height: 300px; margin: 16px 0;"><canvas id="${chartId}"></canvas></div>`;
+            const chartCode = chartMatch[1];
+            const chartCodeEscaped = escapeHtml(chartCode);
+            return `<div class="diagram-block" data-diagram-type="chart" data-diagram-target="${chartId}">
+                <div class="diagram-toolbar">
+                    <button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>
+                    <button class="diagram-btn" data-action="download" title="下载为PNG"><i class="fas fa-download"></i> 下载</button>
+                    <button class="diagram-btn" data-action="preview" title="预览"><i class="fas fa-search-plus"></i> 预览</button>
+                    <button class="diagram-btn" data-action="code" title="查看/隐藏代码"><i class="fas fa-code"></i> 代码</button>
+                    <button class="diagram-btn" data-action="copy" title="复制代码"><i class="fas fa-copy"></i> 复制</button>
+                </div>
+                <div class="chart-container" style="height: 300px; margin: 16px 0;"><canvas id="${chartId}"></canvas></div>
+                <pre class="diagram-code-panel" style="display:none"><code>${chartCodeEscaped}</code></pre>
+            </div>`;
         } catch (e) {
             window.Logger?.error('Chart render error:', e);
             return null;
@@ -804,7 +806,14 @@
             const matrix = JSON.parse(matrixMatch[1]);
             const { alternatives, criteria, scores } = matrix;
             
-            let html = '<div class="decision-matrix-container">';
+            const matrixCode = matrixMatch[1];
+            const matrixCodeEscaped = escapeHtml(matrixCode);
+            let html = '<div class="diagram-block" data-diagram-type="decision-matrix"><div class="diagram-toolbar">
+                <button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>
+                <button class="diagram-btn" data-action="preview" title="预览"><i class="fas fa-search-plus"></i> 预览</button>
+                <button class="diagram-btn" data-action="code" title="查看/隐藏代码"><i class="fas fa-code"></i> 代码</button>
+                <button class="diagram-btn" data-action="copy" title="复制代码"><i class="fas fa-copy"></i> 复制</button>
+            </div><div class="decision-matrix-container">';
             html += '<h4><i class="fas fa-th"></i> 决策矩阵</h4>';
             html += '<table class="decision-matrix">';
             
@@ -839,7 +848,7 @@
                 html += `<div class="recommendation"><i class="fas fa-star"></i> 推荐方案: <strong>${escapeHtml(alternatives[bestIdx.idx])}</strong> (得分: ${bestIdx.score.toFixed(2)})</div>`;
             }
             
-            html += '</div>';
+            html += '</div><pre class="diagram-code-panel" style="display:none"><code>' + matrixCodeEscaped + '</code></pre></div>';
             return html;
         } catch (e) {
             window.Logger?.error('Decision matrix render error:', e);
@@ -898,7 +907,19 @@
                 }
             }, 100);
             
-            return `<div class="chart-container" style="height: 300px; margin: 16px 0;"><canvas id="${chartId}"></canvas></div>`;
+            const probCode = distMatch[1];
+            const probCodeEscaped = escapeHtml(probCode);
+            return `<div class="diagram-block" data-diagram-type="probability" data-diagram-target="${chartId}">
+                <div class="diagram-toolbar">
+                    <button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>
+                    <button class="diagram-btn" data-action="download" title="下载为PNG"><i class="fas fa-download"></i> 下载</button>
+                    <button class="diagram-btn" data-action="preview" title="预览"><i class="fas fa-search-plus"></i> 预览</button>
+                    <button class="diagram-btn" data-action="code" title="查看/隐藏代码"><i class="fas fa-code"></i> 代码</button>
+                    <button class="diagram-btn" data-action="copy" title="复制代码"><i class="fas fa-copy"></i> 复制</button>
+                </div>
+                <div class="chart-container probability-container" style="height: 300px; margin: 16px 0;"><canvas id="${chartId}"></canvas></div>
+                <pre class="diagram-code-panel" style="display:none"><code>${probCodeEscaped}</code></pre>
+            </div>`;
         } catch (e) {
             window.Logger?.error('Probability render error:', e);
             return null;
@@ -913,8 +934,15 @@
         try {
             const chain = JSON.parse(chainMatch[1]);
             const { nodes, edges } = chain;
+            const chainCode = chainMatch[1];
+            const chainCodeEscaped = escapeHtml(chainCode);
             
-            let html = '<div class="decision-chain-container">';
+            let html = '<div class="diagram-block" data-diagram-type="decision-chain"><div class="diagram-toolbar">';
+            html += '<button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>';
+            html += '<button class="diagram-btn" data-action="preview" title="预览"><i class="fas fa-search-plus"></i> 预览</button>';
+            html += '<button class="diagram-btn" data-action="code" title="查看/隐藏代码"><i class="fas fa-code"></i> 代码</button>';
+            html += '<button class="diagram-btn" data-action="copy" title="复制代码"><i class="fas fa-copy"></i> 复制</button>';
+            html += '</div><div class="decision-chain-container">';
             html += '<h4><i class="fas fa-project-diagram"></i> 决策链</h4>';
             html += '<div class="decision-chain">';
             
@@ -941,7 +969,7 @@
                 }
             });
             
-            html += '</div></div>';
+            html += '</div></div><pre class="diagram-code-panel" style="display:none"><code>' + chainCodeEscaped + '</code></pre></div>';
             return html;
         } catch (e) {
             window.Logger?.error('Decision chain render error:', e);
@@ -1032,11 +1060,122 @@
                 }
             }, 200);
             
-            return `<div class="mermaid-container"><div id="${mermaidId}" class="mermaid-wrapper">正在加载图表...</div></div>`;
+            const codeEscaped = escapeHtml(mermaidCode);
+            return `<div class="diagram-block" data-diagram-type="mermaid" data-diagram-target="${mermaidId}">
+                <div class="diagram-toolbar">
+                    <button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>
+                    <button class="diagram-btn" data-action="download" title="下载为PNG"><i class="fas fa-download"></i> 下载</button>
+                    <button class="diagram-btn" data-action="preview" title="预览"><i class="fas fa-search-plus"></i> 预览</button>
+                    <button class="diagram-btn" data-action="code" title="查看/隐藏代码"><i class="fas fa-code"></i> 代码</button>
+                    <button class="diagram-btn" data-action="copy" title="复制代码"><i class="fas fa-copy"></i> 复制</button>
+                </div>
+                <div class="mermaid-container"><div id="${mermaidId}" class="mermaid-wrapper">正在加载图表...</div></div>
+                <pre class="diagram-code-panel" style="display:none"><code>${codeEscaped}</code></pre>
+            </div>`;
         } catch (e) {
             window.Logger?.error('Mermaid parse error:', e);
             return null;
         }
+    }
+
+    /** 图表工具栏事件委托（全屏、下载、预览、代码、复制） */
+    function initDiagramToolbarEvents() {
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('.diagram-btn');
+            if (!btn) return;
+            const block = btn.closest('.diagram-block');
+            if (!block) return;
+            const action = btn.dataset.action;
+            const targetId = block.dataset.diagramTarget;
+            const codePanel = block.querySelector('.diagram-code-panel');
+            const codeEl = codePanel?.querySelector('code');
+            const vizContainer = block.querySelector('.mermaid-container, .chart-container, .decision-matrix-container, .probability-container, .decision-chain-container');
+            const svgEl = block.querySelector('.mermaid svg, .mermaid-container svg');
+
+            switch (action) {
+                case 'fullscreen':
+                    openDiagramFullscreen(block);
+                    break;
+                case 'download':
+                    if (svgEl) downloadDiagramAsPng(svgEl);
+                    else if (block.querySelector('canvas')) downloadChartAsPng(block.querySelector('canvas'));
+                    break;
+                case 'preview':
+                    openDiagramPreview(block);
+                    break;
+                case 'code':
+                    if (codePanel) {
+                        const isHidden = codePanel.style.display === 'none';
+                        codePanel.style.display = isHidden ? 'block' : 'none';
+                        if (vizContainer) vizContainer.style.display = isHidden ? 'none' : 'block';
+                        const icon = btn.querySelector('i');
+                        if (icon) {
+                            icon.className = isHidden ? 'fas fa-eye-slash' : 'fas fa-code';
+                        }
+                    }
+                    break;
+                case 'copy':
+                    if (codeEl) {
+                        navigator.clipboard.writeText(codeEl.textContent).then(() => {
+                            const orig = btn.innerHTML;
+                            btn.innerHTML = '<i class="fas fa-check"></i> 已复制';
+                            setTimeout(() => { btn.innerHTML = orig; }, 1500);
+                        });
+                    }
+                    break;
+            }
+        });
+    }
+
+    function openDiagramFullscreen(block) {
+        const overlay = document.createElement('div');
+        overlay.className = 'diagram-fullscreen-overlay';
+        overlay.innerHTML = `<div class="diagram-fullscreen-content"><button class="diagram-close-btn"><i class="fas fa-times"></i></button><div class="diagram-fullscreen-body"></div></div>`;
+        const body = overlay.querySelector('.diagram-fullscreen-body');
+        const viz = block.querySelector('.mermaid-container, .chart-container, .decision-matrix-container, .probability-container, .decision-chain-container');
+        if (viz) {
+            const canvas = viz.querySelector('canvas');
+            if (canvas) {
+                const img = document.createElement('img');
+                img.src = canvas.toDataURL('image/png');
+                img.style.maxWidth = '100%';
+                img.style.maxHeight = '90vh';
+                body.appendChild(img);
+            } else {
+                body.appendChild(viz.cloneNode(true));
+            }
+        }
+        overlay.querySelector('.diagram-close-btn').onclick = () => overlay.remove();
+        overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+        document.body.appendChild(overlay);
+    }
+
+    function openDiagramPreview(block) {
+        openDiagramFullscreen(block);
+    }
+
+    function downloadDiagramAsPng(svgEl) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const svgData = new XMLSerializer().serializeToString(svgEl);
+        const img = new Image();
+        img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            const a = document.createElement('a');
+            a.download = 'diagram-' + Date.now() + '.png';
+            a.href = canvas.toDataURL('image/png');
+            a.click();
+        };
+        img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+    }
+
+    function downloadChartAsPng(canvas) {
+        const a = document.createElement('a');
+        a.download = 'chart-' + Date.now() + '.png';
+        a.href = canvas.toDataURL('image/png');
+        a.click();
     }
 
     // ==================== 检测输出格式 ====================
@@ -3815,11 +3954,15 @@ ${ex.content}`).join('\n\n')}
         }
     }
 
-    // 初始化设置事件
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initSettingsEvents);
-    } else {
+    // 初始化设置事件与图表工具栏
+    function initUIEvents() {
         initSettingsEvents();
+        if (typeof initDiagramToolbarEvents === 'function') initDiagramToolbarEvents();
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initUIEvents);
+    } else {
+        initUIEvents();
     }
 
     // ==================== 暴露到全局 ====================

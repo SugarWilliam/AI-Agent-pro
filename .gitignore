@@ -69,7 +69,8 @@ test/*.md
 !test/PDF_DIAGNOSTIC.html
 !test/TEST_PDF_PARSE.html
 
-# SSH相关文件（不要提交私钥）
+# SSH相关文件（不要提交私钥和公钥到仓库）
 git-ssh-wrapper.sh
 ssh_private_key
 ssh_public_key.txt
+ssh_public_key.pub

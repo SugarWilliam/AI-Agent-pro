@@ -1,21 +1,15 @@
 # GitHub上传和部署指南
 
-**版本**: v8.2.2  
-**日期**: 2026-03-01
+**版本**: v8.2.4  
+**日期**: 2026-03-03
 
 ---
 
 ## 📋 当前状态
 
 ### Git仓库信息
-- **远程仓库**: `git@github.com:SugarWilliam/AI-Agent-pro.git`
-- **当前分支**: `gh-pages`
-- **最新提交**: `7a11d27` - feat: 更新到v8.1.0
-
-### 已完成的步骤
-- ✅ 所有文件已添加到暂存区
-- ✅ 已提交更改（31个文件，2656行新增，1948行删除）
-- ⏳ 等待推送到GitHub（需要网络权限）
+- **远程仓库**: `https://github.com/SugarWilliam/AI-Agent-pro.git`
+- **部署分支**: `gh-pages`
 
 ---
 
@@ -23,10 +17,8 @@
 
 ### 步骤1: 推送到GitHub
 
-由于当前环境网络受限，请手动执行以下命令：
-
 ```bash
-cd /home/pyc/ai-agent-pro-source/AI-Agent-pro
+cd /path/to/Agent-pro
 
 # 推送到gh-pages分支（GitHub Pages部署分支）
 git push origin gh-pages
@@ -58,28 +50,6 @@ git push origin main
 ```
 https://sugarwilliam.github.io/AI-Agent-pro/
 ```
-
----
-
-## 📝 提交信息
-
-### 最新提交详情
-
-**提交ID**: `7a11d27`  
-**提交信息**: `feat: 更新到v8.1.0 - 更新功能说明书、优化菜单链接、统一版本号`
-
-**更改统计**:
-- 31个文件更改
-- 2656行新增
-- 1948行删除
-
-**主要更改**:
-- ✅ 删除12个临时/冗余文档（已归档）
-- ✅ 更新所有代码文件版本号到v8.1.0
-- ✅ 更新所有文档文件版本号到v8.1.0
-- ✅ 更新功能说明书内容
-- ✅ 添加功能说明书菜单链接
-- ✅ 创建版本更新总结文档
 
 ---
 

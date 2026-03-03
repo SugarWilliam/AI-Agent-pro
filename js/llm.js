@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.2.2 - LLM服务
+ * AI Agent Pro v8.2.4 - LLM服务
  * 多模态输入输出支持
  */
 
@@ -110,14 +110,14 @@
             const subAgent = subAgentId
                 ? (window.AppState?.subAgents?.[subAgentId] || window.AIAgentApp.getCurrentSubAgent())
                 : window.AIAgentApp.getCurrentSubAgent();
-            const resources = window.AIAgentApp.getSubAgentResources(subAgent.id);
+            const resources = window.AIAgentApp.getSubAgentResources(subAgent?.id) || { skills: [], rules: [], mcp: [], rag: [] };
             
             // 4. 调用相关Skills
-            const skillPrompts = this.buildSkillPrompts(resources.skills, taskAnalysis);
+            const skillPrompts = this.buildSkillPrompts(resources.skills || [], taskAnalysis);
             const usedSkillNames = (resources.skills || []).filter(s => s?.prompt).map(s => s.name).filter(Boolean);
             
             // 5. 应用Rules
-            const rulesPrompt = this.buildRulesPrompt(resources.rules);
+            const rulesPrompt = this.buildRulesPrompt(resources.rules || []);
             
             // 6. 初始化RAG上下文（提前声明，以便搜索时可以添加内容）
             let ragContext = '';

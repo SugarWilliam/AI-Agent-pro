@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-8.2.2-blue.svg)
+![Version](https://img.shields.io/badge/version-8.2.4-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Web-lightgrey.svg)
 
@@ -365,6 +365,16 @@ http://localhost:8080/test/comprehensive-test.html
 ---
 
 ## 📝 更新日志
+
+### v8.2.4 (2026-03-03)
+
+- 版本号更新至 8.2.4
+
+### v8.2.3 (2026-03-03)
+
+- Workflow 修复、工作秘书重构、IndexedDB 持久化
+- 图表渲染修复、工具栏（全屏/下载/预览/代码/复制）
+- 空指针防护、排版优化
 
 ### v8.2.2 (2026-03-01)
 - ✅ 工程评审报告（docs/PROJECT_REVIEW.md）

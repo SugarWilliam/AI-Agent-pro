@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.2.2 - 计划模式模块
+ * AI Agent Pro v8.2.4 - 计划模式模块
  * TODO制定与执行跟踪
  */
 
@@ -61,10 +61,10 @@
                 todos: [],
                 resources: {
                     subAgent: subAgent.id,
-                    skills: resources.skills.map(s => s.id),
-                    rules: resources.rules.map(r => r.id),
-                    mcp: resources.mcp.map(m => m.id),
-                    rag: resources.rag.map(r => r.id)
+                    skills: (resources?.skills || []).map(s => s.id),
+                    rules: (resources?.rules || []).map(r => r.id),
+                    mcp: (resources?.mcp || []).map(m => m.id),
+                    rag: (resources?.rag || []).map(r => r.id)
                 },
                 metadata: {
                     taskType,
@@ -82,11 +82,12 @@
         },
 
         buildAnalysisPrompt(title, description, resources) {
+            resources = resources || { skills: [], rules: [], mcp: [], rag: [] };
             let prompt = `请分析以下任务，并制定详细的执行计划（TODO List）：\n\n`;
             prompt += `任务标题: ${title}\n`;
             prompt += `任务描述: ${description}\n\n`;
 
-            if (resources.skills.length > 0) {
+            if (resources.skills?.length > 0) {
                 prompt += `可用技能:\n`;
                 resources.skills.forEach(s => {
                     prompt += `- ${s.name}: ${s.description}\n`;
@@ -94,7 +95,7 @@
                 prompt += `\n`;
             }
 
-            if (resources.rules.length > 0) {
+            if (resources.rules?.length > 0) {
                 prompt += `适用规则:\n`;
                 resources.rules.forEach(r => {
                     prompt += `- ${r.name}: ${r.description}\n`;
@@ -102,7 +103,7 @@
                 prompt += `\n`;
             }
 
-            if (resources.mcp.length > 0) {
+            if (resources.mcp?.length > 0) {
                 prompt += `可用工具:\n`;
                 resources.mcp.forEach(m => {
                     prompt += `- ${m.name}: ${m.description}\n`;
@@ -110,7 +111,7 @@
                 prompt += `\n`;
             }
 
-            if (resources.rag.length > 0) {
+            if (resources.rag?.length > 0) {
                 prompt += `知识库:\n`;
                 resources.rag.forEach(r => {
                     prompt += `- ${r.name}: ${r.description}\n`;

@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.1.0 - 未来科技风格样式
+ * AI Agent Pro v8.2.4 - 未来科技风格样式
  * AI时代智能化界面设计
  */
 
@@ -3018,26 +3018,39 @@ body {
     font-size: 12px;
 }
 
+/* 标题层级：清晰层级与间距 */
 .message-body h1, .message-body h2, .message-body h3, .message-body h4 {
-    margin: 14px 0 8px;
+    margin: 18px 0 10px;
     font-weight: 600;
+    line-height: 1.4;
+    color: var(--text-primary);
 }
-
-.message-body h1 { font-size: 18px; }
-.message-body h2 { font-size: 16px; }
+.message-body h1:first-child, .message-body h2:first-child,
+.message-body h3:first-child, .message-body h4:first-child {
+    margin-top: 0;
+}
+.message-body h1 { font-size: 18px; letter-spacing: 0.02em; }
+.message-body h2 { font-size: 16px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
 .message-body h3 { font-size: 15px; }
 .message-body h4 { font-size: 14px; }
 
+/* 段落：行高与间距优化 */
 .message-body p {
-    margin: 8px 0;
+    margin: 10px 0;
+    line-height: 1.7;
+    color: var(--text-primary);
 }
 
+/* 列表：层级清晰、缩进明确 */
 .message-body ul, .message-body ol {
-    margin: 8px 0;
-    padding-left: 18px;
+    margin: 10px 0;
+    padding-left: 22px;
+    line-height: 1.6;
 }
-
 .message-body li {
+    margin: 6px 0;
+}
+.message-body li > ul, .message-body li > ol {
     margin: 4px 0;
 }
 
@@ -3228,7 +3241,117 @@ body {
     margin-bottom: 4px;
 }
 
+/* ==================== 图表工具栏与全屏 ==================== */
+.diagram-block {
+    position: relative;
+    margin: 16px 0;
+}
+
+.diagram-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.diagram-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.diagram-btn:hover {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: rgba(0, 212, 255, 0.1);
+}
+
+.diagram-btn i {
+    font-size: 11px;
+}
+
+.diagram-code-panel {
+    margin: 0;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    font-size: 12px;
+    overflow-x: auto;
+}
+
+.diagram-code-panel code {
+    font-family: var(--font-mono);
+}
+
+.diagram-fullscreen-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.diagram-fullscreen-content {
+    position: relative;
+    max-width: 95vw;
+    max-height: 95vh;
+    overflow: auto;
+}
+
+.diagram-close-btn {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    padding: 8px 14px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+}
+
+.diagram-close-btn:hover {
+    color: var(--primary);
+}
+
+.diagram-fullscreen-body {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 24px;
+}
+
+.diagram-fullscreen-body .mermaid-container,
+.diagram-fullscreen-body .chart-container {
+    margin: 0;
+}
+
 /* ==================== Mermaid图表样式 ==================== */
+.diagram-block .mermaid-container,
+.diagram-block .chart-container,
+.diagram-block .decision-matrix-container,
+.diagram-block .decision-chain-container {
+    border-radius: 0;
+    margin: 0;
+}
+
 .mermaid-container {
     background: var(--bg-card);
     border: 1px solid var(--border);

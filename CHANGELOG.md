@@ -4,26 +4,41 @@
 
 ---
 
+## [8.2.4] - 2026-03-03
+
+### 版本号更新
+
+- 统一版本号至 v8.2.4
+
+---
+
 ## [8.2.3] - 2026-03-03
 
-### Workflow 与工作秘书增强
+### 全面评审与增强
 
 **主要变更**
 
-- **Workflow 流程修复**
-  - 修复前级到下一级传递时 instruction 丢失问题
-  - 上一级输出超长时自动截断（12000 字符），避免 token 溢出导致 API 报错
+- **Workflow 与工作秘书**
+  - 修复前级到下一级 instruction 丢失、长内容截断防 token 溢出
+  - 工作秘书首尾结构、取消默认 delegateTo、默认超级决策能力
+  - 工作秘书系统提示词支持服务对象占位符
 
-- **工作秘书 SubAgent 重构**
-  - 取消默认 delegateTo 关联，用户按需配置
-  - 工作秘书作为组织者：首步分析任务并调度、末步整合输出
-  - 流程结构：工作秘书(分析调度) → 所选助手 → 工作秘书(整合输出)
-  - 中间过程由工作秘书监控，最终输出由工作秘书完成
+- **图表渲染与交互**
+  - 修复 Mermaid/流程图/甘特图/决策矩阵不渲染（图表块优先于通用代码块提取）
+  - 图表工具栏：全屏、下载、预览、代码、复制
+  - 消息排版优化（标题层级、行高、段落间距）
 
-- **工作秘书默认超级决策能力**
-  - 新增 skills：skill_decision_expert、skill_cognitive_psychology、skill_swot、skill_first_principles、skill_iceberg_model、skill_pyramid、skill_smart
-  - 新增 rag：rag_first_principles、rag_iceberg_model、rag_psychology、rag_neuroscience、rag_common_sense、rag_history、rag_industry_reports、rag_government_reports、rag_finance、rag_social
-  - 新增 mcp：mcp_calculator
+- **持久化**
+  - IndexedDB 存储层，大容量无 5MB 限制
+  - localStorage 双写备份，file:// 协议提示
+
+- **Bug 修复**
+  - plan.js、app.js、llm.js 空指针防护（resources 空值）
+  - StorageService 异常日志
+
+- **项目整理**
+  - 版本号统一至 v8.2.3
+  - 文档更新、冗余文件清理
 
 ---
 
@@ -92,6 +107,7 @@
 
 ---
 
+[8.2.4]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.4
 [8.2.3]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.3
 [8.2.2]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.2
 [8.2.1]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.1

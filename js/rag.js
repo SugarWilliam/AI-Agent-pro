@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.2.2 - RAG文档解析与向量化模块
+ * AI Agent Pro v8.2.4 - RAG文档解析与向量化模块
  * 支持PDF、DOC、网页、文本的解析和语义检索
  */
 

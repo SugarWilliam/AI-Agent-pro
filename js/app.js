@@ -1,17 +1,19 @@
 /**
- * AI Agent Pro v8.2.3 - 应用状态管理
+ * AI Agent Pro v8.2.4 - 应用状态管理
  * 多模态AI Agent - 支持输入输出多模态
  */
 
 (function() {
     'use strict';
 
-    const VERSION = '8.2.3';
+    const VERSION = '8.2.4';
     const STORAGE_KEY = 'ai_agent_state_v6';
     const CUSTOM_MODELS_KEY = 'ai_agent_custom_models_v6';
     const CUSTOM_SUBAGENTS_KEY = 'ai_agent_custom_subagents_v6';
     const SYNC_CONFIG_KEY = 'ai_agent_sync_config_v6';
     const RAG_VECTORS_KEY = 'ai_agent_rag_vectors_v6';
+    const SUBAGENT_CONFIGS_KEY = 'ai_agent_subagent_configs_v6';
+    const JINA_AI_KEY = 'ai_agent_jina_ai_config_v6';
 
     // ==================== 防抖和保存优化 ====================
     let saveTimeout = null;
@@ -2250,7 +2252,10 @@ ${prompt}
         
         updateSplashProgress(70, '正在恢复状态...');
         await sleep(300);
-        loadState();
+        if (window.location.protocol === 'file:') {
+            window.Logger?.warn?.('当前为 file:// 协议，建议使用本地服务器（如 ./start-server.sh）以获得稳定持久化');
+        }
+        await loadState();
         
         updateSplashProgress(80, '正在加载SubAgent配置...');
         await sleep(200);
@@ -2259,7 +2264,7 @@ ${prompt}
         updateSplashProgress(85, '正在加载配置...');
         await sleep(300);
         loadSyncConfig();
-        loadRagVectors();
+        await loadRagVectors();
         loadJinaAIConfig();
         
         // 初始化RAGManager
@@ -2356,11 +2361,23 @@ ${prompt}
         }
     }
 
-    function loadState() {
+    async function loadState() {
         try {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                const state = JSON.parse(saved);
+            await (window.StorageService?.init?.() ?? Promise.resolve());
+            let state = null;
+            if (window.StorageService?.get) {
+                state = await window.StorageService.get(STORAGE_KEY);
+            }
+            if (!state) {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    state = JSON.parse(saved);
+                    if (window.StorageService?.set) {
+                        window.StorageService.set(STORAGE_KEY, state).catch(err => window.Logger?.warn?.('Storage save failed:', err?.message));
+                    }
+                }
+            }
+            if (state) {
                 if (state.chats && Array.isArray(state.chats)) {
                     AppState.chats = state.chats;
                     window.Logger?.debug(`加载了 ${state.chats.length} 个历史会话，currentChatId=${state.currentChatId || '无'}`);
@@ -2427,6 +2444,9 @@ ${prompt}
                 version: AppState.version
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            if (window.StorageService?.set) {
+                window.StorageService.set(STORAGE_KEY, state).catch(err => window.Logger?.warn?.('Storage save failed:', err?.message));
+            }
             
             // 同时保存subagent配置（包括自定义和内置的配置修改）
             saveSubAgentConfigs();
@@ -2560,12 +2580,19 @@ ${prompt}
         }
     }
 
-    function loadRagVectors() {
+    async function loadRagVectors() {
         try {
-            const saved = localStorage.getItem(RAG_VECTORS_KEY);
-            if (saved) {
-                AppState.ragVectors = JSON.parse(saved);
+            let data = null;
+            if (window.StorageService?.get) {
+                data = await window.StorageService.get(RAG_VECTORS_KEY);
             }
+            if (!data && localStorage.getItem(RAG_VECTORS_KEY)) {
+                data = JSON.parse(localStorage.getItem(RAG_VECTORS_KEY));
+                if (window.StorageService?.set) {
+                    window.StorageService.set(RAG_VECTORS_KEY, data).catch(err => window.Logger?.warn?.('Storage save failed:', err?.message));
+                }
+            }
+            if (data) AppState.ragVectors = data;
         } catch (e) {
             window.Logger?.error('加载RAG向量失败:', e);
         }
@@ -2574,6 +2601,9 @@ ${prompt}
     function saveRagVectors() {
         try {
             localStorage.setItem(RAG_VECTORS_KEY, JSON.stringify(AppState.ragVectors));
+            if (window.StorageService?.set) {
+                window.StorageService.set(RAG_VECTORS_KEY, AppState.ragVectors).catch(err => window.Logger?.warn?.('Storage save failed:', err?.message));
+            }
         } catch (e) {
             window.Logger?.error('保存RAG向量失败:', e);
         }
@@ -2770,8 +2800,9 @@ ${prompt}
 
     // 获取Sub Agent引用的资源
     function getSubAgentResources(subAgentId) {
-        const subAgent = AppState.subAgents[subAgentId];
-        if (!subAgent) return null;
+        const subAgent = AppState.subAgents?.[subAgentId];
+        const empty = { skills: [], rules: [], mcp: [], rag: [] };
+        if (!subAgent || !AppState.resources) return empty;
         
         return {
             skills: AppState.resources.skills.filter(s => subAgent.skills?.includes(s.id) && s.enabled),
@@ -2784,10 +2815,10 @@ ${prompt}
     // 构建系统提示词
     function buildSystemPrompt() {
         const subAgent = getCurrentSubAgent();
-        const resources = getSubAgentResources(subAgent.id);
+        const resources = getSubAgentResources(subAgent?.id) || { skills: [], rules: [], mcp: [], rag: [] };
         
-        let prompt = `你是「${subAgent.name}」，${subAgent.description}\n\n`;
-        prompt += subAgent.systemPrompt + '\n\n';
+        let prompt = `你是「${subAgent?.name || '助手'}」，${subAgent?.description || ''}\n\n`;
+        prompt += (subAgent?.systemPrompt || '') + '\n\n';
         
         // 添加Rules（按优先级排序）
         if (resources.rules && resources.rules.length > 0) {
