@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.2.5 - LLM服务
+ * AI Agent Pro v8.3.0 - LLM服务
  * 多模态输入输出支持
  */
 
@@ -95,7 +95,8 @@
                 outputFormat = 'markdown',
                 taskType = 'general',
                 isWorkflow = false,
-                subAgentId = null
+                subAgentId = null,
+                agentCardsPrompt = ''
             } = options;
 
             // 1. 分析任务类型
@@ -376,7 +377,8 @@
                 mcpResults,
                 ragContext,
                 outputFormat,
-                isWorkflow
+                isWorkflow,
+                agentCardsPrompt
             });
 
             // 10. 调用LLM
@@ -480,8 +482,90 @@
             }
         },
 
+        /**
+         * 构建 AgentCard 列表（A2A 风格），供主 Agent 分析任务时选择调度
+         * 能力描述优先用 capabilities，不足时从关联 skills 的 description 补充
+         */
+        buildAgentCards(mainId, delegateIds) {
+            const subAgents = window.AppState?.subAgents || {};
+            const skills = window.AppState?.resources?.skills || [];
+            const skillMap = {};
+            (skills || []).forEach(s => { if (s?.id) skillMap[s.id] = s; });
+            return (delegateIds || [])
+                .filter(id => subAgents[id] && id !== mainId)
+                .map(id => {
+                    const a = subAgents[id];
+                    let caps = (a.capabilities || []).slice(0, 6);
+                    if (caps.length < 3 && (a.skills || []).length > 0) {
+                        const fromSkills = (a.skills || [])
+                            .map(sid => skillMap[sid]?.description?.split(/[、,，]/)[0]?.trim())
+                            .filter(Boolean)
+                            .slice(0, 5);
+                        caps = [...new Set([...caps, ...fromSkills])].slice(0, 8);
+                    }
+                    return {
+                        id,
+                        name: a.name || id,
+                        description: (a.description || '').substring(0, 150),
+                        capabilities: caps.length > 0 ? caps : [(a.description || '').substring(0, 80)]
+                    };
+                });
+        },
+
+        /**
+         * 将 AgentCard 格式化为可注入 systemPrompt 的文本
+         * 含 capabilities 列，便于主 Agent 根据能力选人、制定工作流
+         */
+        formatAgentCardsForPrompt(cards) {
+            if (!cards || cards.length === 0) return '';
+            const capStr = c => ((c.capabilities || []).slice(0, 6).join('、') || '-').substring(0, 100);
+            const rows = cards.map(c => `| ${c.id} | ${c.name} | ${c.description} | ${capStr(c)} |`).join('\n');
+            return `【可选调度助手】根据任务分析，选择需要的助手及执行顺序。下表列出各助手的能力，请根据任务匹配最合适的助手：
+
+| id | name | description | capabilities |
+|----|------|-------------|--------------|
+${rows}
+
+若需自定义顺序或仅调用部分助手，请在输出末尾包含 \`\`\`schedule 代码块：
+
+\`\`\`schedule
+{"schedule":[{"agentId":"plan","instruction":"制定计划"},{"agentId":"task","instruction":"拆解TODO"}]}
+\`\`\`
+
+- agentId 必须为上表中的 id
+- 可只选部分助手（如只需 plan 和 task 则只列二者）
+- instruction 为该步骤的具体指令
+- 若不输出此块，将按默认顺序执行全部\n\n`;
+        },
+
+        /**
+         * 从主 Agent 输出中解析 schedule JSON
+         * @returns {Array|null} [{agentId, instruction}] 或 null
+         */
+        parseScheduleFromOutput(output, delegateIds) {
+            if (!output || typeof output !== 'string' || !delegateIds?.length) return null;
+            const set = new Set(delegateIds);
+            const match = output.match(/```(?:schedule|json)\s*([\s\S]*?)```/);
+            if (!match) return null;
+            try {
+                const obj = JSON.parse(match[1].trim());
+                const schedule = obj?.schedule;
+                if (!Array.isArray(schedule) || schedule.length === 0) return null;
+                const valid = schedule.filter(s => s && s.agentId && set.has(String(s.agentId).trim()));
+                if (valid.length === 0) return null;
+                return valid.map(s => ({
+                    agentId: String(s.agentId).trim(),
+                    label: (s.instruction || '').trim(),
+                    instruction: (s.instruction || '').trim()
+                }));
+            } catch (e) {
+                window.Logger?.debug?.('parseScheduleFromOutput 解析失败:', e?.message);
+                return null;
+            }
+        },
+
         // 构建增强系统提示词
-        buildEnhancedSystemPrompt({ subAgent, skillPrompts, rulesPrompt, mcpResults, ragContext, outputFormat, isWorkflow = false }) {
+        buildEnhancedSystemPrompt({ subAgent, skillPrompts, rulesPrompt, mcpResults, ragContext, outputFormat, isWorkflow = false, agentCardsPrompt = '' }) {
             const ragContextStr = typeof ragContext === 'string' ? ragContext : (ragContext?.context ?? '');
             let prompt = `你是「${subAgent.name}」，${subAgent.description}\n\n`;
             if (subAgent.id === 'work_secretary') {
@@ -496,6 +580,9 @@
             }
             if (isWorkflow) {
                 prompt += `【Workflow 模式】请按以下流程执行：1.分析用户问题 2.以自身知识为主，网络搜索仅弥补知识滞后（如新闻）；若与自身知识冲突，先判断新知识时效性与真实性再酌情采用 3.整合信息 4.输出结论与洞察。直接给出结果，避免冗长分析过程。\n\n`;
+            }
+            if (agentCardsPrompt) {
+                prompt += agentCardsPrompt;
             }
             let sysPrompt = subAgent.systemPrompt || '';
             if (subAgent.id === 'work_secretary' && sysPrompt.includes('{{serviceTarget}}')) {
@@ -3057,9 +3144,10 @@
             window.AIAgentUI?.showWorkflowStepProgress?.(steps);
         },
 
-        async runWorkflowChain(chainSteps, task, _messages, modelId, onStream) {
+        async runWorkflowChain(chainSteps, task, _messages, modelId, onStream, workflowOptions = {}) {
+            const { enableDynamicSchedule = false, mainAgentId = '', delegateIds = [] } = workflowOptions;
             const chain = Array.isArray(chainSteps) ? chainSteps : [];
-            const steps = chain.map(s => {
+            let steps = chain.map(s => {
                 if (typeof s === 'string') return { agentId: s, label: '', instruction: '' };
                 const inst = s?.instruction ?? s?.label ?? '';
                 return { agentId: s?.agentId || '', label: s?.label || inst, instruction: inst };
@@ -3098,18 +3186,43 @@
                     const instructionPrefix = instruction ? `【本步骤要求】${instruction}\n\n` : '';
                     if (isFirst) {
                         messages = [{ role: 'user', content: instructionPrefix + (instruction ? `【用户任务】\n${task}` : task) }];
-                    } else {
-                        const prevLabel = (steps[i - 1].instruction || steps[i - 1].label) || window.AppState.subAgents?.[steps[i - 1].agentId]?.name || steps[i - 1].agentId;
-                        // 限制上一级输出长度，避免 token 溢出导致 API 报错（约 12k 字符 ≈ 8k tokens）
+                    }
+                    let agentCardsPrompt = '';
+                    if (isFirst && enableDynamicSchedule && mainAgentId && delegateIds.length > 0 && agentId === mainAgentId) {
+                        const cards = this.buildAgentCards(mainAgentId, delegateIds);
+                        agentCardsPrompt = this.formatAgentCardsForPrompt(cards);
+                    }
+                    if (!isFirst) {
                         const MAX_PREV_CONTENT = 12000;
-                        const prevContent = (typeof lastContent === 'string' && lastContent.length > MAX_PREV_CONTENT)
-                            ? lastContent.substring(0, MAX_PREV_CONTENT) + `\n\n...[内容已截断，共 ${lastContent.length} 字符，此处仅保留前 ${MAX_PREV_CONTENT} 字符]`
-                            : (lastContent || '');
-                        messages = [
-                            { role: 'user', content: task },
-                            { role: 'assistant', content: prevContent },
-                            { role: 'user', content: instructionPrefix + `【上一步（${prevLabel}）的输出】\n\n${prevContent}\n\n请基于以上内容，结合本步骤要求，继续执行${isLast ? '并输出最终结果' : '，为下一步提供输入'}` }
-                        ];
+                        const MAX_PER_STEP = 4000; // 整合步骤中每步输出最大字符
+                        if (isLast && stepOutputs.filter(Boolean).length > 0) {
+                            // 整合步骤：汇总所有已执行步骤的输出，供主 Agent 完整整合
+                            const parts = [];
+                            for (let k = 0; k < i; k++) {
+                                const out = stepOutputs[k];
+                                if (!out) continue;
+                                const label = (steps[k].instruction || steps[k].label) || window.AppState.subAgents?.[steps[k].agentId]?.name || steps[k].agentId;
+                                const truncated = (typeof out === 'string' && out.length > MAX_PER_STEP)
+                                    ? out.substring(0, MAX_PER_STEP) + `\n...[已截断，共 ${out.length} 字符]`
+                                    : (out || '');
+                                parts.push(`【步骤 ${k + 1} - ${label}】\n${truncated}`);
+                            }
+                            let contextContent = parts.join('\n\n---\n\n');
+                            if (contextContent.length > MAX_PREV_CONTENT) {
+                                contextContent = contextContent.substring(0, MAX_PREV_CONTENT) + `\n\n...[已截断，共 ${contextContent.length} 字符]`;
+                            }
+                            messages = [{ role: 'user', content: instructionPrefix + `【用户任务】\n${task}\n\n【各步骤输出汇总】\n\n${contextContent}\n\n请基于以上各步骤的完整输出，整合并完成最终结论与交付物。` }];
+                        } else {
+                            const prevLabel = (steps[i - 1].instruction || steps[i - 1].label) || window.AppState.subAgents?.[steps[i - 1].agentId]?.name || steps[i - 1].agentId;
+                            const prevContent = (typeof lastContent === 'string' && lastContent.length > MAX_PREV_CONTENT)
+                                ? lastContent.substring(0, MAX_PREV_CONTENT) + `\n\n...[内容已截断，共 ${lastContent.length} 字符]`
+                                : (lastContent || '');
+                            messages = [
+                                { role: 'user', content: task },
+                                { role: 'assistant', content: prevContent },
+                                { role: 'user', content: instructionPrefix + `【上一步（${prevLabel}）的输出】\n\n${prevContent}\n\n请基于以上内容，结合本步骤要求，继续执行，为下一步提供输入` }
+                            ];
+                        }
                     }
                     const streamCallback = (content) => {
                         stepOutputs[i] = content;
@@ -3123,7 +3236,8 @@
                         outputFormat: 'markdown',
                         taskType: 'general',
                         isWorkflow: true,
-                        subAgentId: agentId
+                        subAgentId: agentId,
+                        agentCardsPrompt
                     });
                     lastContent = result?.content || '';
                     stepOutputs[i] = lastContent;
@@ -3131,6 +3245,15 @@
                     this._updateWorkflowStepProgress(steps, i + 1, stepOutputs, stepUsedResources);
                     if (result?.thinking) {
                         allThinking += `\n\n--- ${stepLabel} 思考过程 ---\n${result.thinking}`;
+                    }
+                    // 动态调度：步骤 0 完成后解析 schedule，若有效则替换链中 delegate 部分
+                    if (isFirst && enableDynamicSchedule && mainAgentId && delegateIds.length > 0 && steps.length > 2) {
+                        const parsed = this.parseScheduleFromOutput(lastContent, delegateIds);
+                        if (parsed && parsed.length > 0) {
+                            const integrateStep = steps[steps.length - 1];
+                            steps = [steps[0], ...parsed, integrateStep];
+                            window.Logger?.info?.('✅ 动态调度生效，链已按主 Agent 输出更新:', parsed.map(p => p.agentId).join(' → '));
+                        }
                     }
                 }
                 this._updateWorkflowStepProgress(steps, steps.length, stepOutputs, stepUsedResources);

@@ -26,12 +26,12 @@ cd "$SCRIPT_DIR"
 echo "工作目录: $SCRIPT_DIR"
 echo ""
 echo "启动HTTP服务器..."
-echo "本机访问: http://localhost:8888"
-echo "局域网访问: http://$(hostname -I 2>/dev/null | awk '{print $1}'):8888"
+echo "本机访问: http://localhost:8080"
+echo "局域网访问: http://$(hostname -I 2>/dev/null | awk '{print $1}'):8080"
 echo ""
 echo "按 Ctrl+C 停止服务器"
 echo "=========================================="
 echo ""
 
 # 启动服务器（--bind 0.0.0.0 允许局域网访问）
-$PYTHON_CMD -m http.server 8888 --bind 0.0.0.0
+$PYTHON_CMD -m http.server 8080 --bind 0.0.0.0

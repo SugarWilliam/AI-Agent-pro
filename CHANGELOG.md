@@ -4,6 +4,44 @@
 
 ---
 
+## [8.3.0] - 2026-03-03
+
+### A2A 重大升级
+
+**主 Agent 智能化调度**
+- 主 Agent 分析任务后根据 AgentCard 能力选择与排序助手
+- AgentCard 含 capabilities 列，从 skills 补充能力描述
+- parseScheduleFromOutput 解析 schedule，支持子集选择与重排
+- 整合步骤接收全部 stepOutputs
+
+**设计文档**
+- `docs/DESIGN_A2A.md`：A2A 自主调度完整设计（含需求解读、完备性结论）
+- 主设计文档增加 A2A 链接
+
+**其他修复**
+- 设置/会话/SubAgent 绑定刷新后恢复默认：主状态优先 localStorage、subAgentConfigs 并入主状态
+- 消息下载：跨会话查找、错误提示、PDF 弹窗拦截检测
+- 输出渲染：含图表块时强制 markdown、```json 识别 project-dashboard、```html 内嵌 JSON 提取
+
+**文档与菜单**
+- 菜单设计/部署/功能说明改为 H5 链接（保留 MD 双文档）
+- 新增 `AI-Agent-Pro-Deployment.html`，补充 start-server.sh
+- 冗余文档已合并至 DESIGN_A2A.md（A2A_COMPLETENESS_ANALYSIS、DESIGN_A2A_ORCHESTRATION 内容已整合）
+
+---
+
+## [8.2.6] - 2026-03-03
+
+### A2A 风格自主调度（初版）
+
+- **设计书**：`docs/DESIGN_A2A.md`（可发布级）
+- **主 Agent 根据任务分析流程**：输出 schedule JSON 指定执行顺序
+- **AgentCard**：buildAgentCards、formatAgentCardsForPrompt
+- **parseScheduleFromOutput**：解析并动态替换链
+- **单元测试**：`test/test-a2a-orchestration.js`、`test/test-a2a-orchestration.html`
+
+---
+
 ## [8.2.5] - 2026-03-03
 
 > **预发布版本**：此版本标注为非生产就绪（Pre-release / non-production ready）
@@ -139,6 +177,8 @@
 
 ---
 
+[8.3.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.0
+[8.2.6]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.6
 [8.2.5]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.5
 [8.2.4]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.4
 [8.2.3]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.3

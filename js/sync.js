@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.2.5 - 云同步服务
+ * AI Agent Pro v8.3.0 - 云同步服务
  * 支持私人云端服务器对接
  */
 
@@ -83,7 +83,7 @@
 
             try {
                 const data = {
-                    version: window.AIAgentApp?.VERSION || '8.2.5',
+                    version: window.AIAgentApp?.VERSION || '8.3.0',
                     timestamp: Date.now(),
                     device: this.getDeviceInfo(),
                     data: {

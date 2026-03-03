@@ -1,6 +1,6 @@
 # AI Agent Pro 部署文档
 
-**版本**: v8.2.5  
+**版本**: v8.3.0  
 **日期**: 2026-03-03
 
 > GitHub Pages 部署步骤见 [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)。
@@ -91,15 +91,15 @@ chmod +x start-server.sh
 ./start-server.sh
 ```
 
-**默认端口**: 8888  
-**访问地址**: http://localhost:8888  
-**局域网**: http://本机IP:8888
+**默认端口**: 8080  
+**访问地址**: http://localhost:8080  
+**局域网**: http://本机IP:8080
 
 ### 3.2 方式二：使用 Python
 
 ```bash
 cd AI-Agent-pro
-python3 -m http.server 8888 --bind 0.0.0.0
+python3 -m http.server 8080 --bind 0.0.0.0
 ```
 
 或使用备用脚本（含 Cache-Control 优化）：
@@ -107,29 +107,29 @@ python3 -m http.server 8888 --bind 0.0.0.0
 python3 simple-server.py
 ```
 
-**访问地址**: http://localhost:8888
+**访问地址**: http://localhost:8080
 
 ### 3.3 方式三：使用 Node.js
 
 ```bash
 npm install -g http-server
 cd AI-Agent-pro
-http-server -p 8888
+http-server -p 8080
 
 # 或使用 npx（无需安装）
-npx http-server -p 8888
+npx http-server -p 8080
 ```
 
-**访问地址**: http://localhost:8888
+**访问地址**: http://localhost:8080
 
 ### 3.4 方式四：使用 PHP
 
 ```bash
 cd AI-Agent-pro
-php -S 0.0.0.0:8888
+php -S 0.0.0.0:8080
 ```
 
-**访问地址**: http://localhost:8888
+**访问地址**: http://localhost:8080
 
 ---
 
@@ -597,6 +597,6 @@ sudo nginx -t
 
 ---
 
-**文档版本**: v8.2.5  
-**最后更新**: 2026-03-01  
+**文档版本**: v8.3.0  
+**最后更新**: 2026-03-03  
 **维护者**: AI Agent Pro Team

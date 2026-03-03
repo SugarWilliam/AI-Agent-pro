@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Agent Pro - 部署指南</title>
+    <title>AI Agent Pro - 部署文档</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -135,7 +135,7 @@
     <div class="container">
         <div class="header">
             <h1>AI Agent Pro</h1>
-            <p>部署指南 v8.3.0</p>
+            <p>部署文档 v8.3.0</p>
         </div>
 
         <div class="section">
@@ -169,8 +169,8 @@ ai-agent-pro/
 │   ├── sync.js             <span class="comment"># 同步服务</span>
 │   └── chart-render.js     <span class="comment"># 图表渲染</span>
 ├── docs/
-│   ├── AI-Agent-Pro-Design.html    <span class="comment"># 设计文档</span>
-│   ├── AI-Agent-Pro-Guide.html     <span class="comment"># 部署指南</span>
+│   ├── AI-Agent-Pro-Design.html    <span class="comment"># 设计文档(H5)</span>
+│   ├── AI-Agent-Pro-Deployment.html <span class="comment"># 部署文档(H5)</span>
 │   └── AI-Agent-Pro-Features.html  <span class="comment"># 功能说明书(H5)</span>
 └── manifest.json           <span class="comment"># PWA配置</span>
             </div>
@@ -205,17 +205,20 @@ unzip ai-agent-pro-source.zip -d ai-agent-pro
             <div class="step">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                    <h4>启动本地服务器</h4>
+                    <h4>启动本地服务器（推荐）</h4>
                     <div class="code-block">
-<span class="command"># 使用 Python 3</span>
-cd ai-agent-pro
-python -m http.server 8080
+<span class="command"># 使用项目自带脚本（端口 8080）</span>
+cd AI-Agent-pro
+chmod +x start-server.sh
+./start-server.sh
+
+<span class="comment"># 或使用 Python 3</span>
+python3 -m http.server 8080 --bind 0.0.0.0
 
 <span class="comment"># 或使用 Node.js</span>
 npx serve .
-
-<span class="comment"># 或使用 VS Code Live Server 插件</span>
                     </div>
+                    <p>本机访问 <code>http://localhost:8080</code>，局域网访问 <code>http://本机IP:8080</code></p>
                 </div>
             </div>
             <div class="step">
@@ -434,7 +437,8 @@ console.log(window.AIAgentUI);
             <h2>相关文档</h2>
             <ul>
                 <li><a href="AI-Agent-Pro-Design.html">详细设计文档</a> - 系统架构和技术细节</li>
-                <li><a href="AI-Agent-Pro-Features.html">功能说明书</a> - 功能列表和使用指南（H5格式）</li>
+                <li><a href="AI-Agent-Pro-Features.html">功能说明书</a> - 功能列表和使用指南</li>
+                <li><a href="DESIGN_A2A.md">A2A 自主调度设计</a> - 主 Agent 智能化调度（MD）</li>
             </ul>
         </div>
     </div>

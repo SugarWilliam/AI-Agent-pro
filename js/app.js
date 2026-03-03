@@ -1,12 +1,12 @@
 /**
- * AI Agent Pro v8.2.5 - 应用状态管理
+ * AI Agent Pro v8.3.0 - 应用状态管理
  * 多模态AI Agent - 支持输入输出多模态
  */
 
 (function() {
     'use strict';
 
-    const VERSION = '8.2.5';
+    const VERSION = '8.3.0';
     const STORAGE_KEY = 'ai_agent_state_v6';
     const CUSTOM_MODELS_KEY = 'ai_agent_custom_models_v6';
     const CUSTOM_SUBAGENTS_KEY = 'ai_agent_custom_subagents_v6';
@@ -2394,17 +2394,21 @@ ${prompt}
         try {
             await (window.StorageService?.init?.() ?? Promise.resolve());
             let state = null;
-            if (window.StorageService?.get) {
+            // 优先从 localStorage 读取（兼容 file:// 及部分浏览器 IndexedDB 异常）
+            const savedLocal = localStorage.getItem(STORAGE_KEY);
+            if (savedLocal) {
+                try {
+                    state = JSON.parse(savedLocal);
+                } catch (e) {
+                    window.Logger?.warn?.('localStorage 解析失败:', e?.message);
+                }
+            }
+            if (!state && window.StorageService?.get) {
                 state = await window.StorageService.get(STORAGE_KEY);
             }
-            if (!state) {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                if (saved) {
-                    state = JSON.parse(saved);
-                    if (window.StorageService?.set) {
-                        window.StorageService.set(STORAGE_KEY, state).catch(err => window.Logger?.warn?.('Storage save failed:', err?.message));
-                    }
-                }
+            if (state && !savedLocal) {
+                // 若仅 IndexedDB 有数据，回写 localStorage 做双写备份
+                try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
             }
             if (state) {
                 if (state.chats && Array.isArray(state.chats)) {
@@ -2446,6 +2450,21 @@ ${prompt}
                 if (state.customWorkflows && Array.isArray(state.customWorkflows)) {
                     AppState.customWorkflows = state.customWorkflows;
                 }
+                if (state.subAgentConfigs && typeof state.subAgentConfigs === 'object') {
+                    Object.keys(state.subAgentConfigs).forEach(id => {
+                        if (AppState.subAgents[id]) {
+                            const c = state.subAgentConfigs[id];
+                            if (c?.skills) AppState.subAgents[id].skills = c.skills;
+                            if (c?.rules) AppState.subAgents[id].rules = c.rules;
+                            if (c?.mcp) AppState.subAgents[id].mcp = c.mcp;
+                            if (c?.rag) AppState.subAgents[id].rag = c.rag;
+                            if (c?.modelPreference) AppState.subAgents[id].modelPreference = c.modelPreference;
+                            if (c?.serviceTarget !== undefined) AppState.subAgents[id].serviceTarget = c.serviceTarget;
+                            if (c?.ignoreInfoDesc !== undefined) AppState.subAgents[id].ignoreInfoDesc = c.ignoreInfoDesc;
+                            if (c?.delegateTo !== undefined) AppState.subAgents[id].delegateTo = Array.isArray(c.delegateTo) ? c.delegateTo : [];
+                        }
+                    });
+                }
             }
         } catch (error) {
             window.Logger?.error('加载状态失败:', error);
@@ -2454,6 +2473,15 @@ ${prompt}
 
     function saveState() {
         try {
+            const subAgentConfigs = {};
+            Object.keys(AppState.subAgents || {}).forEach(id => {
+                const agent = AppState.subAgents[id];
+                if (agent) subAgentConfigs[id] = {
+                    skills: agent.skills || [], rules: agent.rules || [], mcp: agent.mcp || [], rag: agent.rag || [],
+                    modelPreference: agent.modelPreference || [], serviceTarget: agent.serviceTarget,
+                    ignoreInfoDesc: agent.ignoreInfoDesc, delegateTo: agent.delegateTo ?? []
+                };
+            });
             const state = {
                 chats: AppState.chats,
                 plans: AppState.plans,
@@ -2466,9 +2494,10 @@ ${prompt}
                 currentOutputFormat: AppState.currentOutputFormat,
                 settings: AppState.settings,
                 user: AppState.user,
-                resources: AppState.resources, // 保存资源配置
-                jinaAI: AppState.jinaAI, // 保存Jina AI配置
-                customWorkflows: AppState.customWorkflows || [], // 自定义 Workflow
+                resources: AppState.resources,
+                jinaAI: AppState.jinaAI,
+                customWorkflows: AppState.customWorkflows || [],
+                subAgentConfigs, // SubAgent 绑定等配置，与主状态一起持久化
                 savedAt: Date.now(),
                 version: AppState.version
             };

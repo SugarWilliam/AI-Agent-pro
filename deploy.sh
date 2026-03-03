@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# AI Agent Pro v8.2.5 - GitHub自动化部署脚本
+# AI Agent Pro v8.3.0 - GitHub自动化部署脚本
 # 使用方法: ./deploy.sh [--auto] [--force]
 
 set -e
@@ -24,7 +24,7 @@ for arg in "$@"; do
     esac
 done
 
-echo "🚀 AI Agent Pro v8.2.5 - GitHub自动化部署脚本"
+echo "🚀 AI Agent Pro v8.3.0 - GitHub自动化部署脚本"
 echo "=============================================="
 echo ""
 

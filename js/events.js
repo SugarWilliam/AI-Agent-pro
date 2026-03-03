@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.2.5 - 事件处理模块
+ * AI Agent Pro v8.3.0 - 事件处理模块
  * 未来科技感交互设计
  */
 
@@ -973,13 +973,15 @@
         // 任意 SubAgent + delegateTo：无 Workflow 前缀时，自动走 Workflow 链
         // 结构：主Agent(首) -> 被调度Agent -> 主Agent(尾)，流程监控、编排、发起和最终整合均由主Agent管理
         let autoWorkflow = false;
+        let mainId = '';
+        let validDelegates = [];
         if (workflowChainSteps.length === 0) {
             const agent = window.AppState?.subAgents?.[window.AppState?.currentSubAgent];
             const subAgents = window.AppState?.subAgents || {};
-            const mainId = agent?.id;
+            mainId = agent?.id || '';
             const mainName = agent?.name || mainId || '主助手';
             if (mainId && (agent.delegateTo || []).length > 0) {
-                const validDelegates = (agent.delegateTo || []).filter(id => subAgents[id] && id !== mainId);
+                validDelegates = (agent.delegateTo || []).filter(id => subAgents[id] && id !== mainId);
                 if (validDelegates.length > 0) {
                     workflowChainSteps = [
                         { agentId: mainId, label: mainName, instruction: '分析任务、根据问题决定调度后续助手并监控执行' },
@@ -1038,12 +1040,18 @@
         try {
             let response;
             if (workflowChainSteps.length > 0) {
+                const wfOpts = autoWorkflow && mainId ? {
+                    enableDynamicSchedule: true,
+                    mainAgentId: mainId,
+                    delegateIds: validDelegates || []
+                } : {};
                 response = await window.LLMService?.runWorkflowChain?.(
                     workflowChainSteps,
                     messageContent,
                     window.AppState.messages,
                     window.AppState.currentModel,
-                    window.AIAgentUI?.streamMessageUpdate
+                    window.AIAgentUI?.streamMessageUpdate,
+                    wfOpts
                 );
             } else {
                 response = await window.LLMService?.sendMessage?.(

@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.2.5 - UI渲染模块
+ * AI Agent Pro v8.3.0 - UI渲染模块
  * 未来科技感UI
  */
 
@@ -458,9 +458,37 @@
         });
 
         // 保存通用代码块，避免被其他规则处理
+        // 特殊处理：```json 块若含 project-dashboard 结构（project/owner + timeline/top_risks/status），按仪表板渲染
         const codeBlocks = [];
         text = text.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
-            codeBlocks.push(`<pre class="code-block"><code class="language-${lang || 'text'}">${escapeHtml(code.trim())}</code></pre>`);
+            const trimmed = code.trim();
+            if ((lang === 'json' || !lang) && trimmed.startsWith('{')) {
+                try {
+                    const data = JSON.parse(trimmed);
+                    const d = data['project-dashboard'] || data.projectDashboard || data;
+                    const hasProject = !!(d.project || d.项目 || d.owner || d.负责人);
+                    const hasDashboardFields = !!(d.timeline || d.时间线 || d.top_risks || d.topRisks || d.风险 || d.status || d.状态);
+                    if (hasProject && hasDashboardFields) {
+                        diagramBlocks.push({ type: 'project-dashboard', raw: match, code: trimmed });
+                        return `\x00DIAGRAM${diagramBlocks.length - 1}\x00`;
+                    }
+                } catch (_) { /* 非合法 JSON，按普通代码块处理 */ }
+            }
+            // 兼容 AI 在 ```html 中输出 diagram-block + 内嵌 JSON 的情况
+            if (lang === 'html' && /diagram-block|project-dashboard/i.test(trimmed)) {
+                const jsonMatch = trimmed.match(/\{[\s\S]*?"(?:project|项目|owner|负责人)"[\s\S]*?"(?:timeline|时间线|top_risks|status|状态)"[\s\S]*?\}/);
+                if (jsonMatch) {
+                    try {
+                        const data = JSON.parse(jsonMatch[0]);
+                        const d = data['project-dashboard'] || data.projectDashboard || data;
+                        if (d && (d.project || d.项目 || d.owner || d.负责人)) {
+                            diagramBlocks.push({ type: 'project-dashboard', raw: match, code: jsonMatch[0] });
+                            return `\x00DIAGRAM${diagramBlocks.length - 1}\x00`;
+                        }
+                    } catch (_) { /* 解析失败则按代码块显示 */ }
+                }
+            }
+            codeBlocks.push(`<pre class="code-block"><code class="language-${lang || 'text'}">${escapeHtml(trimmed)}</code></pre>`);
             return `\x00CODEBLOCK${codeBlocks.length - 1}\x00`;
         });
 
@@ -574,8 +602,8 @@
         text = paragraphs.map(p => {
             p = p.trim();
             if (!p) return '';
-            // 如果已经是块级元素，不包装
-            if (p.match(/^<(h[1-6]|ul|ol|pre|blockquote|hr)/)) return p;
+            // 如果已经是块级元素（含 AI 可能输出的 <p>/<div>），不重复包装
+            if (p.match(/^<(h[1-6]|ul|ol|pre|blockquote|hr|p|div)/)) return p;
             // 将单个换行转为<br>
             p = p.replace(/\n/g, '<br>');
             return `<p>${p}</p>`;
@@ -1534,7 +1562,14 @@
             return 'table';
         }
 
-        // 检测代码
+        // 【关键】含图表/仪表板块时强制使用 markdown，否则会被当作 code 格式整段转义，导致 HTML 与图表无法渲染
+        const diagramMarkers = ['```project-dashboard', '```mermaid', '```chart', '```decision-matrix',
+            '```decision-chain', '```probability', '```problem-evolution', '```milestones', '```dependency-graph'];
+        if (diagramMarkers.some(m => content.includes(m))) {
+            return 'markdown';
+        }
+
+        // 检测代码（纯代码输出，非混合 markdown）
         if (content.includes('```') || content.match(/^(function|class|const|let|var|import|export|def|class\s+\w+)/m)) {
             return 'code';
         }
@@ -2134,10 +2169,21 @@
     }
 
     function downloadMessage(messageId) {
-        const msg = (window.AppState.messages || []).find(m => m.id === messageId);
-        if (!msg) return;
-
-        // 显示格式选择对话框
+        if (!messageId) {
+            showToast('消息ID无效', 'error');
+            return;
+        }
+        let msg = (window.AppState.messages || []).find(m => m.id === messageId);
+        if (!msg && (window.AppState.chats || []).length > 0) {
+            for (const chat of window.AppState.chats) {
+                msg = (chat.messages || []).find(m => m.id === messageId);
+                if (msg) break;
+            }
+        }
+        if (!msg) {
+            showToast('消息不存在或无法加载', 'error');
+            return;
+        }
         showDownloadFormatDialog(msg);
     }
 
@@ -2248,17 +2294,21 @@
                 content = formatAsMarkdown(msg);
         }
 
-        const blob = new Blob([content], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        showToast(`已导出为 ${format.toUpperCase()}`, 'success');
+        try {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast(`已导出为 ${format.toUpperCase()}`, 'success');
+        } catch (err) {
+            window.Logger?.error?.('下载失败:', err);
+            showToast('下载失败，请重试', 'error');
+        }
     }
 
     function formatAsMarkdown(msg) {
@@ -2392,31 +2442,37 @@
             y += 22;
         }
         
-        // 下载
         canvas.toBlob(blob => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `message-${msg.role}-${new Date(msg.timestamp).toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showToast('已导出为图片', 'success');
+            if (!blob) {
+                showToast('生成图片失败', 'error');
+                return;
+            }
+            try {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `message-${msg.role}-${new Date(msg.timestamp).toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast('已导出为图片', 'success');
+            } catch (e) {
+                showToast('下载失败', 'error');
+            }
         }, 'image/png');
     }
 
-    // 下载为PDF
+    // 下载为PDF（通过打印对话框另存为PDF）
     function downloadAsPDF(msg) {
-        // 使用简单的HTML转PDF方式
         const htmlContent = formatAsHTML(msg);
-        
-        // 创建打印窗口
         const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            showToast('弹窗被阻止，请允许弹窗后重试', 'error');
+            return;
+        }
         printWindow.document.write(htmlContent);
         printWindow.document.close();
-        
-        // 延迟打印
         setTimeout(() => {
             printWindow.print();
             printWindow.close();

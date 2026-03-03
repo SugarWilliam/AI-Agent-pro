@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-8.2.5-blue.svg)
+![Version](https://img.shields.io/badge/version-8.3.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Web-lightgrey.svg)
 
@@ -366,6 +366,12 @@ http://localhost:8080/test/comprehensive-test.html
 ---
 
 ## 📝 更新日志
+
+### v8.3.0 (2026-03-03)
+
+- **A2A 重大升级**：主 Agent 智能化分析任务、AgentCard 能力匹配、动态 schedule
+- 设置/会话持久化修复、消息下载修复、输出渲染修复
+- 文档：设计/部署/功能说明 H5 化，冗余文档归档
 
 ### v8.2.5 (2026-03-03)
 

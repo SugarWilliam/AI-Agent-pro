@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A2A 自主调度单元测试</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a2e; color: #eee; }
+        .result { margin-top: 20px; padding: 15px; background: #16213e; border-radius: 8px; }
+        .pass { color: #00E676; }
+        .fail { color: #FF1744; }
+    </style>
+</head>
+<body>
+    <h1>A2A 自主调度单元测试</h1>
+    <button id="run-btn">运行测试</button>
+    <div id="output" class="result"></div>
+
+    <script src="../js/utils/logger.js"></script>
+    <script src="../js/storage.js"></script>
+    <script src="../js/app.js"></script>
+    <script src="../js/llm.js"></script>
+    <script src="../test-a2a-orchestration.js"></script>
+    <script>
+        document.getElementById('run-btn').onclick = () => {
+            const out = document.getElementById('output');
+            out.innerHTML = '运行中...';
+            try {
+                const r = window.testA2AOrchestration?.();
+                const logText = (r?.logs || []).join('\n');
+                out.innerHTML = `<pre>${logText}</pre><p class="${r?.failed ? 'fail' : 'pass'}">通过: ${r?.passed ?? 0}, 失败: ${r?.failed ?? 0}</p>`;
+            } catch (e) {
+                out.innerHTML = `错误: ${e.message}\n${e.stack}`;
+            }
+        };
+    </script>
+</body>
+</html>
