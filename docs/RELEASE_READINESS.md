@@ -136,6 +136,7 @@ git checkout main && git merge gh-pages && git push origin main && git checkout 
 ### 5.3 发布后
 
 - [ ] 在 GitHub 创建 Release：https://github.com/SugarWilliam/AI-Agent-pro/releases/new?tag=v8.2.5
+- [ ] **勾选「Set as a pre-release」**：此版本标注为非生产就绪（non-production ready）
 - [ ] 填写 Release 说明（可复制 CHANGELOG 8.2.5 内容）
 - [ ] 验证 Pages 部署：https://sugarwilliam.github.io/AI-Agent-pro/
 
