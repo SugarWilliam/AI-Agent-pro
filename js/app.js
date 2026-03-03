@@ -1,12 +1,12 @@
 /**
- * AI Agent Pro v8.2.4.a - 应用状态管理
+ * AI Agent Pro v8.2.5 - 应用状态管理
  * 多模态AI Agent - 支持输入输出多模态
  */
 
 (function() {
     'use strict';
 
-    const VERSION = '8.2.4.a';
+    const VERSION = '8.2.5';
     const STORAGE_KEY = 'ai_agent_state_v6';
     const CUSTOM_MODELS_KEY = 'ai_agent_custom_models_v6';
     const CUSTOM_SUBAGENTS_KEY = 'ai_agent_custom_subagents_v6';
@@ -343,7 +343,7 @@
 4. 成本效益分析：量化决策影响
 5. Mermaid流程图：可视化决策流程
 
-请使用decision-matrix代码块展示决策矩阵，使用decision-chain代码块展示决策链，使用probability代码块展示概率分布，使用mermaid代码块展示决策流程图。`,
+请使用decision-matrix代码块展示决策矩阵，使用decision-chain代码块展示决策链，使用probability代码块展示概率分布，使用mermaid代码块展示决策流程图。支持project-dashboard（项目管理仪表板，JSON格式：project/项目、owner/负责人、date/日期、status/状态、timeline{now,next_milestone,critical_path}、top_risks[{id,description,level,impact,owner,mitigation}]，可含stats/tasks/milestones）、problem-evolution（问题演化看板与阻塞点突破）、milestones（里程碑，JSON格式：{"title":"标题","milestones":[{"name":"名","date":"日期"}]}）、dependency-graph（依赖关系图）代码块。`,
             outputFormat: 'markdown'
         },
         {
@@ -507,7 +507,7 @@ flowchart TD
             description: '甘特图、项目进度、里程碑、关键路径',
             enabled: true,
             skillMD: generateSkillMD('甘特图与进度', '甘特图、项目进度', `你是一位项目进度专家，擅长使用甘特图规划项目时间线。请帮助用户制定项目进度计划，识别关键路径和里程碑，使用mermaid gantt输出。`, ['gantt', 'schedule', 'timeline']),
-            prompt: '你是一位甘特图与进度管理专家。请帮助用户制定项目时间线，识别任务依赖和关键路径，使用 mermaid gantt 代码块输出甘特图。',
+            prompt: '你是一位甘特图与进度管理专家。请帮助用户制定项目时间线，识别任务依赖和关键路径。使用 mermaid gantt 代码块输出甘特图，使用 milestones 代码块输出里程碑时间线（JSON格式：{"title":"标题","milestones":[{"name":"里程碑名","date":"日期","description":"描述"}]}），使用 project-dashboard 代码块输出项目管理仪表板（可含 milestones 数组展示里程碑）。',
             outputFormat: 'markdown'
         },
         {
@@ -516,7 +516,7 @@ flowchart TD
             description: '任务依赖、前置关系、FS/SS/FF/SF、依赖图',
             enabled: true,
             skillMD: generateSkillMD('依赖关系分析', '任务依赖、前置关系', `你是一位依赖关系分析专家，擅长识别任务间的FS(完成-开始)、SS(开始-开始)、FF(完成-完成)、SF(开始-完成)等依赖关系。请帮助用户建立准确的依赖网络。`, ['dependency', 'precedence', 'network']),
-            prompt: '你是一位依赖关系分析专家，擅长识别任务间的逻辑依赖（FS/SS/FF/SF）。请帮助用户建立任务依赖图，识别关键路径，输出依赖关系表或mermaid图。',
+            prompt: '你是一位依赖关系分析专家，擅长识别任务间的逻辑依赖（FS/SS/FF/SF）。请帮助用户建立任务依赖图，识别关键路径。使用 dependency-graph 代码块输出依赖关系（JSON格式：nodes、edges），或使用 mermaid flowchart 输出流程图。',
             outputFormat: 'markdown'
         },
         {
@@ -556,7 +556,7 @@ flowchart TD
 1. 问题是否闭环：问题是否已完整定义、边界清晰、可验证闭环
 2. 是否扩散：问题是否在扩大、蔓延、影响范围是否在增加
 3. 变迁与泛化：问题是否在演变、是否从个案泛化为普遍现象
-请给出识别结论、判断依据和应对建议。`,
+请给出识别结论、判断依据和应对建议。使用 problem-evolution 代码块输出问题演化看板和当前阻塞点突破方案（JSON格式：phases、blockers含breakthrough）。`,
             outputFormat: 'markdown'
         }
     ];
@@ -2200,7 +2200,7 @@ ${prompt}
             theme: 'dark',
             language: 'zh',
             autoVoice: false,
-            sendShortcut: 'enter',
+            sendShortcut: 'ctrl-enter',
             webSearchEnabled: true,
             autoSave: true,
             fontSize: 'medium',
@@ -2524,7 +2524,7 @@ ${prompt}
                         modelPreference: agent.modelPreference || [],
                         serviceTarget: agent.serviceTarget,
                         ignoreInfoDesc: agent.ignoreInfoDesc,
-                        delegateTo: agent.delegateTo
+                        delegateTo: agent.delegateTo ?? []
                     };
                 }
             });

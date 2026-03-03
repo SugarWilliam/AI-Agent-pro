@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.2.4 - UI渲染模块
+ * AI Agent Pro v8.2.5 - UI渲染模块
  * 未来科技感UI
  */
 
@@ -451,7 +451,7 @@
         // 【关键】先提取图表类代码块（mermaid/chart/decision-matrix 等），必须在通用代码块之前
         // 否则会被通用正则当作普通代码块处理，导致图表无法渲染
         const diagramBlocks = [];
-        const diagramRegex = /```(mermaid|chart|decision-matrix|probability|decision-chain)\n([\s\S]*?)```/g;
+        const diagramRegex = /```(mermaid|chart|decision-matrix|probability|decision-chain|project-dashboard|problem-evolution|milestones|dependency-graph)\n([\s\S]*?)```/g;
         text = text.replace(diagramRegex, (match, dtype, code) => {
             diagramBlocks.push({ type: dtype, raw: match, code: code.trim() });
             return `\x00DIAGRAM${diagramBlocks.length - 1}\x00`;
@@ -561,6 +561,10 @@
             if (d.type === 'decision-matrix') return renderDecisionMatrix('```decision-matrix\n' + d.code + '\n```') || d.raw;
             if (d.type === 'probability') return renderProbabilityDistribution('```probability\n' + d.code + '\n```') || d.raw;
             if (d.type === 'decision-chain') return renderDecisionChain('```decision-chain\n' + d.code + '\n```') || d.raw;
+            if (d.type === 'project-dashboard') return renderProjectDashboard('```project-dashboard\n' + d.code + '\n```') || d.raw;
+            if (d.type === 'problem-evolution') return renderProblemEvolution('```problem-evolution\n' + d.code + '\n```') || d.raw;
+            if (d.type === 'milestones') return renderMilestones('```milestones\n' + d.code + '\n```') || d.raw;
+            if (d.type === 'dependency-graph') return renderDependencyGraph('```dependency-graph\n' + d.code + '\n```') || d.raw;
             return d.raw;
         });
 
@@ -788,7 +792,7 @@
                     <button class="diagram-btn" data-action="code" title="查看/隐藏代码"><i class="fas fa-code"></i> 代码</button>
                     <button class="diagram-btn" data-action="copy" title="复制代码"><i class="fas fa-copy"></i> 复制</button>
                 </div>
-                <div class="chart-container" style="height: 300px; margin: 16px 0;"><canvas id="${chartId}"></canvas></div>
+                <div class="chart-container" style="height: 320px; margin: 16px 0;"><canvas id="${chartId}"></canvas></div>
                 <pre class="diagram-code-panel" style="display:none"><code>${chartCodeEscaped}</code></pre>
             </div>`;
         } catch (e) {
@@ -797,55 +801,115 @@
         }
     }
 
+    function parseDecisionMatrixTable(text) {
+        const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) return null;
+        const parseRow = (line) => line.split('|').map(c => c.trim()).filter(c => c);
+        const header = parseRow(lines[0]);
+        const isSepLine = (line) => /^[\|\s\-:]+$/.test(line) && line.includes('-');
+        const sepIdx = lines.findIndex((l, i) => i > 0 && isSepLine(l));
+        const dataStart = sepIdx >= 0 ? sepIdx + 1 : 1;
+        if (header.length < 2) return null;
+        const lastIsTotal = header[header.length - 1] === '总分' || header[header.length - 1] === '加权得分' || header[header.length - 1] === '得分';
+        const criteria = header.slice(1, lastIsTotal ? -1 : undefined).map((name) => ({ name, weight: 1 }));
+        const alternatives = [];
+        const scores = [];
+        for (let i = dataStart; i < lines.length; i++) {
+            const cells = parseRow(lines[i]);
+            if (cells.length < 2) continue;
+            alternatives.push(cells[0]);
+            const nums = cells.slice(1, criteria.length + 1).map(c => parseFloat(String(c).replace(/[^\d.-]/g, '')) || 0);
+            scores.push(nums);
+        }
+        if (!alternatives.length || !criteria.length) return null;
+        return { criteria, alternatives, scores };
+    }
+
     function renderDecisionMatrix(content) {
-        // 解析决策矩阵数据
         const matrixMatch = content.match(/```decision-matrix\n([\s\S]*?)```/);
         if (!matrixMatch) return null;
         
+        const matrixCode = matrixMatch[1];
+        const matrixCodeEscaped = escapeHtml(matrixCode);
+        let criteria, alternatives, scores, rawCriteria, rawAlternatives;
+
         try {
-            const matrix = JSON.parse(matrixMatch[1]);
-            const { alternatives, criteria, scores } = matrix;
+            let matrix;
+            const trimmed = matrixCode.trim();
+            const looksLikeTable = trimmed.startsWith('|') || (trimmed.includes('|') && trimmed.includes('\n') && /^\s*\|/.test(trimmed));
+            if (looksLikeTable) {
+                const parsed = parseDecisionMatrixTable(matrixCode);
+                if (!parsed) throw new Error('Invalid table format');
+                criteria = parsed.criteria;
+                alternatives = parsed.alternatives;
+                scores = parsed.scores;
+                rawCriteria = criteria;
+                rawAlternatives = alternatives.map((a, i) => ({ 方案: a, 评分: scores[i] }));
+                matrix = null;
+            } else if (trimmed.startsWith('{')) {
+                matrix = JSON.parse(matrixCode);
+                rawCriteria = matrix.决策标准 || matrix.criteria || [];
+                rawAlternatives = matrix.备选方案 || matrix.alternatives || [];
+                criteria = rawCriteria.map(c => ({
+                    name: c.标准 ?? c.name ?? '',
+                    weight: c.权重 ?? c.weight ?? 0
+                }));
+                alternatives = rawAlternatives.map(a => (typeof a === 'string' ? a : (a.方案 ?? a.描述 ?? a.name ?? '')));
+                scores = rawAlternatives.map(a => (typeof a === 'object' && a !== null ? (a.评分 ?? a.scores ?? []) : [])).map(s => Array.isArray(s) ? s : []);
+            } else {
+                throw new Error('Decision matrix: expected JSON or Markdown table');
+            }
+
+            if (!criteria.length || !alternatives.length) {
+                window.Logger?.warn('Decision matrix: missing criteria or alternatives');
+                return null;
+            }
             
-            const matrixCode = matrixMatch[1];
-            const matrixCodeEscaped = escapeHtml(matrixCode);
-            let html = '<div class="diagram-block" data-diagram-type="decision-matrix"><div class="diagram-toolbar">
-                <button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>
-                <button class="diagram-btn" data-action="preview" title="预览"><i class="fas fa-search-plus"></i> 预览</button>
-                <button class="diagram-btn" data-action="code" title="查看/隐藏代码"><i class="fas fa-code"></i> 代码</button>
-                <button class="diagram-btn" data-action="copy" title="复制代码"><i class="fas fa-copy"></i> 复制</button>
-            </div><div class="decision-matrix-container">';
+            let html = '<div class="diagram-block" data-diagram-type="decision-matrix"><div class="diagram-toolbar">' +
+                '<button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>' +
+                '<button class="diagram-btn" data-action="download" title="下载为PNG"><i class="fas fa-download"></i> 下载</button>' +
+                '<button class="diagram-btn" data-action="preview" title="预览"><i class="fas fa-search-plus"></i> 预览</button>' +
+                '<button class="diagram-btn" data-action="code" title="查看/隐藏代码"><i class="fas fa-code"></i> 代码</button>' +
+                '<button class="diagram-btn" data-action="copy" title="复制代码"><i class="fas fa-copy"></i> 复制</button>' +
+                '</div><div class="decision-matrix-container">';
             html += '<h4><i class="fas fa-th"></i> 决策矩阵</h4>';
+            if (matrix?.决策问题 || matrix?.question) {
+                html += `<p class="decision-question">${escapeHtml(matrix.决策问题 || matrix.question)}</p>`;
+            }
             html += '<table class="decision-matrix">';
             
-            // 表头
             html += '<thead><tr><th>方案</th>';
             criteria.forEach(c => {
-                html += `<th>${escapeHtml(c.name)}<br><small>权重:${c.weight}</small></th>`;
+                html += `<th>${escapeHtml(String(c.name))}<br><small>权重:${c.weight}</small></th>`;
             });
-            html += '<th>总分</th></tr></thead>';
+            html += '<th>总分</th></tr></thead><tbody>';
             
-            // 数据行
-            html += '<tbody>';
             alternatives.forEach((alt, idx) => {
-                html += `<tr><td><strong>${escapeHtml(alt)}</strong></td>`;
+                const altName = typeof alt === 'string' ? alt : (alt.方案 ?? alt.描述 ?? alt.name ?? '');
+                html += `<tr><td><strong>${escapeHtml(String(altName))}</strong></td>`;
                 let total = 0;
                 criteria.forEach((c, cidx) => {
-                    const score = scores[idx]?.[cidx] || 0;
-                    total += score * c.weight;
+                    const score = Number(scores[idx]?.[cidx]) || 0;
+                    total += score * (Number(c.weight) || 0);
                     html += `<td>${score}</td>`;
                 });
                 html += `<td class="total-score">${total.toFixed(2)}</td></tr>`;
             });
             html += '</tbody></table>';
             
-            // 推荐方案
-            const bestIdx = scores.map((s, i) => ({
-                idx: i,
-                score: s.reduce((a, b, j) => a + b * criteria[j].weight, 0)
-            })).sort((a, b) => b.score - a.score)[0];
-            
-            if (bestIdx !== undefined) {
-                html += `<div class="recommendation"><i class="fas fa-star"></i> 推荐方案: <strong>${escapeHtml(alternatives[bestIdx.idx])}</strong> (得分: ${bestIdx.score.toFixed(2)})</div>`;
+            const weightedScores = alternatives.map((_, i) => {
+                let s = 0;
+                criteria.forEach((c, j) => { s += (Number(scores[i]?.[j]) || 0) * (Number(c.weight) || 0); });
+                return { idx: i, score: s };
+            });
+            const best = weightedScores.sort((a, b) => b.score - a.score)[0];
+            if (best && best.score > 0) {
+                const bestName = typeof alternatives[best.idx] === 'string' ? alternatives[best.idx] : (alternatives[best.idx]?.方案 ?? alternatives[best.idx]?.描述 ?? '');
+                html += `<div class="recommendation"><i class="fas fa-star"></i> 推荐方案: <strong>${escapeHtml(String(bestName))}</strong> (得分: ${best.score.toFixed(2)})</div>`;
+            }
+            const bestRaw = rawAlternatives[best?.idx];
+            if (typeof bestRaw === 'object' && bestRaw?.评价) {
+                html += `<div class="recommendation-desc"><small>${escapeHtml(bestRaw.评价)}</small></div>`;
             }
             
             html += '</div><pre class="diagram-code-panel" style="display:none"><code>' + matrixCodeEscaped + '</code></pre></div>';
@@ -917,7 +981,7 @@
                     <button class="diagram-btn" data-action="code" title="查看/隐藏代码"><i class="fas fa-code"></i> 代码</button>
                     <button class="diagram-btn" data-action="copy" title="复制代码"><i class="fas fa-copy"></i> 复制</button>
                 </div>
-                <div class="chart-container probability-container" style="height: 300px; margin: 16px 0;"><canvas id="${chartId}"></canvas></div>
+                <div class="chart-container probability-container" style="height: 320px; margin: 16px 0;"><canvas id="${chartId}"></canvas></div>
                 <pre class="diagram-code-panel" style="display:none"><code>${probCodeEscaped}</code></pre>
             </div>`;
         } catch (e) {
@@ -939,6 +1003,7 @@
             
             let html = '<div class="diagram-block" data-diagram-type="decision-chain"><div class="diagram-toolbar">';
             html += '<button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>';
+            html += '<button class="diagram-btn" data-action="download" title="下载为PNG"><i class="fas fa-download"></i> 下载</button>';
             html += '<button class="diagram-btn" data-action="preview" title="预览"><i class="fas fa-search-plus"></i> 预览</button>';
             html += '<button class="diagram-btn" data-action="code" title="查看/隐藏代码"><i class="fas fa-code"></i> 代码</button>';
             html += '<button class="diagram-btn" data-action="copy" title="复制代码"><i class="fas fa-copy"></i> 复制</button>';
@@ -977,6 +1042,243 @@
         }
     }
 
+    function renderProjectDashboard(content) {
+        const match = content.match(/```project-dashboard\n([\s\S]*?)```/);
+        if (!match) return null;
+        try {
+            let data = JSON.parse(match[1]);
+            const codeEscaped = escapeHtml(match[1]);
+            if (data['project-dashboard']) data = data['project-dashboard'];
+            else if (data.projectDashboard) data = data.projectDashboard;
+            const title = data.title || data.标题 || data.project || '项目管理仪表板';
+            let html = '<div class="diagram-block" data-diagram-type="project-dashboard"><div class="diagram-toolbar">' +
+                '<button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>' +
+                '<button class="diagram-btn" data-action="download" title="下载为PNG"><i class="fas fa-download"></i> 下载</button>' +
+                '<button class="diagram-btn" data-action="preview" title="预览"><i class="fas fa-search-plus"></i> 预览</button>' +
+                '<button class="diagram-btn" data-action="code" title="查看/隐藏代码"><i class="fas fa-code"></i> 代码</button>' +
+                '<button class="diagram-btn" data-action="copy" title="复制代码"><i class="fas fa-copy"></i> 复制</button>' +
+                '</div><div class="project-dashboard-container">';
+            html += `<h4><i class="fas fa-tachometer-alt"></i> ${escapeHtml(String(title))}</h4>`;
+
+            const project = data.project || data.项目;
+            const owner = data.owner || data.负责人;
+            const date = data.date || data.日期;
+            const status = data.status || data.状态;
+            if (project || owner || date || status) {
+                html += '<div class="dashboard-overview">';
+                if (project) html += `<div class="dashboard-overview-row"><span class="dashboard-label">项目</span><span class="dashboard-value">${escapeHtml(String(project))}</span></div>`;
+                if (owner) html += `<div class="dashboard-overview-row"><span class="dashboard-label">负责人</span><span class="dashboard-value">${escapeHtml(String(owner))}</span></div>`;
+                if (date) html += `<div class="dashboard-overview-row"><span class="dashboard-label">日期</span><span class="dashboard-value">${escapeHtml(String(date))}</span></div>`;
+                if (status) html += `<div class="dashboard-overview-row"><span class="dashboard-label">状态</span><span class="dashboard-value dashboard-status">${escapeHtml(String(status))}</span></div>`;
+                html += '</div>';
+            }
+
+            const timeline = data.timeline || data.时间线;
+            if (timeline && typeof timeline === 'object') {
+                const now = timeline.now || timeline.当前 || timeline.现状;
+                const next = timeline.next_milestone || timeline.下一里程碑 || timeline.nextMilestone;
+                const path = timeline.critical_path || timeline.关键路径 || timeline.criticalPath;
+                if (now || next || path) {
+                    html += '<div class="dashboard-timeline"><h5><i class="fas fa-clock"></i> 时间线</h5>';
+                    if (now) html += `<div class="dashboard-timeline-item"><span class="dashboard-label">当前</span><span>${escapeHtml(String(now))}</span></div>`;
+                    if (next) html += `<div class="dashboard-timeline-item"><span class="dashboard-label">下一里程碑</span><span>${escapeHtml(String(next))}</span></div>`;
+                    if (path) html += `<div class="dashboard-timeline-item"><span class="dashboard-label">关键路径</span><span>${escapeHtml(String(path))}</span></div>`;
+                    html += '</div>';
+                }
+            }
+
+            const topRisks = data.top_risks || data.topRisks || data.风险 || data.risks || [];
+            if (Array.isArray(topRisks) && topRisks.length > 0) {
+                html += '<div class="dashboard-risks"><h5><i class="fas fa-exclamation-triangle"></i> 主要风险</h5>';
+                topRisks.forEach(r => {
+                    const id = r.id || r.风险ID || '';
+                    const desc = r.description || r.描述 || r.desc || '';
+                    const level = r.level || r.等级 || r.级别 || '';
+                    const impact = r.impact || r.影响 || '';
+                    const riskOwner = r.owner || r.责任人 || r.负责人 || '';
+                    const mitigation = r.mitigation || r.缓解措施 || r.应对 || '';
+                    const levelClass = (String(level).indexOf('高') >= 0 || level === 'high') ? 'high' : (String(level).indexOf('中') >= 0 || level === 'medium') ? 'medium' : 'low';
+                    html += `<div class="dashboard-risk-card risk-${levelClass}"><div class="dashboard-risk-header"><span class="dashboard-risk-id">${escapeHtml(String(id))}</span><span class="dashboard-risk-level">${escapeHtml(String(level))}</span></div>`;
+                    if (desc) html += `<div class="dashboard-risk-desc">${escapeHtml(String(desc))}</div>`;
+                    if (impact) html += `<div class="dashboard-risk-impact"><span class="dashboard-label">影响</span>${escapeHtml(String(impact))}</div>`;
+                    if (riskOwner) html += `<div class="dashboard-risk-owner"><span class="dashboard-label">责任人</span>${escapeHtml(String(riskOwner))}</div>`;
+                    if (mitigation) html += `<div class="dashboard-risk-mitigation"><span class="dashboard-label">缓解措施</span>${escapeHtml(String(mitigation))}</div>`;
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+
+            if (data.stats && data.stats.length > 0) {
+                html += '<div class="dashboard-stats">';
+                data.stats.forEach(s => {
+                    const colorClass = s.color || 'primary';
+                    html += `<div class="dashboard-stat stat-${colorClass}"><span class="stat-value">${escapeHtml(String(s.value))}</span><span class="stat-label">${escapeHtml(s.label || '')}</span></div>`;
+                });
+                html += '</div>';
+            }
+            if (data.tasks && data.tasks.length > 0) {
+                html += '<div class="dashboard-tasks"><h5>任务进度</h5>';
+                data.tasks.forEach(t => {
+                    const pct = Math.min(100, Math.max(0, t.progress || 0));
+                    const statusClass = (t.status || 'pending').replace('_', '-');
+                    html += `<div class="dashboard-task"><div class="task-info"><span class="task-name">${escapeHtml(t.name || t.名称 || '')}</span><span class="task-pct">${pct}%</span></div><div class="task-bar"><div class="task-progress" style="width:${pct}%" data-status="${statusClass}"></div></div></div>`;
+                });
+                html += '</div>';
+            }
+            const dashMilestones = data.milestones || data.里程碑 || data.milestoneList || [];
+            if (Array.isArray(dashMilestones) && dashMilestones.length > 0) {
+                html += '<div class="dashboard-milestones"><h5><i class="fas fa-flag-checkered"></i> 项目里程碑</h5><div class="milestones-timeline">';
+                dashMilestones.forEach(m => {
+                    const item = typeof m === 'string' ? { name: m } : (m || {});
+                    const name = item.name || item.title || item.名称 || item.里程碑 || '';
+                    const dateVal = item.date || item.targetDate || item.日期 || item.目标日期 || '';
+                    const statusClass = (item.status || item.状态 || 'pending').replace('_', '-');
+                    html += `<div class="milestone-item ${statusClass}"><div class="milestone-marker"></div><div class="milestone-content"><span class="milestone-name">${escapeHtml(String(name))}</span><span class="milestone-date">${escapeHtml(String(dateVal))}</span></div></div>`;
+                });
+                html += '</div></div>';
+            }
+            html += '</div><pre class="diagram-code-panel" style="display:none"><code>' + codeEscaped + '</code></pre></div>';
+            return html;
+        } catch (e) {
+            window.Logger?.error('Project dashboard render error:', e);
+            return null;
+        }
+    }
+
+    function renderProblemEvolution(content) {
+        const match = content.match(/```problem-evolution\n([\s\S]*?)```/);
+        if (!match) return null;
+        try {
+            const data = JSON.parse(match[1]);
+            const codeEscaped = escapeHtml(match[1]);
+            const title = data.title || '问题演化分析';
+            let html = '<div class="diagram-block" data-diagram-type="problem-evolution"><div class="diagram-toolbar">' +
+                '<button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>' +
+                '<button class="diagram-btn" data-action="download" title="下载为PNG"><i class="fas fa-download"></i> 下载</button>' +
+                '<button class="diagram-btn" data-action="preview" title="预览"><i class="fas fa-search-plus"></i> 预览</button>' +
+                '<button class="diagram-btn" data-action="code" title="查看/隐藏代码"><i class="fas fa-code"></i> 代码</button>' +
+                '<button class="diagram-btn" data-action="copy" title="复制代码"><i class="fas fa-copy"></i> 复制</button>' +
+                '</div><div class="problem-evolution-container">';
+            html += `<h4><i class="fas fa-project-diagram"></i> ${escapeHtml(title)}</h4>`;
+            if (data.phases && data.phases.length > 0) {
+                html += '<div class="evolution-kanban"><h5>问题演化阶段</h5><div class="kanban-columns">';
+                data.phases.forEach((p, i) => {
+                    const statusClass = (p.status || 'pending').replace('_', '-');
+                    html += `<div class="kanban-col col-${statusClass}"><div class="kanban-col-title">${escapeHtml(p.name || '')}</div>`;
+                    (p.items || []).forEach(item => html += `<div class="kanban-card">${escapeHtml(typeof item === 'string' ? item : item.text || JSON.stringify(item))}</div>`);
+                    html += '</div>';
+                });
+                html += '</div></div>';
+            }
+            if (data.blockers && data.blockers.length > 0) {
+                html += '<div class="blocker-breakthrough"><h5><i class="fas fa-exclamation-triangle"></i> 当前阻塞点与突破方案</h5>';
+                data.blockers.forEach(b => {
+                    html += `<div class="blocker-card"><div class="blocker-name">${escapeHtml(b.name || b.blocker || '')}</div><div class="blocker-solution"><strong>突破方案：</strong>${escapeHtml(b.breakthrough || b.solution || '')}</div></div>`;
+                });
+                html += '</div>';
+            }
+            html += '</div><pre class="diagram-code-panel" style="display:none"><code>' + codeEscaped + '</code></pre></div>';
+            return html;
+        } catch (e) {
+            window.Logger?.error('Problem evolution render error:', e);
+            return null;
+        }
+    }
+
+    function renderMilestones(content) {
+        const match = content.match(/```milestones\n([\s\S]*?)```/);
+        if (!match) return null;
+        try {
+            const parsed = JSON.parse(match[1]);
+            const codeEscaped = escapeHtml(match[1]);
+            const data = Array.isArray(parsed) ? { milestones: parsed } : parsed;
+            let title = data.title || data.标题 || '项目里程碑';
+            let rawList = data.milestones || data.items || data.里程碑 || data.里程碑列表 || data.list || [];
+            if (!Array.isArray(rawList) && rawList && typeof rawList === 'object') {
+                rawList = rawList.里程碑 || rawList.items || rawList.milestones || [];
+            }
+            let milestones = Array.isArray(rawList) ? rawList : [];
+            if (!milestones.length && data.sections && Array.isArray(data.sections)) {
+                const sec = data.sections.find(s => (s.milestones || s.里程碑 || s.items)?.length);
+                if (sec) {
+                    title = sec.title || sec.标题 || title;
+                    milestones = sec.milestones || sec.里程碑 || sec.items || [];
+                }
+            }
+            if (!milestones.length && typeof data === 'object') {
+                for (const k of Object.keys(data)) {
+                    const v = data[k];
+                    if (Array.isArray(v) && v.length > 0 && v[0] && typeof v[0] === 'object' && (v[0].name || v[0].title || v[0].名称 || v[0].里程碑)) {
+                        milestones = v;
+                        if (typeof k === 'string' && !['milestones','items','list','里程碑','里程碑列表'].includes(k)) title = k;
+                        break;
+                    }
+                }
+            }
+            
+            let html = '<div class="diagram-block" data-diagram-type="milestones"><div class="diagram-toolbar">' +
+                '<button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>' +
+                '<button class="diagram-btn" data-action="download" title="下载为PNG"><i class="fas fa-download"></i> 下载</button>' +
+                '<button class="diagram-btn" data-action="preview" title="预览"><i class="fas fa-search-plus"></i> 预览</button>' +
+                '<button class="diagram-btn" data-action="code" title="查看/隐藏代码"><i class="fas fa-code"></i> 代码</button>' +
+                '<button class="diagram-btn" data-action="copy" title="复制代码"><i class="fas fa-copy"></i> 复制</button>' +
+                '</div><div class="milestones-container">';
+            html += `<h4><i class="fas fa-flag-checkered"></i> ${escapeHtml(title)}</h4><div class="milestones-timeline">`;
+            milestones.forEach((m, i) => {
+                const item = typeof m === 'string' ? { name: m } : (m || {});
+                const name = item.name || item.title || item.名称 || item.里程碑 || item.节点 || '';
+                const date = item.date || item.targetDate || item.日期 || item.目标日期 || item.时间 || '';
+                const desc = item.description || item.描述 || item.desc || '';
+                const statusClass = (item.status || item.状态 || 'pending').replace('_', '-');
+                html += `<div class="milestone-item ${statusClass}"><div class="milestone-marker"></div><div class="milestone-content"><span class="milestone-name">${escapeHtml(String(name))}</span><span class="milestone-date">${escapeHtml(String(date))}</span>${desc ? `<p class="milestone-desc">${escapeHtml(desc)}</p>` : ''}</div></div>`;
+            });
+            html += '</div></div><pre class="diagram-code-panel" style="display:none"><code>' + codeEscaped + '</code></pre></div>';
+            return html;
+        } catch (e) {
+            window.Logger?.error('Milestones render error:', e);
+            return null;
+        }
+    }
+
+    function renderDependencyGraph(content) {
+        const match = content.match(/```dependency-graph\n([\s\S]*?)```/);
+        if (!match) return null;
+        try {
+            const data = JSON.parse(match[1]);
+            const codeEscaped = escapeHtml(match[1]);
+            const nodes = data.nodes || [];
+            const edges = data.edges || [];
+            const title = data.title || '依赖关系图';
+            const nodeMap = {};
+            nodes.forEach(n => { nodeMap[n.id || n.nodeId || n.label] = n.label || n.name || n.id; });
+            let html = '<div class="diagram-block" data-diagram-type="dependency-graph"><div class="diagram-toolbar">' +
+                '<button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>' +
+                '<button class="diagram-btn" data-action="download" title="下载为PNG"><i class="fas fa-download"></i> 下载</button>' +
+                '<button class="diagram-btn" data-action="preview" title="预览"><i class="fas fa-search-plus"></i> 预览</button>' +
+                '<button class="diagram-btn" data-action="code" title="查看/隐藏代码"><i class="fas fa-code"></i> 代码</button>' +
+                '<button class="diagram-btn" data-action="copy" title="复制代码"><i class="fas fa-copy"></i> 复制</button>' +
+                '</div><div class="dependency-graph-container">';
+            html += `<h4><i class="fas fa-sitemap"></i> ${escapeHtml(title)}</h4>`;
+            html += '<div class="dep-graph"><div class="dep-nodes">';
+            nodes.forEach(n => {
+                const nodeId = n.id || n.nodeId || n.label;
+                const isCritical = n.critical || n.isCritical;
+                html += `<div class="dep-node ${isCritical ? 'critical' : ''}" data-id="${escapeHtml(nodeId)}"><span class="dep-node-label">${escapeHtml(n.label || n.name || nodeId)}</span>${n.duration ? `<span class="dep-node-duration">${escapeHtml(n.duration)}</span>` : ''}</div>`;
+            });
+            html += '</div><div class="dep-edges-list"><table class="dep-table"><thead><tr><th>前置</th><th></th><th>后续</th><th>类型</th></tr></thead><tbody>';
+            edges.forEach(e => {
+                const fromLabel = nodeMap[e.from] || e.from;
+                const toLabel = nodeMap[e.to] || e.to;
+                html += `<tr><td>${escapeHtml(fromLabel)}</td><td><i class="fas fa-arrow-right"></i></td><td>${escapeHtml(toLabel)}</td><td><span class="dep-type">${escapeHtml(e.label || e.type || 'FS')}</span></td></tr>`;
+            });
+            html += '</tbody></table></div></div></div><pre class="diagram-code-panel" style="display:none"><code>' + codeEscaped + '</code></pre></div>';
+            return html;
+        } catch (e) {
+            window.Logger?.error('Dependency graph render error:', e);
+            return null;
+        }
+    }
+
     // ==================== Mermaid图表渲染 ====================
     // 全局Mermaid配置（只初始化一次）
     let mermaidInitialized = false;
@@ -1007,12 +1309,29 @@
             flowchart: {
                 useMaxWidth: true,
                 htmlLabels: true,
-                curve: 'basis'
+                curve: 'basis',
+                padding: 20,
+                nodeSpacing: 50,
+                rankSpacing: 50
             },
             sequence: {
                 useMaxWidth: true,
                 diagramMarginX: 50,
                 diagramMarginY: 10
+            },
+            gantt: {
+                useMaxWidth: true,
+                fontSize: 14,
+                sectionFontSize: 14,
+                barHeight: 28,
+                barGap: 10,
+                topPadding: 60,
+                leftPadding: 140,
+                rightPadding: 100,
+                gridLineStartPadding: 45,
+                titleTopMargin: 30,
+                topAxis: true,
+                axisFormat: '%Y-%m-%d'
             }
         });
         mermaidInitialized = true;
@@ -1089,7 +1408,7 @@
             const targetId = block.dataset.diagramTarget;
             const codePanel = block.querySelector('.diagram-code-panel');
             const codeEl = codePanel?.querySelector('code');
-            const vizContainer = block.querySelector('.mermaid-container, .chart-container, .decision-matrix-container, .probability-container, .decision-chain-container');
+            const vizContainer = block.querySelector('.mermaid-container, .chart-container, .decision-matrix-container, .probability-container, .decision-chain-container, .project-dashboard-container, .problem-evolution-container, .milestones-container, .dependency-graph-container');
             const svgEl = block.querySelector('.mermaid svg, .mermaid-container svg');
 
             switch (action) {
@@ -1099,6 +1418,14 @@
                 case 'download':
                     if (svgEl) downloadDiagramAsPng(svgEl);
                     else if (block.querySelector('canvas')) downloadChartAsPng(block.querySelector('canvas'));
+                    else if (vizContainer && typeof html2canvas === 'function') {
+                        html2canvas(vizContainer, { backgroundColor: '#1a1a25', scale: 2 }).then(canvas => {
+                            const a = document.createElement('a');
+                            a.download = 'diagram-' + Date.now() + '.png';
+                            a.href = canvas.toDataURL('image/png');
+                            a.click();
+                        });
+                    }
                     break;
                 case 'preview':
                     openDiagramPreview(block);
@@ -1132,7 +1459,7 @@
         overlay.className = 'diagram-fullscreen-overlay';
         overlay.innerHTML = `<div class="diagram-fullscreen-content"><button class="diagram-close-btn"><i class="fas fa-times"></i></button><div class="diagram-fullscreen-body"></div></div>`;
         const body = overlay.querySelector('.diagram-fullscreen-body');
-        const viz = block.querySelector('.mermaid-container, .chart-container, .decision-matrix-container, .probability-container, .decision-chain-container');
+        const viz = block.querySelector('.mermaid-container, .chart-container, .decision-matrix-container, .probability-container, .decision-chain-container, .project-dashboard-container, .problem-evolution-container, .milestones-container, .dependency-graph-container');
         if (viz) {
             const canvas = viz.querySelector('canvas');
             if (canvas) {
@@ -2990,16 +3317,22 @@ ${ex.content}`).join('\n\n')}
                         <input type="text" id="edit-subagent-ignore-info" value="${escapeHtml(agent.ignoreInfoDesc || '')}" placeholder="例如：八卦、娱乐新闻、与工作无关的闲聊">
                         <small class="form-hint">填写要忽略的信息类型或描述，用于过滤无关内容</small>
                     </div>
+                    ` : ''}
                     <div class="form-group">
                         <label>关联助手（Workflow 链）</label>
-                        <div class="delegate-to-select" id="edit-subagent-delegate-to">
-                            ${Object.entries(window.AppState?.subAgents || {}).filter(([id]) => id !== 'work_secretary').map(([id, a]) => `
-                                <label class="delegate-to-item"><input type="checkbox" value="${id}" ${(agent.delegateTo || []).includes(id) ? 'checked' : ''}> ${escapeHtml(a.name || id)}</label>
-                            `).join('')}
+                        <div class="delegate-agent-cards-grid" id="edit-subagent-delegate-to">
+                            ${Object.entries(window.AppState?.subAgents || {}).filter(([id]) => id !== agentId).map(([id, a]) => {
+                                const selected = (agent.delegateTo || []).includes(id);
+                                const icon = a.icon || 'fa-user';
+                                return `
+                                <div class="delegate-agent-card ${selected ? 'selected' : ''}" data-agent-id="${id}" title="${escapeHtml(a.description || a.name || '')}">
+                                    <div class="delegate-agent-card-icon"><i class="fas ${icon}"></i></div>
+                                    <div class="delegate-agent-card-name">${escapeHtml(a.name || id)}</div>
+                                </div>`;
+                            }).join('')}
                         </div>
-                        <small class="form-hint">选择后，发送消息将自动按 Workflow 链执行：工作秘书(分析调度) → 所选助手 → 工作秘书(整合输出)</small>
+                        <small class="form-hint">选择后，发送消息将自动按 Workflow 链执行：${escapeHtml(agent.name || '当前助手')}(分析调度) → 所选助手 → ${escapeHtml(agent.name || '当前助手')}(整合输出)</small>
                     </div>
-                    ` : ''}
                     <div class="form-group">
                         <label>系统提示词</label>
                         <textarea id="edit-subagent-prompt" rows="3" placeholder="输入系统提示词...">${escapeHtml(agent.systemPrompt || '')}</textarea>
@@ -3062,6 +3395,16 @@ ${ex.content}`).join('\n\n')}
         // 绑定类型头部展开/收起事件
         bindTypeHeaderEvents(dialog);
 
+        // 绑定关联助手卡片点击事件
+        const delegateGrid = dialog.querySelector('#edit-subagent-delegate-to');
+        if (delegateGrid) {
+            delegateGrid.querySelectorAll('.delegate-agent-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    card.classList.toggle('selected');
+                });
+            });
+        }
+
         dialog.querySelector('#save-subagent-edit').addEventListener('click', () => {
             agent.name = dialog.querySelector('#edit-subagent-name').value.trim();
             agent.description = dialog.querySelector('#edit-subagent-desc').value.trim();
@@ -3071,10 +3414,10 @@ ${ex.content}`).join('\n\n')}
                 agent.serviceTarget = st?.value?.trim() || '';
                 const ign = dialog.querySelector('#edit-subagent-ignore-info');
                 agent.ignoreInfoDesc = ign?.value?.trim() || '';
-                const delegateEl = dialog.querySelector('#edit-subagent-delegate-to');
-                if (delegateEl) {
-                    agent.delegateTo = Array.from(delegateEl.querySelectorAll('input:checked')).map(cb => cb.value);
-                }
+            }
+            const delegateEl = dialog.querySelector('#edit-subagent-delegate-to');
+            if (delegateEl) {
+                agent.delegateTo = Array.from(delegateEl.querySelectorAll('.delegate-agent-card.selected')).map(c => c.dataset.agentId);
             }
             
             // 收集选中的资源

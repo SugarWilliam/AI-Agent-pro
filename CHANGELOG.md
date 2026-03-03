@@ -4,6 +4,26 @@
 
 ---
 
+## [8.2.5] - 2026-03-03
+
+### 项目评审与整理
+
+**主要变更**
+
+- **项目评审**
+  - 全面评审项目结构、冗余文件、文档一致性
+  - 版本号统一至 v8.2.5
+
+- **决策矩阵**
+  - 修复 Markdown 表格格式解析：AI 返回 `| 列 | 列 |` 时不再 JSON 解析报错
+  - 优先识别表格格式，再尝试 JSON 解析
+
+- **文档与清理**
+  - 更新 docs 文档版本引用
+  - 合并冗余部署文档说明
+
+---
+
 ## [8.2.4.a] - 2026-03-03
 
 ### UI 无响应修复
@@ -117,6 +137,7 @@
 
 ---
 
+[8.2.5]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.5
 [8.2.4]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.4
 [8.2.3]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.3
 [8.2.2]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.2

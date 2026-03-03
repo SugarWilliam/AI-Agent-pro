@@ -7,14 +7,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
     <meta name="theme-color" content="#000000">
-    <title>AI Agent Pro v8.2.4.a</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <title>AI Agent Pro v8.2.5</title>
     <link rel="icon" href="logo.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
+    <link rel="stylesheet" href="vendor/highlightjs/atom-one-dark.min.css">
+    <script src="vendor/chartjs/chart.umd.min.js"></script>
+    <script src="vendor/mermaid/mermaid.min.js"></script>
     <link rel="stylesheet" href="css/style-new.css">
 </head>
 <body>
@@ -27,7 +25,7 @@
                 </div>
                 <h1 class="splash-title">AI Agent Pro</h1>
                 <p class="splash-subtitle">智能助手，未来已来</p>
-                <p class="splash-version">v8.2.4.a</p>
+                <p class="splash-version">v8.2.5</p>
                 <div class="splash-loading">
                     <div class="splash-loading-bar" id="splash-loading-bar"></div>
                 </div>
@@ -53,7 +51,7 @@
                     </div>
                     <div class="brand-info">
                         <div class="brand-name">AI Agent Pro</div>
-                        <div class="brand-version">v8.2.4.a</div>
+                        <div class="brand-version">v8.2.5</div>
                     </div>
                 </div>
                 <button id="close-sidebar" class="close-sidebar-btn">
@@ -392,7 +390,7 @@
                             <label class="form-label">发送快捷键</label>
                             <select id="setting-shortcut" class="form-select">
                                 <option value="enter">Enter</option>
-                                <option value="ctrl-enter">Ctrl + Enter</option>
+                                <option value="ctrl-enter" selected>Ctrl + Enter</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -731,6 +729,7 @@
     <input type="file" id="import-data-btn" style="display: none;" accept=".json">
 
     <!-- JavaScript Files -->
+    <script src="vendor/html2canvas/html2canvas.min.js"></script>
     <!-- 工具模块 -->
     <script src="js/utils/logger.js"></script>
     <script src="js/storage.js"></script>

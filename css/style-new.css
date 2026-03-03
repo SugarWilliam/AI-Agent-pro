@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.2.4 - 未来科技风格样式
+ * AI Agent Pro v8.2.5 - 未来科技风格样式
  * AI时代智能化界面设计
  */
 
@@ -103,6 +103,14 @@ body.theme-light {
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
     --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.12);
+}
+
+/* 浅色主题下 Agent 消息气泡 - 低饱和度 */
+body.theme-light .message.assistant .message-body {
+    background: rgba(235, 238, 242, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-left: 3px solid rgba(0, 0, 0, 0.12);
+    color: var(--text-secondary);
 }
 
 /* ==================== 字体大小设置 ==================== */
@@ -1207,9 +1215,9 @@ body {
 }
 
 .message.assistant .message-avatar {
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    color: white;
-    box-shadow: var(--glow-primary);
+    background: rgba(40, 48, 60, 0.9);
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .message.user .message-avatar {
@@ -1221,6 +1229,13 @@ body {
 .message-content {
     flex: 1;
     max-width: calc(100% - 50px);
+}
+
+/* PC端：含图表的消息使用更宽布局 */
+@media (min-width: 1024px) {
+    .message-content:has(.diagram-block) {
+        max-width: min(900px, calc(100% - 50px));
+    }
 }
 
 .message-header {
@@ -1255,23 +1270,25 @@ body {
 }
 
 .message.assistant .message-body {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
+    background: rgba(18, 22, 30, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-left: 3px solid rgba(255, 255, 255, 0.12);
     border-top-left-radius: var(--radius-xs);
+    color: var(--text-secondary);
 }
 
 .message.user .message-body {
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    background: linear-gradient(135deg, var(--primary), var(--info));
     color: white;
     border-top-right-radius: var(--radius-xs);
 }
 
-/* 思考过程样式 */
+/* 思考过程样式 - 淡色暗色 */
 .thinking-section {
     margin-bottom: 12px;
     padding: 10px 12px;
-    background: rgba(0, 212, 255, 0.05);
-    border-left: 3px solid var(--primary);
+    background: rgba(255, 255, 255, 0.02);
+    border-left: 3px solid rgba(255, 255, 255, 0.15);
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
@@ -1280,7 +1297,7 @@ body {
     align-items: center;
     gap: 6px;
     font-size: 11px;
-    color: var(--primary);
+    color: var(--text-tertiary);
     margin-bottom: 6px;
     cursor: pointer;
 }
@@ -2725,6 +2742,106 @@ body {
     flex-shrink: 0;
 }
 
+/* 关联助手卡片（与资源勾选风格一致） */
+.delegate-agent-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+    padding: 12px 0;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.delegate-agent-card {
+    position: relative;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--border);
+    background: var(--bg-tertiary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.delegate-agent-card:hover {
+    border-color: var(--border-active);
+    background: var(--bg-elevated);
+    transform: translateY(-2px);
+}
+
+.delegate-agent-card.selected {
+    border-color: var(--success);
+    background: rgba(0, 230, 118, 0.08);
+}
+
+.delegate-agent-card::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--text-muted);
+    background: transparent;
+    transition: all var(--transition-fast);
+}
+
+.delegate-agent-card.selected::before {
+    border-color: var(--success);
+    background: var(--success);
+}
+
+.delegate-agent-card::after {
+    content: '✓';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: white;
+    opacity: 0;
+    transform: scale(0);
+    transition: all var(--transition-fast);
+    font-weight: bold;
+}
+
+.delegate-agent-card.selected::after {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.delegate-agent-card-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    background: var(--bg-elevated);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-size: 18px;
+}
+
+.delegate-agent-card-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1.3;
+}
+
+.delegate-agent-card.selected .delegate-agent-card-name {
+    color: var(--text-primary);
+}
+
 /* 设置页表单内勾选框（与 resource-checkbox-item 风格一致） */
 .form-group .resource-checkbox-item {
     display: flex;
@@ -3122,25 +3239,26 @@ body {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    padding: 16px;
+    padding: 20px;
     margin: 16px 0;
+    min-height: 120px;
 }
 
 .decision-matrix-container h4 {
-    margin: 0 0 12px 0;
+    margin: 0 0 16px 0;
     color: var(--primary);
-    font-size: 14px;
+    font-size: 15px;
 }
 
 .decision-matrix {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .decision-matrix th {
     background: var(--bg-tertiary);
-    padding: 10px;
+    padding: 12px 14px;
     text-align: center;
     border: 1px solid var(--border);
 }
@@ -3151,7 +3269,7 @@ body {
 }
 
 .decision-matrix td {
-    padding: 10px;
+    padding: 12px 14px;
     text-align: center;
     border: 1px solid var(--border);
 }
@@ -3176,14 +3294,15 @@ body {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    padding: 16px;
+    padding: 20px;
     margin: 16px 0;
+    min-height: 120px;
 }
 
 .decision-chain-container h4 {
-    margin: 0 0 16px 0;
+    margin: 0 0 20px 0;
     color: var(--primary);
-    font-size: 14px;
+    font-size: 15px;
 }
 
 .decision-chain {
@@ -3240,6 +3359,466 @@ body {
     background: var(--bg-tertiary);
     border-radius: var(--radius-full);
     margin-bottom: 4px;
+}
+
+/* ==================== 项目管理仪表板 ==================== */
+.project-dashboard-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    margin: 16px 0;
+    min-height: 180px;
+}
+
+.project-dashboard-container h4 {
+    margin: 0 0 16px 0;
+    color: var(--primary);
+    font-size: 15px;
+}
+
+.dashboard-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.dashboard-overview-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.dashboard-label {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+}
+
+.dashboard-value {
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.dashboard-value.dashboard-status {
+    color: var(--warning);
+}
+
+.dashboard-timeline {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.dashboard-timeline h5,
+.dashboard-risks h5 {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.dashboard-timeline-item {
+    margin-bottom: 8px;
+    font-size: 13px;
+}
+
+.dashboard-timeline-item:last-child { margin-bottom: 0; }
+
+.dashboard-timeline-item .dashboard-label {
+    display: inline-block;
+    margin-right: 8px;
+    min-width: 70px;
+}
+
+.dashboard-risks {
+    margin-bottom: 16px;
+}
+
+.dashboard-risk-card {
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--border);
+    background: var(--bg-tertiary);
+}
+
+.dashboard-risk-card.risk-high {
+    border-left-color: var(--error);
+}
+
+.dashboard-risk-card.risk-medium {
+    border-left-color: var(--warning);
+}
+
+.dashboard-risk-card.risk-low {
+    border-left-color: var(--success);
+}
+
+.dashboard-risk-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.dashboard-risk-id {
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.dashboard-risk-level {
+    font-size: 12px;
+    color: var(--error);
+}
+
+.dashboard-risk-card.risk-medium .dashboard-risk-level { color: var(--warning); }
+.dashboard-risk-card.risk-low .dashboard-risk-level { color: var(--success); }
+
+.dashboard-risk-desc {
+    font-size: 13px;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.dashboard-risk-impact,
+.dashboard-risk-owner,
+.dashboard-risk-mitigation {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+.dashboard-risk-impact .dashboard-label,
+.dashboard-risk-owner .dashboard-label,
+.dashboard-risk-mitigation .dashboard-label {
+    margin-right: 6px;
+}
+
+.dashboard-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.dashboard-stat {
+    flex: 1;
+    min-width: 80px;
+    padding: 12px 16px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--primary);
+}
+
+.dashboard-stat.stat-success { border-left-color: var(--success); }
+.dashboard-stat.stat-warning { border-left-color: var(--warning); }
+.dashboard-stat.stat-error { border-left-color: var(--error); }
+
+.dashboard-stat .stat-value {
+    display: block;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.dashboard-stat .stat-label {
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+.dashboard-tasks h5 {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.dashboard-task {
+    margin-bottom: 12px;
+}
+
+.dashboard-task .task-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-size: 13px;
+}
+
+.dashboard-task .task-name { color: var(--text-primary); }
+.dashboard-task .task-pct { color: var(--text-tertiary); }
+
+.dashboard-task .task-bar {
+    height: 8px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.dashboard-task .task-progress {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--info));
+    border-radius: var(--radius-full);
+    transition: width 0.3s ease;
+}
+
+.dashboard-task .task-progress[data-status="in-progress"] { background: linear-gradient(90deg, var(--primary), var(--info)); }
+.dashboard-task .task-progress[data-status="done"] { background: var(--success); }
+.dashboard-task .task-progress[data-status="blocked"] { background: var(--error); }
+
+.dashboard-milestones {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+.dashboard-milestones h5 {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.dashboard-milestones .milestones-timeline {
+    position: relative;
+    padding-left: 24px;
+    border-left: 2px solid var(--border);
+}
+
+/* ==================== 问题演化分析看板 ==================== */
+.problem-evolution-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    margin: 16px 0;
+    min-height: 180px;
+}
+
+.problem-evolution-container h4 {
+    margin: 0 0 16px 0;
+    color: var(--primary);
+    font-size: 15px;
+}
+
+.evolution-kanban h5,
+.blocker-breakthrough h5 {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.kanban-columns {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+
+.kanban-col {
+    flex: 1;
+    min-width: 160px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    border-top: 3px solid var(--border);
+}
+
+.kanban-col.col-done { border-top-color: var(--success); }
+.kanban-col.col-in-progress { border-top-color: var(--primary); }
+.kanban-col.col-pending { border-top-color: var(--text-muted); }
+
+.kanban-col-title {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
+.kanban-card {
+    padding: 8px 10px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.blocker-breakthrough {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+.blocker-card {
+    padding: 12px 16px;
+    background: rgba(255, 45, 146, 0.08);
+    border-left: 4px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    margin-bottom: 12px;
+}
+
+.blocker-card .blocker-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.blocker-card .blocker-solution {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* ==================== 里程碑 ==================== */
+.milestones-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    margin: 16px 0;
+    min-height: 120px;
+}
+
+.milestones-container h4 {
+    margin: 0 0 20px 0;
+    color: var(--primary);
+    font-size: 15px;
+}
+
+.milestones-timeline {
+    position: relative;
+    padding-left: 24px;
+    border-left: 2px solid var(--border);
+}
+
+.milestone-item {
+    position: relative;
+    padding-bottom: 20px;
+}
+
+.milestone-item:last-child { padding-bottom: 0; }
+
+.milestone-marker {
+    position: absolute;
+    left: -30px;
+    top: 4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border);
+}
+
+.milestone-item.done .milestone-marker {
+    background: var(--success);
+    border-color: var(--success);
+}
+
+.milestone-item.in-progress .milestone-marker {
+    background: var(--primary);
+    border-color: var(--primary);
+    box-shadow: 0 0 8px var(--primary-glow);
+}
+
+.milestone-content {
+    margin-left: 8px;
+}
+
+.milestone-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.milestone-date {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-left: 8px;
+}
+
+.milestone-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 0;
+    margin-top: 4px;
+}
+
+/* ==================== 依赖关系图 ==================== */
+.dependency-graph-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    margin: 16px 0;
+    min-height: 120px;
+}
+
+.dependency-graph-container h4 {
+    margin: 0 0 16px 0;
+    color: var(--primary);
+    font-size: 15px;
+}
+
+.dep-graph {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.dep-nodes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.dep-node {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+}
+
+.dep-node.critical {
+    border-color: var(--accent);
+    background: rgba(255, 45, 146, 0.1);
+}
+
+.dep-node-label { color: var(--text-primary); }
+.dep-node-duration { font-size: 11px; color: var(--text-tertiary); }
+
+.dep-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.dep-table th,
+.dep-table td {
+    padding: 10px 12px;
+    text-align: left;
+    border: 1px solid var(--border);
+}
+
+.dep-table th {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.dep-table td {
+    color: var(--text-primary);
+}
+
+.dep-type {
+    padding: 2px 8px;
+    background: rgba(0, 212, 255, 0.15);
+    border-radius: var(--radius-xs);
+    font-size: 11px;
 }
 
 /* ==================== 图表工具栏与全屏 ==================== */
@@ -3340,7 +3919,13 @@ body {
 }
 
 .diagram-fullscreen-body .mermaid-container,
-.diagram-fullscreen-body .chart-container {
+.diagram-fullscreen-body .chart-container,
+.diagram-fullscreen-body .decision-matrix-container,
+.diagram-fullscreen-body .decision-chain-container,
+.diagram-fullscreen-body .project-dashboard-container,
+.diagram-fullscreen-body .problem-evolution-container,
+.diagram-fullscreen-body .milestones-container,
+.diagram-fullscreen-body .dependency-graph-container {
     margin: 0;
 }
 
@@ -3348,7 +3933,11 @@ body {
 .diagram-block .mermaid-container,
 .diagram-block .chart-container,
 .diagram-block .decision-matrix-container,
-.diagram-block .decision-chain-container {
+.diagram-block .decision-chain-container,
+.diagram-block .project-dashboard-container,
+.diagram-block .problem-evolution-container,
+.diagram-block .milestones-container,
+.diagram-block .dependency-graph-container {
     border-radius: 0;
     margin: 0;
 }
@@ -3357,27 +3946,80 @@ body {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    padding: 16px;
+    padding: 20px;
     margin: 16px 0;
     overflow-x: auto;
+    overflow-y: auto;
+    min-height: 400px;
+}
+
+/* PC端：时间节点图/甘特图充分展开，适配大屏 */
+@media (min-width: 1024px) {
+    .mermaid-container {
+        min-height: 600px;
+        width: 100%;
+    }
+    .diagram-block {
+        width: 100%;
+        max-width: 100%;
+    }
+    .diagram-block .mermaid-container {
+        min-height: 650px;
+    }
+    .milestones-container,
+    .dependency-graph-container {
+        min-height: 200px;
+    }
 }
 
 .mermaid-wrapper {
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
     min-height: 100px;
+    width: 100%;
 }
 
 .mermaid {
     display: flex;
     justify-content: center;
+    width: 100%;
 }
 
 .mermaid svg {
     max-width: 100%;
+    width: 100%;
     height: auto;
     display: block;
+}
+
+/* 甘特图充分渲染：提升文字清晰度 */
+.mermaid svg text {
+    font-size: 14px !important;
+    fill: rgba(255, 255, 255, 0.95) !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+.mermaid .section-title,
+.mermaid .section0 rect,
+.mermaid .section1 rect,
+.mermaid .section2 rect,
+.mermaid .section3 rect {
+    fill: var(--bg-tertiary) !important;
+}
+
+.mermaid .task rect,
+.mermaid .task rect.milestone,
+.mermaid .task rect.crit {
+    stroke-width: 2px !important;
+}
+
+.mermaid .grid .tick line {
+    stroke: rgba(255, 255, 255, 0.15) !important;
+}
+
+.mermaid .grid path {
+    stroke: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* Mermaid节点样式覆盖 */

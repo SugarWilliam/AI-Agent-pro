@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-8.2.4.a-blue.svg)
+![Version](https://img.shields.io/badge/version-8.2.5-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Web-lightgrey.svg)
 
@@ -365,6 +365,12 @@ http://localhost:8080/test/comprehensive-test.html
 ---
 
 ## 📝 更新日志
+
+### v8.2.5 (2026-03-03)
+
+- 项目评审与整理、版本号统一
+- 决策矩阵：支持 Markdown 表格格式解析，修复 JSON 解析报错
+- 文档更新、冗余文件清理（release.sh 替代 release-v8.2.1.sh）
 
 ### v8.2.4.a (2026-03-03)
 

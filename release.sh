@@ -1,5 +1,5 @@
 #!/bin/bash
-# AI Agent Pro v8.2.1 正式发布脚本
+# AI Agent Pro 正式发布脚本
 # 1. 推送到 gh-pages 并部署
 # 2. 创建 release 标签
 # 3. 同步到 main 分支
@@ -7,7 +7,7 @@
 set -e
 
 REPO="SugarWilliam/AI-Agent-pro"
-VERSION="8.2.1"
+VERSION="${1:-8.2.5}"
 
 echo "=========================================="
 echo "🚀 AI Agent Pro v${VERSION} 正式发布"
@@ -32,10 +32,9 @@ echo ""
 echo "🏷️ 步骤2: 创建 release 标签 v${VERSION}..."
 git tag -a "v${VERSION}" -m "AI Agent Pro v${VERSION} 正式发布
 
-- 项目整理，清理冗余文档
-- 功能说明书 H5 化
-- 状态持久化优化
-- 修正 GitHub 链接"
+- 项目评审与整理
+- 决策矩阵 Markdown 表格解析
+- 版本号统一至 8.2.5"
 git push origin "v${VERSION}"
 echo "✅ 标签 v${VERSION} 已创建并推送"
 echo ""
@@ -57,4 +56,6 @@ echo "后续操作（可选）："
 echo "  1. 在 GitHub 创建 Release: https://github.com/${REPO}/releases/new?tag=v${VERSION}"
 echo "  2. 填写 Release 说明，可参考 CHANGELOG.md"
 echo "  3. 上传源码 zip（或使用自动生成的 Source code）"
+echo ""
+echo "用法: ./release.sh [版本号]  默认 8.2.5"
 echo ""

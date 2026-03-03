@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.2.4 - LLM服务
+ * AI Agent Pro v8.2.5 - LLM服务
  * 多模态输入输出支持
  */
 
@@ -195,6 +195,7 @@
                             let crawlCompleted = 0;
                             for (let i = 0; i < maxCrawl; i++) {
                                 const item = searchResults[i];
+                                if (!item || !item.url) continue;
                                 const sourceName = item.source || '未知';
                                 crawlPromises.push(
                                     (async () => {
@@ -208,10 +209,10 @@
                                             ]);
                                             if (pageContent && pageContent.content) {
                                                 return {
-                                                    title: item.title,
-                                                    url: item.url,
+                                                    title: item?.title || item?.snippet?.substring(0, 50) || '无标题',
+                                                    url: item?.url || '',
                                                     source: sourceName,
-                                                    content: pageContent.content.substring(0, 2000) // 限制内容长度
+                                                    content: (pageContent.content || '').substring(0, 2000) // 限制内容长度
                                                 };
                                             }
                                         } catch (err) {
@@ -264,15 +265,17 @@
                             Object.entries(resultsBySource).forEach(([source, results]) => {
                                 searchThinking += `\n【${source}】(${results.length}个结果)\n`;
                                 results.forEach((result, index) => {
-                                    searchThinking += `  ${index + 1}. ${result.title}\n     ${result.url}\n     ${result.snippet || ''}\n`;
+                                    const title = result?.title ?? result?.snippet?.substring(0, 50) ?? '无标题';
+                                    searchThinking += `  ${index + 1}. ${title}\n     ${result?.url || ''}\n     ${result?.snippet || ''}\n`;
                                 });
                             });
                             
                             // 添加爬取的网页内容
                             if (crawledContents.length > 0) {
                                 searchThinking += '\n\n📄 网页内容摘要（多源验证）：\n';
-                                crawledContents.forEach((item, index) => {
-                                    searchThinking += `\n【${index + 1}】${item.title} [来源: ${item.source || '未知'}] (${item.url})\n${item.content}\n`;
+                                crawledContents.filter(Boolean).forEach((item, index) => {
+                                    const title = (item && item.title) ?? '无标题';
+                                    searchThinking += `\n【${index + 1}】${title} [来源: ${item?.source || '未知'}] (${item?.url || ''})\n${item?.content || ''}\n`;
                                 });
                                 
                                 // 将爬取的内容添加到RAG上下文中（重要：确保搜索结果被使用）
@@ -287,15 +290,17 @@
                                 Object.entries(resultsBySource).forEach(([source, results]) => {
                                     ragContext += `【${source}搜索结果】\n`;
                                     results.forEach(result => {
-                                        ragContext += `- ${result.title} (${result.url})\n  ${result.snippet || ''}\n`;
+                                        const title = result?.title ?? result?.snippet?.substring(0, 50) ?? '无标题';
+                                        ragContext += `- ${title} (${result?.url || ''})\n  ${result?.snippet || ''}\n`;
                                     });
                                     ragContext += '\n';
                                 });
                                 
                                 // 添加爬取的网页内容
                                 ragContext += '【网页详细内容】\n';
-                                crawledContents.forEach(item => {
-                                    ragContext += `【${item.title}】[来源: ${item.source || '未知'}] (${item.url})\n${item.content}\n\n`;
+                                crawledContents.filter(Boolean).forEach(item => {
+                                    const title = (item && item.title) ?? '无标题';
+                                    ragContext += `【${title}】[来源: ${item?.source || '未知'}] (${item?.url || ''})\n${item?.content || ''}\n\n`;
                                 });
                                 
                                 ragContext += '⚠️ 网络搜索使用说明：\n';
@@ -348,7 +353,9 @@
             let usedRagNames = [];
             if (resources.rag && resources.rag.length > 0) {
                 const ragRet = await this.queryRAG(messages[messages.length - 1]?.content, resources.rag);
-                const ragKnowledge = ragRet.context || ragRet;
+                const ragKnowledge = (typeof ragRet === 'object' && ragRet !== null && ragRet.context !== undefined)
+                    ? String(ragRet.context ?? '')
+                    : (typeof ragRet === 'string' ? ragRet : '');
                 usedRagNames = ragRet.usedRagNames || [];
                 if (ragKnowledge) {
                     // 如果已有搜索结果，追加RAG知识库内容
@@ -475,6 +482,7 @@
 
         // 构建增强系统提示词
         buildEnhancedSystemPrompt({ subAgent, skillPrompts, rulesPrompt, mcpResults, ragContext, outputFormat, isWorkflow = false }) {
+            const ragContextStr = typeof ragContext === 'string' ? ragContext : (ragContext?.context ?? '');
             let prompt = `你是「${subAgent.name}」，${subAgent.description}\n\n`;
             if (subAgent.id === 'work_secretary') {
                 const target = subAgent.serviceTarget?.trim();
@@ -505,9 +513,9 @@
             }
             
             // 网络搜索结果：弥补模型知识滞后性（如新闻、时效性信息）
-            if (ragContext && ragContext.includes('【网络搜索结果')) {
+            if (ragContextStr && ragContextStr.includes('【网络搜索结果')) {
                 prompt += `【补充信息：网络搜索结果（弥补知识滞后，如新闻/时效性信息；与自身知识冲突时请先判断新知识的时效性与真实性再酌情采用）】\n`;
-                prompt += ragContext.split('【知识库参考】')[0] + '\n\n';
+                prompt += ragContextStr.split('【知识库参考】')[0] + '\n\n';
                 window.Logger?.info(`✅ 已将网络搜索结果作为补充信息添加到系统提示词`);
             }
             
@@ -521,16 +529,16 @@
             }
             
             // 添加RAG知识库内容（如果存在且不是搜索结果）
-            if (ragContext) {
-                if (ragContext.includes('【知识库参考】')) {
+            if (ragContextStr) {
+                if (ragContextStr.includes('【知识库参考】')) {
                     // 如果包含知识库参考，提取并添加
-                    const knowledgePart = ragContext.split('【知识库参考】')[1];
+                    const knowledgePart = ragContextStr.split('【知识库参考】')[1];
                     if (knowledgePart) {
                         prompt += `【知识库参考】\n${knowledgePart}\n\n`;
                     }
-                } else if (!ragContext.includes('【网络搜索结果')) {
+                } else if (!ragContextStr.includes('【网络搜索结果')) {
                     // 如果没有搜索结果，直接添加RAG内容
-                    prompt += `【知识库参考】\n${ragContext}\n\n`;
+                    prompt += `【知识库参考】\n${ragContextStr}\n\n`;
                 }
             }
             
