@@ -33,6 +33,9 @@ dist/
 build/
 *.min.js
 *.min.css
+# vendor 目录下的 min 文件需保留（用于 CDN 本地化部署）
+!vendor/**/*.min.js
+!vendor/**/*.min.css
 
 # 临时文件
 *.tmp
