@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-8.2.4-blue.svg)
+![Version](https://img.shields.io/badge/version-8.2.4.a-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Web-lightgrey.svg)
 
@@ -365,6 +365,10 @@ http://localhost:8080/test/comprehensive-test.html
 ---
 
 ## 📝 更新日志
+
+### v8.2.4.a (2026-03-03)
+
+- UI 无响应修复：初始化超时保护、启动页 pointer-events、图片预览 modal 修复
 
 ### v8.2.4 (2026-03-03)
 

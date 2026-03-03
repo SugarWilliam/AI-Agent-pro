@@ -89,12 +89,12 @@
      * @param {string} src - 图片URL
      */
     function previewImage(src) {
-        const img = document.getElementById('preview-image');
-        if (img) {
-            img.src = src;
-            // 调用主UI模块的openModal函数
+        const container = document.getElementById('preview-image');
+        if (container) {
+            const img = container.querySelector('img');
+            if (img) img.src = src;
             if (window.AIAgentUI && window.AIAgentUI.openModal) {
-                window.AIAgentUI.openModal('image-preview-modal');
+                window.AIAgentUI.openModal('preview-image');
             }
         }
     }

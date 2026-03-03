@@ -3910,12 +3910,17 @@ ${ex.content}`).join('\n\n')}
     };
 
     const previewImage = window.AIAgentUIUtils?.previewImage || function(src) {
-        const img = document.getElementById('preview-image');
-        if (img) {
-            img.src = src;
-            openModal('image-preview-modal');
+        const container = document.getElementById('preview-image');
+        if (container) {
+            const img = container.querySelector('img');
+            if (img) img.src = src;
+            openModal('preview-image');
         }
     };
+
+    function closeImagePreview() {
+        closeModal('preview-image');
+    }
 
     // ==================== 设置事件绑定 ====================
     function initSettingsEvents() {
@@ -4015,6 +4020,7 @@ ${ex.content}`).join('\n\n')}
         openModal,
         closeModal,
         closeAllModals,
+        closeImagePreview,
         copyMessage,
         downloadMessage,
         speakMessage,

@@ -176,6 +176,7 @@ body {
 .splash-screen.hidden {
     opacity: 0;
     visibility: hidden;
+    pointer-events: none; /* 确保隐藏后不阻挡点击 */
 }
 
 .splash-content {

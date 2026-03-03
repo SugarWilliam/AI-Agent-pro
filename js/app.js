@@ -1,12 +1,12 @@
 /**
- * AI Agent Pro v8.2.4 - 应用状态管理
+ * AI Agent Pro v8.2.4.a - 应用状态管理
  * 多模态AI Agent - 支持输入输出多模态
  */
 
 (function() {
     'use strict';
 
-    const VERSION = '8.2.4';
+    const VERSION = '8.2.4.a';
     const STORAGE_KEY = 'ai_agent_state_v6';
     const CUSTOM_MODELS_KEY = 'ai_agent_custom_models_v6';
     const CUSTOM_SUBAGENTS_KEY = 'ai_agent_custom_subagents_v6';
@@ -2233,71 +2233,100 @@ ${prompt}
     };
 
     // ==================== 初始化 ====================
+    function finishInit() {
+        hideSplash();
+        const app = document.getElementById('app');
+        if (app) {
+            app.style.display = 'flex';
+        }
+        setTimeout(() => {
+            if (window.AIAgentEvents && typeof window.AIAgentEvents.initUI === 'function') {
+                window.AIAgentEvents.initUI();
+            }
+        }, 100);
+    }
+
     async function init() {
         const startTime = Date.now();
         const minDuration = 3000; // 最少3秒
         const maxDuration = 4000; // 最多4秒
-        
-        updateSplashProgress(10, '正在加载模型...');
-        await sleep(300);
-        initModels();
-        
-        updateSplashProgress(30, '正在加载资源...');
-        await sleep(400);
-        initResources();
-        
-        updateSplashProgress(50, '正在加载助手...');
-        await sleep(400);
-        initSubAgents();
-        
-        updateSplashProgress(70, '正在恢复状态...');
-        await sleep(300);
-        if (window.location.protocol === 'file:') {
-            window.Logger?.warn?.('当前为 file:// 协议，建议使用本地服务器（如 ./start-server.sh）以获得稳定持久化');
-        }
-        await loadState();
-        
-        updateSplashProgress(80, '正在加载SubAgent配置...');
-        await sleep(200);
-        loadSubAgentConfigs();
-        
-        updateSplashProgress(85, '正在加载配置...');
-        await sleep(300);
-        loadSyncConfig();
-        await loadRagVectors();
-        loadJinaAIConfig();
-        
-        // 初始化RAGManager
-        if (window.RAGManager && typeof window.RAGManager.init === 'function') {
-            window.RAGManager.init();
-            window.Logger?.info('RAGManager初始化完成');
-        }
-        
-        updateSplashProgress(95, '正在初始化界面...');
-        await sleep(200);
-        
-        updateSplashProgress(100, '加载完成');
-        
-        // 确保至少显示3-4秒
-        const elapsed = Date.now() - startTime;
-        const remaining = Math.max(0, minDuration - elapsed);
-        const maxRemaining = maxDuration - elapsed;
-        
-        setTimeout(() => {
-            hideSplash();
-            // 显示主应用界面
-            const app = document.getElementById('app');
-            if (app) {
-                app.style.display = 'flex';
+        const INIT_TIMEOUT = 10000; // 10秒超时，防止挂起导致UI永不显示
+        let initCompleted = false;
+
+        const timeoutId = setTimeout(() => {
+            if (initCompleted) return;
+            initCompleted = true;
+            window.Logger?.warn?.('初始化超时，强制显示主界面');
+            finishInit();
+        }, INIT_TIMEOUT);
+
+        try {
+            updateSplashProgress(10, '正在加载模型...');
+            await sleep(300);
+            initModels();
+            
+            updateSplashProgress(30, '正在加载资源...');
+            await sleep(400);
+            initResources();
+            
+            updateSplashProgress(50, '正在加载助手...');
+            await sleep(400);
+            initSubAgents();
+            
+            updateSplashProgress(70, '正在恢复状态...');
+            await sleep(300);
+            if (window.location.protocol === 'file:') {
+                window.Logger?.warn?.('当前为 file:// 协议，建议使用本地服务器（如 ./start-server.sh）以获得稳定持久化');
             }
-            // 初始化完成后，确保UI已渲染历史会话
-            // 延迟一点时间确保DOM已更新
+            await Promise.race([
+                loadState(),
+                sleep(5000).then(() => window.Logger?.warn?.('loadState 超时，使用默认状态'))
+            ]);
+            
+            updateSplashProgress(80, '正在加载SubAgent配置...');
+            await sleep(200);
+            loadSubAgentConfigs();
+            
+            updateSplashProgress(85, '正在加载配置...');
+            await sleep(300);
+            loadSyncConfig();
+            await Promise.race([
+                loadRagVectors(),
+                sleep(3000).then(() => window.Logger?.warn?.('loadRagVectors 超时'))
+            ]);
+            loadJinaAIConfig();
+            
+            // 初始化RAGManager
+            if (window.RAGManager && typeof window.RAGManager.init === 'function') {
+                window.RAGManager.init();
+                window.Logger?.info('RAGManager初始化完成');
+            }
+            
+            updateSplashProgress(95, '正在初始化界面...');
+            await sleep(200);
+            
+            updateSplashProgress(100, '加载完成');
+            
+            // 确保至少显示3-4秒
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(0, minDuration - elapsed);
+            const maxRemaining = maxDuration - elapsed;
+            
+            const finishDelay = Math.min(remaining, maxRemaining);
             setTimeout(() => {
-                if (window.AIAgentEvents && typeof window.AIAgentEvents.initUI === 'function') {
-                    window.AIAgentEvents.initUI();
-                }
-            }, 100);
-        }, Math.min(remaining, maxRemaining));
+                if (initCompleted) return;
+                initCompleted = true;
+                clearTimeout(timeoutId);
+                finishInit();
+            }, finishDelay);
+        } catch (error) {
+            window.Logger?.error?.('初始化异常:', error);
+            if (!initCompleted) {
+                initCompleted = true;
+                clearTimeout(timeoutId);
+                finishInit();
+            }
+        }
     }
     
     // 辅助函数：延迟

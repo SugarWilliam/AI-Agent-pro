@@ -4,6 +4,16 @@
 
 ---
 
+## [8.2.4.a] - 2026-03-03
+
+### UI 无响应修复
+
+- 初始化超时保护（10 秒），防止 loadState/loadRagVectors 挂起导致界面永不显示
+- 启动页隐藏后增加 pointer-events: none，避免阻挡点击
+- 修复图片预览 modal ID 不匹配，新增 closeImagePreview
+
+---
+
 ## [8.2.4] - 2026-03-03
 
 ### 版本号更新

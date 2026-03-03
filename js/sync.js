@@ -83,7 +83,7 @@
 
             try {
                 const data = {
-                    version: window.AIAgentApp?.VERSION || '8.2.4',
+                    version: window.AIAgentApp?.VERSION || '8.2.4.a',
                     timestamp: Date.now(),
                     device: this.getDeviceInfo(),
                     data: {
