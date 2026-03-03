@@ -4,6 +4,29 @@
 
 ---
 
+## [8.2.3] - 2026-03-03
+
+### Workflow 与工作秘书增强
+
+**主要变更**
+
+- **Workflow 流程修复**
+  - 修复前级到下一级传递时 instruction 丢失问题
+  - 上一级输出超长时自动截断（12000 字符），避免 token 溢出导致 API 报错
+
+- **工作秘书 SubAgent 重构**
+  - 取消默认 delegateTo 关联，用户按需配置
+  - 工作秘书作为组织者：首步分析任务并调度、末步整合输出
+  - 流程结构：工作秘书(分析调度) → 所选助手 → 工作秘书(整合输出)
+  - 中间过程由工作秘书监控，最终输出由工作秘书完成
+
+- **工作秘书默认超级决策能力**
+  - 新增 skills：skill_decision_expert、skill_cognitive_psychology、skill_swot、skill_first_principles、skill_iceberg_model、skill_pyramid、skill_smart
+  - 新增 rag：rag_first_principles、rag_iceberg_model、rag_psychology、rag_neuroscience、rag_common_sense、rag_history、rag_industry_reports、rag_government_reports、rag_finance、rag_social
+  - 新增 mcp：mcp_calculator
+
+---
+
 ## [8.2.2] - 2026-03-01
 
 ### 工程评审与文档同步
@@ -69,6 +92,7 @@
 
 ---
 
+[8.2.3]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.3
 [8.2.2]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.2
 [8.2.1]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.1
 [8.2.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.0

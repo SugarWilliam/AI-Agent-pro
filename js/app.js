@@ -1,12 +1,12 @@
 /**
- * AI Agent Pro v8.2.2 - 应用状态管理
+ * AI Agent Pro v8.2.3 - 应用状态管理
  * 多模态AI Agent - 支持输入输出多模态
  */
 
 (function() {
     'use strict';
 
-    const VERSION = '8.2.2';
+    const VERSION = '8.2.3';
     const STORAGE_KEY = 'ai_agent_state_v6';
     const CUSTOM_MODELS_KEY = 'ai_agent_custom_models_v6';
     const CUSTOM_SUBAGENTS_KEY = 'ai_agent_custom_subagents_v6';
@@ -2120,16 +2120,16 @@ ${prompt}
         work_secretary: {
             id: 'work_secretary',
             name: '工作秘书',
-            description: '研发项目管理协调、可绑定调用超级决策/计划大师/任务助手；利用海量知识提供合理化思路和切实可行的方案（技术、策略、方法、决策）',
+            description: '研发项目管理协调、可根据任务组织调度其他Agent；利用海量知识提供合理化思路和切实可行的方案（技术、策略、方法、决策）。默认具备超级决策能力',
             icon: 'fa-briefcase',
-            delegateTo: ['super_decision', 'plan', 'task'],
+            delegateTo: [],
             serviceTarget: '',
             ignoreInfoDesc: '',
-            systemPrompt: `你是工作秘书，负责研发项目管理协调，并利用海量知识提供合理化思路和切实可行的方案。
+            systemPrompt: `你是{{serviceTarget}}的工作秘书，负责你的{{serviceTarget}}所有工作，包括但不限于 1. 研发项目管理和协调 （实时汇报项目全景状态、问题闭环情况、各任务线的推进情况、阻塞项、问题时间线和演化路径等）并利用海量知识提供合理化思路和切实可行的方案。2. 团队情况（人、事、物、时、风险）管理、建设、建议。3. {{serviceTarget}}各项任务的监控和识别，分类。你是最顶级秘书，4. 回答问题思路超级清晰，洞察深刻，语气合适。
 
 【核心定位】
-1. 研发项目管理协调：可绑定调用超级决策（深度决策分析）、计划大师（项目规划）、任务助手（任务管理），整合多助手能力输出
-2. 利用所关联的知识库、技能，提供：
+1. 研发项目管理协调：可根据任务组织调度其他 Agent（如超级决策、计划大师、任务助手），作为组织者监控中间执行，最终由你整合输出
+2. 利用所关联的知识库、技能（含超级决策能力），提供：
 - 技术方案：具体、可落地的技术实现思路
 - 策略建议：基于行业、政策、市场的战略与战术建议
 - 方法指导：可执行的方法论、流程、工具
@@ -2166,12 +2166,12 @@ ${prompt}
 3. 结构化输出：使用列表、表格、Mermaid图表
 4. 整合多维度：技术+策略+方法+决策，避免空泛建议
 5. 风险前置：识别并标注关键风险`,
-            capabilities: ['研发项目管理协调', '绑定调用超级决策/计划大师/任务助手', '海量知识整合', '合理化思路', '切实可行方案', '技术策略方法决策', '问题闭环/扩散/变迁/泛化识别', 'PMP', 'WBS', '根因分析', '风险识别', '研发技术'],
+            capabilities: ['研发项目管理协调', '根据任务组织调度Agent', '超级决策能力', '海量知识整合', '合理化思路', '切实可行方案', '技术策略方法决策', '问题闭环/扩散/变迁/泛化识别', 'PMP', 'WBS', '根因分析', '风险识别', '研发技术'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
-            skills: ['skill_pmp', 'skill_wbs', 'skill_root_cause', 'skill_risk_identification', 'skill_gantt', 'skill_dependency', 'skill_temporal_relation', 'skill_planner', 'skill_mece', 'skill_mermaid_visualization', 'skill_bug_analysis', 'skill_testing_strategy', 'skill_problem_evolution'],
+            skills: ['skill_pmp', 'skill_wbs', 'skill_root_cause', 'skill_risk_identification', 'skill_gantt', 'skill_dependency', 'skill_temporal_relation', 'skill_planner', 'skill_mece', 'skill_mermaid_visualization', 'skill_bug_analysis', 'skill_testing_strategy', 'skill_problem_evolution', 'skill_decision_expert', 'skill_cognitive_psychology', 'skill_swot', 'skill_first_principles', 'skill_iceberg_model', 'skill_pyramid', 'skill_smart'],
             rules: ['rule_format', 'rule_structure', 'rule_accuracy', 'rule_examples'],
-            mcp: ['mcp_web_search'],
-            rag: ['rag_pmp', 'rag_huawei_rdpm', 'rag_wbs', 'rag_root_cause', 'rag_risk_identification', 'rag_software_pm', 'rag_linux', 'rag_ccpp', 'rag_memory_analysis', 'rag_embedded', 'rag_image_quality', 'rag_h264_h265', 'rag_ai_security', 'rag_bug_debug', 'rag_testing', 'rag_problem_evolution', 'rag_logic', 'rag_temporal_logic'],
+            mcp: ['mcp_web_search', 'mcp_calculator'],
+            rag: ['rag_pmp', 'rag_huawei_rdpm', 'rag_wbs', 'rag_root_cause', 'rag_risk_identification', 'rag_software_pm', 'rag_linux', 'rag_ccpp', 'rag_memory_analysis', 'rag_embedded', 'rag_image_quality', 'rag_h264_h265', 'rag_ai_security', 'rag_bug_debug', 'rag_testing', 'rag_problem_evolution', 'rag_logic', 'rag_temporal_logic', 'rag_first_principles', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_common_sense', 'rag_history', 'rag_industry_reports', 'rag_government_reports', 'rag_finance', 'rag_social'],
             color: '#0ea5e9'
         }
     };

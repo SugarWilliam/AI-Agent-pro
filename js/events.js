@@ -971,6 +971,7 @@
             }).filter(Boolean);
         })();
         // 工作秘书 + delegateTo：无 Workflow 前缀时，自动走 Workflow 链
+        // 结构：工作秘书(首) -> 被调度Agent -> 工作秘书(尾)，最终输出由工作秘书完成，中间过程由工作秘书监控
         let autoWorkflow = false;
         if (workflowChainSteps.length === 0) {
             const agent = window.AppState?.subAgents?.[window.AppState?.currentSubAgent];
@@ -979,8 +980,9 @@
                 const validDelegates = agent.delegateTo.filter(id => subAgents[id]);
                 if (validDelegates.length > 0) {
                     workflowChainSteps = [
-                        { agentId: 'work_secretary', label: '工作秘书', instruction: '分析任务并协调' },
-                        ...validDelegates.map(id => ({ agentId: id, label: '', instruction: '' }))
+                        { agentId: 'work_secretary', label: '工作秘书', instruction: '分析任务、根据任务组织调度后续助手并监控执行' },
+                        ...validDelegates.map(id => ({ agentId: id, label: '', instruction: '' })),
+                        { agentId: 'work_secretary', label: '工作秘书', instruction: '整合各助手输出，完成最终结论与交付物' }
                     ];
                     autoWorkflow = true;
                 }

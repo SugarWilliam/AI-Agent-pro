@@ -489,7 +489,12 @@
             if (isWorkflow) {
                 prompt += `【Workflow 模式】请按以下流程执行：1.分析用户问题 2.以自身知识为主，网络搜索仅弥补知识滞后（如新闻）；若与自身知识冲突，先判断新知识时效性与真实性再酌情采用 3.整合信息 4.输出结论与洞察。直接给出结果，避免冗长分析过程。\n\n`;
             }
-            prompt += subAgent.systemPrompt + '\n\n';
+            let sysPrompt = subAgent.systemPrompt || '';
+            if (subAgent.id === 'work_secretary' && sysPrompt.includes('{{serviceTarget}}')) {
+                const target = subAgent.serviceTarget?.trim() || '用户';
+                sysPrompt = sysPrompt.replace(/\{\{serviceTarget\}\}/g, target);
+            }
+            prompt += sysPrompt + '\n\n';
             
             if (rulesPrompt) {
                 prompt += `【规则】\n${rulesPrompt}\n\n`;
@@ -3046,7 +3051,11 @@
 
         async runWorkflowChain(chainSteps, task, _messages, modelId, onStream) {
             const chain = Array.isArray(chainSteps) ? chainSteps : [];
-            const steps = chain.map(s => typeof s === 'string' ? { agentId: s, label: '' } : { agentId: s?.agentId || '', label: s?.label || '' });
+            const steps = chain.map(s => {
+                if (typeof s === 'string') return { agentId: s, label: '', instruction: '' };
+                const inst = s?.instruction ?? s?.label ?? '';
+                return { agentId: s?.agentId || '', label: s?.label || inst, instruction: inst };
+            });
             if (steps.length === 0 || steps.every(s => !s.agentId)) {
                 return await this.sendMessage(
                     [{ role: 'user', content: task }],
@@ -3083,10 +3092,15 @@
                         messages = [{ role: 'user', content: instructionPrefix + (instruction ? `【用户任务】\n${task}` : task) }];
                     } else {
                         const prevLabel = (steps[i - 1].instruction || steps[i - 1].label) || window.AppState.subAgents?.[steps[i - 1].agentId]?.name || steps[i - 1].agentId;
+                        // 限制上一级输出长度，避免 token 溢出导致 API 报错（约 12k 字符 ≈ 8k tokens）
+                        const MAX_PREV_CONTENT = 12000;
+                        const prevContent = (typeof lastContent === 'string' && lastContent.length > MAX_PREV_CONTENT)
+                            ? lastContent.substring(0, MAX_PREV_CONTENT) + `\n\n...[内容已截断，共 ${lastContent.length} 字符，此处仅保留前 ${MAX_PREV_CONTENT} 字符]`
+                            : (lastContent || '');
                         messages = [
                             { role: 'user', content: task },
-                            { role: 'assistant', content: lastContent },
-                            { role: 'user', content: instructionPrefix + `【上一步（${prevLabel}）的输出】\n\n${lastContent}\n\n请基于以上内容，结合本步骤要求，继续执行${isLast ? '并输出最终结果' : '，为下一步提供输入'}` }
+                            { role: 'assistant', content: prevContent },
+                            { role: 'user', content: instructionPrefix + `【上一步（${prevLabel}）的输出】\n\n${prevContent}\n\n请基于以上内容，结合本步骤要求，继续执行${isLast ? '并输出最终结果' : '，为下一步提供输入'}` }
                         ];
                     }
                     const streamCallback = (content) => {

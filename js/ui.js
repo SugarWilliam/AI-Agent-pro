@@ -2858,7 +2858,7 @@ ${ex.content}`).join('\n\n')}
                                 <label class="delegate-to-item"><input type="checkbox" value="${id}" ${(agent.delegateTo || []).includes(id) ? 'checked' : ''}> ${escapeHtml(a.name || id)}</label>
                             `).join('')}
                         </div>
-                        <small class="form-hint">选择后，发送消息将自动按 Workflow 链执行：工作秘书 → 所选助手依次执行</small>
+                        <small class="form-hint">选择后，发送消息将自动按 Workflow 链执行：工作秘书(分析调度) → 所选助手 → 工作秘书(整合输出)</small>
                     </div>
                     ` : ''}
                     <div class="form-group">
