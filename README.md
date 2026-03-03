@@ -251,6 +251,7 @@ vercel
 - [设计文档](docs/DESIGN.md) - 详细的设计思想、架构、算法
 - [部署文档](docs/DEPLOYMENT.md) - 部署说明和配置
 - [工程评审](docs/PROJECT_REVIEW.md) - 架构、代码质量、近期变更评审
+- [Release 准备清单](docs/RELEASE_READINESS.md) - 正式版本发布前检查
 - [功能说明书](docs/AI-Agent-Pro-Features.html) - 功能使用指南（H5格式）
 - [HTML版设计文档](docs/AI-Agent-Pro-Design.html) - 在线查看
 - [HTML版部署指南](docs/AI-Agent-Pro-Guide.html) - 在线查看

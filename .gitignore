@@ -77,3 +77,4 @@ git-ssh-wrapper.sh
 ssh_private_key
 ssh_public_key.txt
 ssh_public_key.pub
+ssh_public_key

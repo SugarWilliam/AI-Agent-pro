@@ -133,6 +133,15 @@
 
 ---
 
+## 7. Release 准备
+
+详见 [RELEASE_READINESS.md](RELEASE_READINESS.md)：
+- 安全项（API Key 硬编码）
+- 资源检查
+- Release 执行清单
+
+---
+
 **文档版本**: v8.2.5  
 **最后更新**: 2026-03-03  
 **维护者**: AI Agent Pro Team
