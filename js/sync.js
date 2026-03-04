@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.3.0 - 云同步服务
+ * AI Agent Pro v8.3.1 - 云同步服务
  * 支持私人云端服务器对接
  */
 
@@ -38,10 +38,7 @@
 
         // 启动自动同步
         startAutoSync() {
-            if (this.syncInterval) {
-                clearInterval(this.syncInterval);
-            }
-
+            this.stopAutoSync();
             const config = window.AppState?.syncConfig;
             if (!config) {
                 window.Logger?.warn('startAutoSync: syncConfig is not available');
@@ -49,9 +46,20 @@
             }
             if (config?.enabled && config?.interval) {
                 const intervalMs = config.interval * 60 * 1000;
-                this.syncInterval = setInterval(() => {
-                    this.syncToCloud();
-                }, intervalMs);
+                const cb = () => this.syncToCloud();
+                this.syncInterval = window.TimerManager?.setRepeat?.(cb, intervalMs, { componentId: 'sync-service' })
+                    ?? setInterval(cb, intervalMs);
+            }
+        },
+
+        stopAutoSync() {
+            if (this.syncInterval != null) {
+                if (typeof this.syncInterval === 'string' && window.TimerManager?.clear) {
+                    window.TimerManager.clear(this.syncInterval);
+                } else {
+                    clearInterval(this.syncInterval);
+                }
+                this.syncInterval = null;
             }
         },
 
@@ -83,7 +91,7 @@
 
             try {
                 const data = {
-                    version: window.AIAgentApp?.VERSION || '8.3.0',
+                    version: window.AIAgentApp?.VERSION || '8.3.1',
                     timestamp: Date.now(),
                     device: this.getDeviceInfo(),
                     data: {
@@ -242,7 +250,8 @@
 
     // 初始化
     document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => SyncService.init(), 1000);
+        const init = () => SyncService.init();
+        window.TimerManager?.setDelay?.(init, 1000) || setTimeout(init, 1000);
     });
 
     // 暴露到全局

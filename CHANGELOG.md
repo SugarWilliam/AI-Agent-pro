@@ -4,6 +4,27 @@
 
 ---
 
+## [8.3.1] - 2026-03-04
+
+### 项目整理与清理
+
+**文件清理**
+- 删除冗余测试脚本：analyze-and-fix.js、analyze-and-fix-report.py、analyze-test-report.js、fix-failed-tests.py、process-test-report.sh、process-report.py、TEST_STATUS.txt
+- 删除 simple-server.py（与 start-server.sh 功能重复）
+- 合并 DEPLOY_NOW.sh 到 deploy.sh（新增 --token 参数）
+
+**project-dashboard 渲染增强**
+- 支持 `` 双反引号代码块格式
+- JSON 容错：字符串内换行、尾逗号、缺失逗号、未转义引号
+- managementgaps 嵌套对象（识别/根因）渲染
+- 扩展 hasDashboardStructure 检测字段
+
+**文档**
+- DIAGRAM_FORMAT_SPEC 更新 project-dashboard 格式说明
+- 版本号统一至 v8.3.1
+
+---
+
 ## [8.3.0] - 2026-03-03
 
 ### A2A 重大升级
@@ -177,6 +198,7 @@
 
 ---
 
+[8.3.1]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.1
 [8.3.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.0
 [8.2.6]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.6
 [8.2.5]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.5

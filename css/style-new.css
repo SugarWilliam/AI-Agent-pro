@@ -1789,6 +1789,13 @@ body {
     background: linear-gradient(135deg, var(--error), var(--warning));
 }
 
+.send-btn:disabled,
+.send-btn.send-btn-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
 @keyframes send-btn-pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.85; }
@@ -3538,6 +3545,73 @@ body {
     margin-right: 6px;
 }
 
+.dashboard-leverage, .dashboard-blockers, .dashboard-closure, .dashboard-gaps,
+.dashboard-actions, .dashboard-resource, .dashboard-deps, .dashboard-biases {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.dashboard-leverage h5, .dashboard-blockers h5, .dashboard-closure h5,
+.dashboard-gaps h5, .dashboard-actions h5, .dashboard-resource h5,
+.dashboard-deps h5, .dashboard-biases h5 {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.dashboard-leverage ul, .dashboard-actions ul, .dashboard-biases ul {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 13px;
+}
+
+.dashboard-blocker-card {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-radius: var(--radius-sm);
+    border-left: 4px solid var(--border);
+}
+
+.dashboard-blocker-card.blocker-high { border-left-color: var(--error); }
+.dashboard-blocker-card.blocker-medium { border-left-color: var(--warning); }
+.dashboard-blocker-card.blocker-low { border-left-color: var(--success); }
+
+.dashboard-blocker-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.blocker-priority { font-size: 11px; color: var(--text-tertiary); }
+.dashboard-blocker-breakthrough { font-size: 12px; color: var(--text-secondary); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+
+.dashboard-closure .closure-summary { margin-bottom: 10px; font-size: 13px; }
+.closure-item { margin-bottom: 10px; font-size: 13px; }
+.closure-main { display: flex; justify-content: space-between; }
+.closure-status { color: var(--text-tertiary); }
+.closure-next { margin-top: 4px; font-size: 12px; color: var(--text-secondary); }
+
+.gap-section { margin-bottom: 10px; }
+.gap-label { font-weight: 600; font-size: 12px; display: block; margin-bottom: 4px; }
+.action-owner { color: var(--primary); font-size: 12px; }
+.action-deadline { color: var(--text-tertiary); font-size: 11px; margin-left: 6px; }
+.action-desc { margin-top: 4px; font-size: 12px; color: var(--text-secondary); }
+
+.resource-load-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.resource-load-item {
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    background: var(--bg-secondary);
+}
+.resource-load-item.load-overload { border-left: 3px solid var(--error); }
+.resource-load-item.load-high { border-left: 3px solid var(--warning); }
+.resource-load-item.load-medium { border-left: 3px solid var(--info); }
+.resource-load-item.load-low { border-left: 3px solid var(--success); }
+.resource-load .resource-name { margin-right: 8px; }
+
+.deps-blocking { margin-bottom: 10px; font-size: 13px; color: var(--error); }
+.deps-list { margin: 0; padding-left: 18px; font-size: 13px; }
+
+.bias-impact { color: var(--text-tertiary); font-size: 12px; }
+
 .dashboard-stats {
     display: flex;
     flex-wrap: wrap;
@@ -3642,6 +3716,16 @@ body {
     font-size: 15px;
 }
 
+.evolution-current-status {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 16px;
+    padding: 10px 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+}
+
 .evolution-kanban h5,
 .blocker-breakthrough h5 {
     margin: 0 0 12px 0;
@@ -3673,7 +3757,20 @@ body {
     font-weight: 600;
     font-size: 13px;
     color: var(--text-primary);
+}
+
+.kanban-col-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
     margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+.kanban-col-response {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 8px;
+    line-height: 1.5;
 }
 
 .kanban-card {
@@ -3703,6 +3800,13 @@ body {
     font-weight: 600;
     color: var(--text-primary);
     margin-bottom: 6px;
+}
+
+.blocker-card .blocker-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    line-height: 1.5;
 }
 
 .blocker-card .blocker-solution {
@@ -3854,6 +3958,69 @@ body {
     color: var(--text-primary);
 }
 
+/* ==================== 风险矩阵 ==================== */
+.risk-matrix-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    margin: 16px 0;
+}
+
+.risk-matrix-container h4 {
+    margin: 0 0 16px 0;
+    color: var(--primary);
+    font-size: 15px;
+}
+
+.risk-matrix-grid {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.risk-matrix-col {
+    flex: 1;
+    min-width: 200px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    border-top: 4px solid var(--border);
+}
+
+.risk-matrix-col.risk-high { border-top-color: var(--error); }
+.risk-matrix-col.risk-medium { border-top-color: var(--warning); }
+.risk-matrix-col.risk-low { border-top-color: var(--success); }
+
+.risk-matrix-header {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.risk-matrix-col.risk-high .risk-matrix-header { color: var(--error); }
+.risk-matrix-col.risk-medium .risk-matrix-header { color: var(--warning); }
+.risk-matrix-col.risk-low .risk-matrix-header { color: var(--success); }
+
+.risk-matrix-col.risk-high .risk-matrix-header i { color: var(--error); }
+.risk-matrix-col.risk-medium .risk-matrix-header i { color: var(--warning); }
+.risk-matrix-col.risk-low .risk-matrix-header i { color: var(--success); }
+
+.risk-matrix-col ul {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+.risk-matrix-col li {
+    margin-bottom: 6px;
+}
+
 .dep-type {
     padding: 2px 8px;
     background: rgba(0, 212, 255, 0.15);
@@ -3965,7 +4132,8 @@ body {
 .diagram-fullscreen-body .project-dashboard-container,
 .diagram-fullscreen-body .problem-evolution-container,
 .diagram-fullscreen-body .milestones-container,
-.diagram-fullscreen-body .dependency-graph-container {
+.diagram-fullscreen-body .dependency-graph-container,
+.diagram-fullscreen-body .risk-matrix-container {
     margin: 0;
 }
 
@@ -3977,7 +4145,8 @@ body {
 .diagram-block .project-dashboard-container,
 .diagram-block .problem-evolution-container,
 .diagram-block .milestones-container,
-.diagram-block .dependency-graph-container {
+.diagram-block .dependency-graph-container,
+.diagram-block .risk-matrix-container {
     border-radius: 0;
     margin: 0;
 }
@@ -3986,17 +4155,17 @@ body {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    padding: 20px;
+    padding: 24px;
     margin: 16px 0;
     overflow-x: auto;
     overflow-y: auto;
-    min-height: 400px;
+    min-height: 500px;
 }
 
-/* PC端：时间节点图/甘特图充分展开，适配大屏 */
+/* PC端：甘特图/关键路径图充分展开，适配大屏 */
 @media (min-width: 1024px) {
     .mermaid-container {
-        min-height: 600px;
+        min-height: 700px;
         width: 100%;
     }
     .diagram-block {
@@ -4004,7 +4173,7 @@ body {
         max-width: 100%;
     }
     .diagram-block .mermaid-container {
-        min-height: 650px;
+        min-height: 800px;
     }
     .milestones-container,
     .dependency-graph-container {
@@ -4033,11 +4202,35 @@ body {
     display: block;
 }
 
-/* 甘特图充分渲染：提升文字清晰度 */
+/* PC端：甘特图/关键路径图保持足够宽度，避免过度压缩 */
+@media (min-width: 1024px) {
+    .mermaid svg {
+        min-width: 900px;
+    }
+}
+
+/* 甘特图/关键路径图：提升尺寸与文字清晰度 */
 .mermaid svg text {
-    font-size: 14px !important;
+    font-size: 16px !important;
     fill: rgba(255, 255, 255, 0.95) !important;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+/* 甘特图任务标签与时间轴：进一步放大 */
+.mermaid .gantt .section0 .section-title,
+.mermaid .gantt .section1 .section-title,
+.mermaid .gantt .section2 .section-title {
+    font-size: 15px !important;
+}
+
+.mermaid .gantt .task-text,
+.mermaid .gantt .taskText {
+    font-size: 15px !important;
+}
+
+.mermaid .gantt .tick text,
+.mermaid .gantt .todayLine {
+    font-size: 13px !important;
 }
 
 .mermaid .section-title,

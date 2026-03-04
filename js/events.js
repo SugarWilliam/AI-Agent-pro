@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.3.0 - 事件处理模块
+ * AI Agent Pro v8.3.1 - 事件处理模块
  * 未来科技感交互设计
  */
 
@@ -68,6 +68,8 @@
         updateAgentName();
         updateModeBadge();
         updateSearchButton();
+        renderFileAttachments();
+        updateSendButtonState();
         
         window.Logger?.debug('UI初始化完成');
     }
@@ -891,6 +893,7 @@
         sendBtn.classList.remove('processing');
         sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
         sendBtn.title = '发送';
+        updateSendButtonState();
         
         // 隐藏搜索状态和 Workflow 进展
         window.AIAgentUI?.hideSearchStatus?.();
@@ -936,8 +939,16 @@
         if (sendBtn.classList.contains('processing')) {
             return;
         }
+        // 有附件在解析中时，不允许发送
+        const files = window.AppState.uploadedFiles || [];
+        if (files.some(f => f.status === 'parsing')) {
+            window.AIAgentUI?.showToast?.('请等待文件解析完成后再发送', 'info');
+            return;
+        }
         
         // 更新按钮状态为处理中
+        sendBtn.disabled = false;
+        sendBtn.classList.remove('send-btn-disabled');
         sendBtn.classList.add('processing');
         sendBtn.innerHTML = '<i class="fas fa-stop"></i>';
         sendBtn.title = '点击取消';
@@ -1075,6 +1086,7 @@
             sendBtn.classList.remove('processing');
             sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
             sendBtn.title = '发送';
+            updateSendButtonState();
             window.AIAgentUI?.hideSearchStatus?.();
             window.AIAgentUI?.hideWorkflowStepProgress?.();
 
@@ -1102,6 +1114,7 @@
             sendBtn.classList.remove('processing');
             sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
             sendBtn.title = '发送';
+            updateSendButtonState();
             window.AIAgentUI?.hideSearchStatus?.();
             window.AIAgentUI?.hideWorkflowStepProgress?.();
             
@@ -1439,6 +1452,18 @@
         e.target.value = '';
     }
 
+    // 根据文件解析状态更新发送按钮
+    function updateSendButtonState() {
+        const sendBtn = document.getElementById('send-btn');
+        if (!sendBtn) return;
+        if (sendBtn.classList.contains('processing')) return; // 发送中不干扰
+        const files = window.AppState.uploadedFiles || [];
+        const hasParsing = files.some(f => f.status === 'parsing');
+        sendBtn.disabled = hasParsing;
+        sendBtn.title = hasParsing ? '请等待文件解析完成' : '发送';
+        sendBtn.classList.toggle('send-btn-disabled', hasParsing);
+    }
+
     // 渲染文件附件
     function renderFileAttachments() {
         const container = document.getElementById('file-attachments');
@@ -1452,6 +1477,7 @@
             if (containerWrapper) {
                 containerWrapper.style.display = 'none';
             }
+            updateSendButtonState();
             return;
         }
         
@@ -1498,6 +1524,7 @@
                 </div>
             `;
         }).join('');
+        updateSendButtonState();
     }
 
     // 获取文件图标

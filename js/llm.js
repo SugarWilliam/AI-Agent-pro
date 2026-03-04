@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.3.0 - LLM服务
+ * AI Agent Pro v8.3.1 - LLM服务
  * 多模态输入输出支持
  */
 
@@ -629,11 +629,15 @@ ${rows}
                 }
             }
             
-            // 输出格式要求
+            // 输出格式要求（所有 Agent 通用）
             prompt += `【输出格式要求】\n`;
             prompt += `- 默认使用Markdown格式\n`;
             prompt += `- 代码块必须标注语言类型\n`;
-            
+            // 图表格式规范：内置标准，任何 Agent 输出图表时均须遵循
+            const diagramSpec = window.AIAgentApp?.DIAGRAM_FORMAT_SPEC;
+            if (diagramSpec) {
+                prompt += `- 【图表输出规范】输出 mermaid/project-dashboard/problem-evolution/risk-matrix/chart 等图表时须遵循：${diagramSpec.mermaid} ${diagramSpec.jsonRule} project-dashboard 用 \`\`\`project-dashboard；problem-evolution 用 \`\`\`problem-evolution；risk-matrix 用 \`\`\`risk-matrix，支持 JSON {high:[],medium:[],low:[]} 或 文本（高风险/中风险/低风险 标题+列表）。\n`;
+            }
             if (outputFormat === 'table') {
                 prompt += `- 使用Markdown表格展示数据\n`;
             } else if (outputFormat === 'list') {

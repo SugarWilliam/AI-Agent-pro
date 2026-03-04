@@ -1,12 +1,14 @@
 #!/bin/bash
 
-# AI Agent Pro v8.3.0 - GitHub自动化部署脚本
-# 使用方法: ./deploy.sh [--auto] [--force]
+# AI Agent Pro v8.3.1 - GitHub自动化部署脚本
+# 使用方法: ./deploy.sh [--auto] [--force] [--token]
+#   --token: 使用 GITHUB_TOKEN 环境变量推送（解决SSH错误）
 
 set -e
 
 AUTO_MODE=false
 FORCE_MODE=false
+TOKEN_MODE=false
 
 # 解析参数
 for arg in "$@"; do
@@ -19,12 +21,16 @@ for arg in "$@"; do
             FORCE_MODE=true
             shift
             ;;
+        --token)
+            TOKEN_MODE=true
+            shift
+            ;;
         *)
             ;;
     esac
 done
 
-echo "🚀 AI Agent Pro v8.3.0 - GitHub自动化部署脚本"
+echo "🚀 AI Agent Pro v8.3.1 - GitHub自动化部署脚本"
 echo "=============================================="
 echo ""
 
@@ -68,6 +74,20 @@ REMOTE_URL=$(git remote get-url origin)
 echo "🔗 远程仓库: $REMOTE_URL"
 echo ""
 
+# Token模式：切换到HTTPS并使用Token
+if [ "$TOKEN_MODE" = true ]; then
+    if [ -z "$GITHUB_TOKEN" ]; then
+        echo "❌ 错误: --token 需要设置 GITHUB_TOKEN 环境变量"
+        echo "   export GITHUB_TOKEN=your_personal_access_token"
+        exit 1
+    fi
+    echo "🔧 使用 Token 模式..."
+    if [[ "$REMOTE_URL" == *"git@"* ]]; then
+        git remote set-url origin https://github.com/SugarWilliam/AI-Agent-pro.git
+    fi
+    git remote set-url origin https://${GITHUB_TOKEN}@github.com/SugarWilliam/AI-Agent-pro.git
+fi
+
 # 尝试推送
 echo "🔄 开始推送..."
 if git push origin gh-pages 2>&1; then
@@ -83,6 +103,10 @@ if git push origin gh-pages 2>&1; then
     echo ""
     echo "🔍 检查部署状态:"
     echo "   https://github.com/SugarWilliam/AI-Agent-pro/actions"
+    if [ "$TOKEN_MODE" = true ]; then
+        git remote set-url origin https://github.com/SugarWilliam/AI-Agent-pro.git
+        echo "🔒 已清除Token信息"
+    fi
     exit 0
 else
     PUSH_ERROR=$?
@@ -111,5 +135,10 @@ else
     echo "2. GitHub访问权限"
     echo "3. 仓库推送权限"
     echo "4. SSH/HTTPS配置"
+    echo ""
+    echo "💡 若SSH失败，可尝试: GITHUB_TOKEN=xxx ./deploy.sh --token"
+    if [ "$TOKEN_MODE" = true ]; then
+        git remote set-url origin https://github.com/SugarWilliam/AI-Agent-pro.git
+    fi
     exit $PUSH_ERROR
 fi

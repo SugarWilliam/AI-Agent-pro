@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.3.0 - UI渲染模块
+ * AI Agent Pro v8.3.1 - UI渲染模块
  * 未来科技感UI
  */
 
@@ -469,8 +469,8 @@
         // 【关键】先提取图表类代码块（mermaid/chart/decision-matrix 等），必须在通用代码块之前
         // 否则会被通用正则当作普通代码块处理，导致图表无法渲染
         const diagramBlocks = [];
-        const diagramRegex = /```(mermaid|chart|decision-matrix|probability|decision-chain|project-dashboard|problem-evolution|milestones|dependency-graph)\n([\s\S]*?)```/g;
-        text = text.replace(diagramRegex, (match, dtype, code) => {
+        const diagramRegex = /(```|``)(mermaid|chart|decision-matrix|probability|decision-chain|project-dashboard|problem-evolution|milestones|dependency-graph|risk-matrix)\s*\n([\s\S]*?)\1/g;
+        text = text.replace(diagramRegex, (match, _ticks, dtype, code) => {
             diagramBlocks.push({ type: dtype, raw: match, code: code.trim() });
             return `\x00DIAGRAM${diagramBlocks.length - 1}\x00`;
         });
@@ -480,24 +480,28 @@
         const codeBlocks = [];
         text = text.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
             const trimmed = code.trim();
-            if ((lang === 'json' || !lang) && trimmed.startsWith('{')) {
+            if (lang === 'json' || !lang) {
+                let jsonStr = trimmed.replace(/^\s*project-dashboard\s*/i, '').trim();
+                if (jsonStr.startsWith('{')) {
                 try {
-                    const data = JSON.parse(trimmed);
+                    const data = parseProjectDashboardJson(trimmed);
                     const d = data['project-dashboard'] || data.projectDashboard || data;
                     const hasProject = !!(d.project || d.项目 || d.owner || d.负责人);
                     const hasDashboardFields = !!(d.timeline || d.时间线 || d.top_risks || d.topRisks || d.风险 || d.status || d.状态);
-                    if (hasProject && hasDashboardFields) {
+                    const hasDashboardStructure = !!(d.leverage_points || d.leveragePoints || d.leveragepoints || d.blocker_priority || d.blockerPriority || d.blockerpriority || d.critical_closure || d.criticalClosure || d.criticalclosure || d.management_gaps || d.managementGaps || d.managementgaps || d.key_actions || d.keyActions || d.keyactions || d.resource_load || d.resourceLoad || d.resourceload || d.dependencies || d.blocking_deps || d.blockingDeps || d.blockingdeps || d.cognitive_biases || d.cognitiveBiases || d.cognitivebiases);
+                    if ((hasProject && hasDashboardFields) || hasDashboardStructure) {
                         diagramBlocks.push({ type: 'project-dashboard', raw: match, code: trimmed });
                         return `\x00DIAGRAM${diagramBlocks.length - 1}\x00`;
                     }
                 } catch (_) { /* 非合法 JSON，按普通代码块处理 */ }
+                }
             }
             // 兼容 AI 在 ```html 中输出 diagram-block + 内嵌 JSON 的情况
             if (lang === 'html' && /diagram-block|project-dashboard/i.test(trimmed)) {
                 const jsonMatch = trimmed.match(/\{[\s\S]*?"(?:project|项目|owner|负责人)"[\s\S]*?"(?:timeline|时间线|top_risks|status|状态)"[\s\S]*?\}/);
                 if (jsonMatch) {
                     try {
-                        const data = JSON.parse(jsonMatch[0]);
+                        const data = JSON.parse(sanitizeJsonForParse(jsonMatch[0]));
                         const d = data['project-dashboard'] || data.projectDashboard || data;
                         if (d && (d.project || d.项目 || d.owner || d.负责人)) {
                             diagramBlocks.push({ type: 'project-dashboard', raw: match, code: jsonMatch[0] });
@@ -611,6 +615,7 @@
             if (d.type === 'problem-evolution') return renderProblemEvolution('```problem-evolution\n' + d.code + '\n```') || d.raw;
             if (d.type === 'milestones') return renderMilestones('```milestones\n' + d.code + '\n```') || d.raw;
             if (d.type === 'dependency-graph') return renderDependencyGraph('```dependency-graph\n' + d.code + '\n```') || d.raw;
+            if (d.type === 'risk-matrix') return renderRiskMatrix('```risk-matrix\n' + d.code + '\n```') || d.raw;
             return d.raw;
         });
 
@@ -648,6 +653,40 @@
             }
         });
         return out;
+    }
+
+    /** 图表 JSON 解析前预处理：替换弯引号等，避免 Agent 输出导致解析失败 */
+    function sanitizeJsonForParse(str) {
+        if (typeof str !== 'string') return str;
+        str = str.replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"').replace(/[\u2018\u2019\u201A\u201B\u2032]/g, "'");
+        return str;
+    }
+
+    /** project-dashboard 专用：更激进的 JSON 容错，处理 AI 常输出的非法格式 */
+    function parseProjectDashboardJson(str) {
+        if (typeof str !== 'string') return null;
+        let s = str.replace(/^\s*project-dashboard\s*/i, '').trim();
+        s = s.replace(/,(\s*[}\]])/g, '$1');
+        s = sanitizeJsonForParse(s);
+        s = s.replace(/"(?:[^"\\]|\\.)*"/g, (m) => {
+            const inner = m.slice(1, -1);
+            if (!/\r?\n/.test(inner)) return m;
+            return '"' + inner.replace(/\r\n/g, '\\n').replace(/\r/g, '\\r').replace(/\n/g, '\\n') + '"';
+        });
+        s = s.replace(/\}\s*\{/g, '},{').replace(/\]\s*\{/g, '],{').replace(/\}\s*\[/g, '},[').replace(/\]\s*\[/g, '],[');
+        s = s.replace(/"\s*\n\s*"/g, '",\n"');
+        s = s.replace(/(?<=[a-zA-Z0-9\u4e00-\u9fa5\s])"\s*"/g, '","');
+        try {
+            return JSON.parse(s);
+        } catch (e) {
+            s = s.replace(/([^\\])"(?=\s*[a-zA-Z\u4e00-\u9fa5])/g, '$1\\"');
+            try { return JSON.parse(s); } catch (_) { /* fall through */ }
+            const braceMatch = s.match(/\{[\s\S]*\}/);
+            if (braceMatch) {
+                try { return JSON.parse(braceMatch[0]); } catch (_) { /* fall through */ }
+            }
+            throw e;
+        }
     }
 
     // ==================== Markdown表格渲染 ====================
@@ -794,7 +833,7 @@
         if (!chartMatch) return null;
         
         try {
-            const chartData = JSON.parse(chartMatch[1]);
+            const chartData = JSON.parse(sanitizeJsonForParse(chartMatch[1]));
             const chartId = 'chart-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
             
             // 延迟渲染图表（确保DOM已插入）
@@ -893,7 +932,7 @@
                 rawAlternatives = alternatives.map((a, i) => ({ 方案: a, 评分: scores[i] }));
                 matrix = null;
             } else if (trimmed.startsWith('{')) {
-                matrix = JSON.parse(matrixCode);
+                matrix = JSON.parse(sanitizeJsonForParse(matrixCode));
                 rawCriteria = matrix.决策标准 || matrix.criteria || [];
                 rawAlternatives = matrix.备选方案 || matrix.alternatives || [];
                 criteria = rawCriteria.map(c => ({
@@ -972,19 +1011,20 @@
         if (!distMatch) return null;
         
         try {
-            const dist = JSON.parse(distMatch[1]);
+            const dist = JSON.parse(sanitizeJsonForParse(distMatch[1]));
             const chartId = 'prob-chart-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-            
+            const probLabels = dist.labels || dist.标签 || dist.xAxis || [];
+            const probData = dist.data || dist.数据 || dist.values || [];
             setTimeout(() => {
                 const ctx = document.getElementById(chartId);
                 if (ctx && typeof Chart !== 'undefined') {
                     new Chart(ctx, {
                         type: dist.type || 'bar',
                         data: {
-                            labels: dist.labels,
+                            labels: probLabels,
                             datasets: [{
-                                label: dist.label || '概率',
-                                data: dist.data,
+                                label: dist.label || dist.标签 || '概率',
+                                data: probData,
                                 backgroundColor: dist.colors || 'rgba(0, 212, 255, 0.6)',
                                 borderColor: dist.borderColor || '#00d4ff',
                                 borderWidth: 1
@@ -1042,8 +1082,9 @@
         if (!chainMatch) return null;
         
         try {
-            const chain = JSON.parse(chainMatch[1]);
-            const { nodes, edges } = chain;
+            const chain = JSON.parse(sanitizeJsonForParse(chainMatch[1]));
+            const nodes = chain.nodes || chain.节点 || [];
+            const edges = chain.edges || chain.边 || [];
             const chainCode = chainMatch[1];
             const chainCodeEscaped = escapeHtml(chainCode);
             
@@ -1058,12 +1099,14 @@
             html += '<div class="decision-chain">';
             
             nodes.forEach((node, idx) => {
-                const isDecision = node.type === 'decision';
-                const isEnd = node.type === 'end';
+                const nodeId = node.id ?? node.节点id ?? idx;
+                const nodeLabel = node.label ?? node.标签 ?? node.描述 ?? node.name ?? '';
+                const isDecision = node.type === 'decision' || node.类型 === 'decision';
+                const isEnd = node.type === 'end' || node.类型 === 'end';
                 const nodeClass = isDecision ? 'decision-node' : (isEnd ? 'end-node' : 'process-node');
                 
                 html += `<div class="chain-node ${nodeClass}">`;
-                html += `<div class="node-content">${escapeHtml(node.label)}</div>`;
+                html += `<div class="node-content">${escapeHtml(nodeLabel)}</div>`;
                 if (node.description) {
                     html += `<div class="node-desc">${escapeHtml(node.description)}</div>`;
                 }
@@ -1071,9 +1114,9 @@
                 
                 // 添加连接线（除了最后一个节点）
                 if (idx < nodes.length - 1) {
-                    const edge = edges?.find(e => e.from === node.id);
+                    const edge = edges?.find(e => (e.from ?? e.从) === nodeId || (e.from ?? e.从) === node.id);
                     if (edge) {
-                        html += `<div class="chain-edge"><span class="edge-label">${escapeHtml(edge.label || '是')}</span><i class="fas fa-arrow-down"></i></div>`;
+                        html += `<div class="chain-edge"><span class="edge-label">${escapeHtml(edge.label ?? edge.标签 ?? '是')}</span><i class="fas fa-arrow-down"></i></div>`;
                     } else {
                         html += '<div class="chain-edge"><i class="fas fa-arrow-down"></i></div>';
                     }
@@ -1088,12 +1131,14 @@
         }
     }
 
+    /** project-dashboard 渲染：格式规范见 js/app.js DIAGRAM_FORMAT_SPEC 及 docs/DIAGRAM_FORMAT_SPEC.md；支持 ``` 或 `` 包裹 */
     function renderProjectDashboard(content) {
-        const match = content.match(/```project-dashboard\n([\s\S]*?)```/);
+        const match = content.match(/(```|``)project-dashboard\s*\n([\s\S]*?)\1/);
         if (!match) return null;
         try {
-            let data = JSON.parse(match[1]);
-            const codeEscaped = escapeHtml(match[1]);
+            const jsonContent = match[2];
+            let data = parseProjectDashboardJson(jsonContent);
+            const codeEscaped = escapeHtml(jsonContent.trim());
             if (data['project-dashboard']) data = data['project-dashboard'];
             else if (data.projectDashboard) data = data.projectDashboard;
             const title = data.title || data.标题 || data.project || '项目管理仪表板';
@@ -1122,8 +1167,8 @@
             const timeline = data.timeline || data.时间线;
             if (timeline && typeof timeline === 'object') {
                 const now = timeline.now || timeline.当前 || timeline.现状;
-                const next = timeline.next_milestone || timeline.下一里程碑 || timeline.nextMilestone;
-                const path = timeline.critical_path || timeline.关键路径 || timeline.criticalPath;
+                const next = timeline.next_milestone || timeline.下一里程碑 || timeline.nextMilestone || timeline.nextmilestone;
+                const path = timeline.critical_path || timeline.关键路径 || timeline.criticalPath || timeline.criticalpath;
                 if (now || next || path) {
                     html += '<div class="dashboard-timeline"><h5><i class="fas fa-clock"></i> 时间线</h5>';
                     if (now) html += `<div class="dashboard-timeline-item"><span class="dashboard-label">当前</span><span>${escapeHtml(String(now))}</span></div>`;
@@ -1131,6 +1176,211 @@
                     if (path) html += `<div class="dashboard-timeline-item"><span class="dashboard-label">关键路径</span><span>${escapeHtml(String(path))}</span></div>`;
                     html += '</div>';
                 }
+            }
+
+            const leveragePoints = data.leverage_points || data.leveragePoints || data.leveragepoints || data.杠杆点 || [];
+            if (Array.isArray(leveragePoints) && leveragePoints.length > 0) {
+                html += '<div class="dashboard-leverage"><h5><i class="fas fa-hand-pointer"></i> 杠杆点</h5><ul>';
+                leveragePoints.forEach(l => {
+                    const text = typeof l === 'string' ? l : (l.text || l.description || l.desc || l);
+                    html += `<li>${escapeHtml(String(text))}</li>`;
+                });
+                html += '</ul></div>';
+            }
+
+            const blockerPriorityRaw = data.blocker_priority || data.blockerPriority || data.blockerpriority || data.阻塞项优先级 || [];
+            let blockerPriority = [];
+            if (Array.isArray(blockerPriorityRaw)) {
+                blockerPriorityRaw.forEach(b => {
+                    const item = typeof b === 'string' ? { item: b } : (b || {});
+                    const subItems = item.items || item.blockers || [];
+                    if (subItems.length > 0) {
+                        subItems.forEach(s => blockerPriority.push({ level: item.level || item.priority || '', item: typeof s === 'string' ? s : (s.text || s.name || s) }));
+                    } else {
+                        blockerPriority.push({ level: item.level || item.priority || '', item: item.name || item.id || item.blocker || item.item || '' });
+                    }
+                });
+            }
+            if (blockerPriority.length > 0) {
+                html += '<div class="dashboard-blockers"><h5><i class="fas fa-ban"></i> 阻塞项优先级</h5>';
+                blockerPriority.forEach(b => {
+                    const name = typeof b === 'object' ? (b.item || b.name || '') : String(b);
+                    const priority = typeof b === 'object' ? (b.level || b.priority || '') : '';
+                    const priorityClass = (String(priority).indexOf('P0') >= 0 || String(priority).indexOf('致命') >= 0) ? 'high' : (String(priority).indexOf('P1') >= 0 || String(priority).indexOf('高') >= 0) ? 'medium' : 'low';
+                    html += `<div class="dashboard-blocker-card blocker-${priorityClass}"><div class="dashboard-blocker-header"><span>${escapeHtml(String(name))}</span>${priority ? `<span class="blocker-priority">${escapeHtml(String(priority))}</span>` : ''}</div></div>`;
+                });
+                html += '</div>';
+            }
+
+            const criticalClosure = data.critical_closure || data.criticalClosure || data.criticalclosure || data.严重问题闭环 || {};
+            if (criticalClosure && typeof criticalClosure === 'object' && Object.keys(criticalClosure).length > 0) {
+                let items = Array.isArray(criticalClosure) ? criticalClosure : (criticalClosure.items || criticalClosure.list || []);
+                if (items.length === 0 && !Array.isArray(criticalClosure)) {
+                    const skipKeys = ['summary', '摘要', 'items', 'list'];
+                    items = [];
+                    Object.entries(criticalClosure).forEach(([k, v]) => {
+                        if (skipKeys.includes(k)) return;
+                        if (v && typeof v === 'object' && !Array.isArray(v)) {
+                            Object.entries(v).forEach(([nk, nv]) => items.push({ name: nk, status: nv }));
+                        } else {
+                            items.push({ name: k, status: v });
+                        }
+                    });
+                }
+                const summary = criticalClosure.summary || criticalClosure.摘要 || '';
+                if (summary || items.length > 0) {
+                    html += '<div class="dashboard-closure"><h5><i class="fas fa-check-double"></i> 严重问题闭环情况</h5>';
+                    if (summary) html += `<p class="closure-summary">${escapeHtml(String(summary))}</p>`;
+                    items.forEach(c => {
+                        const name = c.name || c.problem || c.issue || c.问题 || '';
+                        const status = c.status || c.状态 || '';
+                        const nextAction = c.next_action || c.nextAction || c.nextaction || c.下一步 || '';
+                        html += `<div class="closure-item"><div class="closure-main"><span>${escapeHtml(String(name))}</span><span class="closure-status">${escapeHtml(String(status))}</span></div>${nextAction ? `<div class="closure-next">${escapeHtml(String(nextAction))}</div>` : ''}</div>`;
+                    });
+                    html += '</div>';
+                }
+            }
+
+            const managementGaps = data.management_gaps || data.managementGaps || data.managementgaps || data.管理漏洞 || {};
+            if (managementGaps && typeof managementGaps === 'object') {
+                let rework = managementGaps.rework_tug_of_war || managementGaps.reworkTugOfWar || managementGaps.reworktugofwar || managementGaps.反复拉锯 || managementGaps.rework || [];
+                let processAnomalies = managementGaps.process_anomalies || managementGaps.processAnomalies || managementGaps.processanomalies || managementGaps.流程异常 || [];
+                let delayAnomalies = managementGaps.delay_anomalies || managementGaps.delayAnomalies || managementGaps.delayanomalies || managementGaps.delay异常 || [];
+                let infoFrag = managementGaps.info_chain_fragmentation || managementGaps.infoChainFragmentation || managementGaps.infochainfragmentation || managementGaps.信息链条与碎片化 || [];
+                let orphan = managementGaps.orphan_issues || managementGaps.orphanIssues || managementGaps.orphanissues || managementGaps.悬置问题 || managementGaps.orphan || [];
+                let friction = managementGaps.execution_friction || managementGaps.executionFriction || managementGaps.executionfriction || managementGaps.执行摩擦 || managementGaps.friction || [];
+                orphan = Array.isArray(orphan) ? orphan : (typeof orphan === 'string' ? [orphan] : []);
+                friction = Array.isArray(friction) ? friction : (typeof friction === 'string' ? [friction] : []);
+                const toList = (v) => {
+                    if (Array.isArray(v)) return v;
+                    if (typeof v === 'string') return [v];
+                    if (v && typeof v === 'object') {
+                        if (v.识别 || v.根因) return [v];
+                        return Object.entries(v).map(([k, val]) => {
+                            if (val && typeof val === 'object' && (val.识别 || val.根因)) return val;
+                            const s = typeof val === 'string' ? val : (val && typeof val === 'object' ? JSON.stringify(val) : String(val));
+                            return `${k}: ${s}`;
+                        });
+                    }
+                    return [];
+                };
+                rework = toList(rework);
+                processAnomalies = toList(processAnomalies);
+                delayAnomalies = toList(delayAnomalies);
+                infoFrag = toList(infoFrag);
+                const hasGaps = [rework, processAnomalies, delayAnomalies, infoFrag, orphan, friction].some(x => x.length > 0);
+                if (hasGaps) {
+                    html += '<div class="dashboard-gaps"><h5><i class="fas fa-exclamation-circle"></i> 管理漏洞</h5>';
+                    const renderGapItem = (x) => {
+                        if (typeof x === 'string') return escapeHtml(x);
+                        if (x && typeof x === 'object' && (x.识别 || x.根因)) {
+                            const parts = [];
+                            if (x.识别) parts.push(`识别：${x.识别}`);
+                            if (x.根因) parts.push(`根因：${x.根因}`);
+                            return escapeHtml(parts.join('；'));
+                        }
+                        return escapeHtml(String(x.text || x.desc || JSON.stringify(x)));
+                    };
+                    if (rework.length > 0) {
+                        html += `<div class="gap-section"><span class="gap-label">反复与拉锯（需求/方案/测试/结论）</span><ul>`;
+                        rework.forEach(x => html += `<li>${renderGapItem(x)}</li>`);
+                        html += '</ul></div>';
+                    }
+                    if (processAnomalies.length > 0) {
+                        html += `<div class="gap-section"><span class="gap-label">流程异常</span><ul>`;
+                        processAnomalies.forEach(x => html += `<li>${renderGapItem(x)}</li>`);
+                        html += '</ul></div>';
+                    }
+                    if (delayAnomalies.length > 0) {
+                        html += `<div class="gap-section"><span class="gap-label">Delay异常</span><ul>`;
+                        delayAnomalies.forEach(x => html += `<li>${renderGapItem(x)}</li>`);
+                        html += '</ul></div>';
+                    }
+                    if (infoFrag.length > 0) {
+                        html += `<div class="gap-section"><span class="gap-label">信息链条与碎片化</span><ul>`;
+                        infoFrag.forEach(x => html += `<li>${renderGapItem(x)}</li>`);
+                        html += '</ul></div>';
+                    }
+                    if (orphan.length > 0) {
+                        html += `<div class="gap-section"><span class="gap-label">悬置无人推动</span><ul>`;
+                        orphan.forEach(x => html += `<li>${renderGapItem(x)}</li>`);
+                        html += '</ul></div>';
+                    }
+                    if (friction.length > 0) {
+                        html += `<div class="gap-section"><span class="gap-label">执行摩擦</span><ul>`;
+                        friction.forEach(x => html += `<li>${renderGapItem(x)}</li>`);
+                        html += '</ul></div>';
+                    }
+                    html += '</div>';
+                }
+            }
+
+            const keyActions = data.key_actions || data.keyActions || data.keyactions || data.关键行动 || [];
+            if (Array.isArray(keyActions) && keyActions.length > 0) {
+                html += '<div class="dashboard-actions"><h5><i class="fas fa-bolt"></i> 关键行动</h5><ul>';
+                keyActions.forEach(a => {
+                    const item = typeof a === 'string' ? { action: a } : (a || {});
+                    const action = item.action || item.name || item.行动 || '';
+                    const owner = item.owner || item.负责人 || '';
+                    const deadline = item.deadline || item.截止 || '';
+                    const desc = item.description || item.desc || item.描述 || '';
+                    const ownerStr = owner ? (String(owner).startsWith('@') ? escapeHtml(String(owner)) : '@' + escapeHtml(String(owner))) : '';
+                    html += `<li>${escapeHtml(String(action))}${ownerStr ? ` <span class="action-owner">${ownerStr}</span>` : ''}${deadline ? ` <span class="action-deadline">${escapeHtml(String(deadline))}</span>` : ''}${desc ? `<div class="action-desc">${escapeHtml(String(desc))}</div>` : ''}</li>`;
+                });
+                html += '</ul></div>';
+            }
+
+            let resourceLoad = data.resource_load || data.resourceLoad || data.resourceload || data.资源负荷 || [];
+            if (!Array.isArray(resourceLoad) && resourceLoad && typeof resourceLoad === 'object') {
+                resourceLoad = Object.entries(resourceLoad).map(([name, load]) => ({ name, load }));
+            }
+            if (Array.isArray(resourceLoad) && resourceLoad.length > 0) {
+                html += '<div class="dashboard-resource"><h5><i class="fas fa-users"></i> 关键资源负荷</h5><div class="resource-load-list">';
+                resourceLoad.forEach(r => {
+                    const item = typeof r === 'string' ? { name: r } : (r || {});
+                    const name = item.name || item.resource || item.资源 || '';
+                    const load = item.load || item.负荷 || item.loadPercent || 0;
+                    const loadStr = typeof load === 'number' ? load + '%' : String(load);
+                    const loadClass = (typeof load === 'number' && load >= 80) ? 'overload' : (typeof load === 'number' && load >= 60) ? 'high' : (typeof load === 'number' && load >= 40) ? 'medium' : (String(load).indexOf('过载') >= 0 || String(load).indexOf('90') >= 0) ? 'overload' : (String(load).indexOf('高') >= 0 || String(load).indexOf('80') >= 0) ? 'high' : (String(load).indexOf('中') >= 0) ? 'medium' : 'low';
+                    html += `<div class="resource-load-item load-${loadClass}"><span class="resource-name">${escapeHtml(String(name))}</span><span class="resource-load">${escapeHtml(String(loadStr))}</span></div>`;
+                });
+                html += '</div></div>';
+            }
+
+            const depsRaw = data.dependencies || data.依赖 || data.deps || {};
+            const depsArray = Array.isArray(depsRaw) ? depsRaw : (depsRaw.critical || depsRaw.list || depsRaw.edges || []);
+            let blockingDeps = data.blocking_deps || data.blockingDeps || data.blockingdeps || data.阻塞性依赖 || [];
+            if (depsRaw && typeof depsRaw === 'object' && !Array.isArray(depsRaw) && (depsRaw.blocking_deps || depsRaw.blockingDeps || depsRaw.blockingdeps)) {
+                blockingDeps = blockingDeps.length > 0 ? blockingDeps : (depsRaw.blocking_deps || depsRaw.blockingDeps || depsRaw.blockingdeps || []);
+            }
+            if ((Array.isArray(depsArray) && depsArray.length > 0) || (Array.isArray(blockingDeps) && blockingDeps.length > 0)) {
+                html += '<div class="dashboard-deps"><h5><i class="fas fa-project-diagram"></i> 依赖情况</h5>';
+                if (Array.isArray(blockingDeps) && blockingDeps.length > 0) {
+                    html += '<div class="deps-blocking"><strong>阻塞性依赖:</strong> ';
+                    html += blockingDeps.map(d => escapeHtml(String(typeof d === 'string' ? d : (d.name || d.dep || d)))).join('；');
+                    html += '</div>';
+                }
+                if (Array.isArray(depsArray) && depsArray.length > 0) {
+                    html += '<ul class="deps-list">';
+                    depsArray.forEach(d => {
+                        const str = typeof d === 'string' ? d : (d.from && d.to ? `${d.from} → ${d.to} (${d.type || 'FS'})` : (d.text || d.desc || JSON.stringify(d)));
+                        html += `<li>${escapeHtml(String(str))}</li>`;
+                    });
+                    html += '</ul>';
+                }
+                html += '</div>';
+            }
+
+            const cognitiveBiases = data.cognitive_biases || data.cognitiveBiases || data.cognitivebiases || data.认知偏差 || [];
+            if (Array.isArray(cognitiveBiases) && cognitiveBiases.length > 0) {
+                html += '<div class="dashboard-biases"><h5><i class="fas fa-brain"></i> 认知偏差</h5><ul>';
+                cognitiveBiases.forEach(b => {
+                    const item = typeof b === 'string' ? { name: b } : (b || {});
+                    const name = item.name || item.bias || item.偏差 || '';
+                    const impact = item.impact || item.影响 || '';
+                    html += `<li>${escapeHtml(String(name))}${impact ? ` <span class="bias-impact">— ${escapeHtml(String(impact))}</span>` : ''}</li>`;
+                });
+                html += '</ul></div>';
             }
 
             const topRisks = data.top_risks || data.topRisks || data.风险 || data.risks || [];
@@ -1154,11 +1404,20 @@
                 html += '</div>';
             }
 
-            if (data.stats && data.stats.length > 0) {
+            const statsData = data.stats || data.统计 || {};
+            if (Array.isArray(statsData) && statsData.length > 0) {
                 html += '<div class="dashboard-stats">';
-                data.stats.forEach(s => {
+                statsData.forEach(s => {
                     const colorClass = s.color || 'primary';
                     html += `<div class="dashboard-stat stat-${colorClass}"><span class="stat-value">${escapeHtml(String(s.value))}</span><span class="stat-label">${escapeHtml(s.label || '')}</span></div>`;
+                });
+                html += '</div>';
+            } else if (statsData && typeof statsData === 'object' && !Array.isArray(statsData) && Object.keys(statsData).length > 0) {
+                const statLabels = { total_tasks_identified: '任务总数', tasks_in_progress: '进行中', tasks_blocked: '阻塞', tasks_legacy: '遗留', tasks_completed: '已完成' };
+                html += '<div class="dashboard-stats">';
+                Object.entries(statsData).forEach(([k, v]) => {
+                    const label = statLabels[k] || k.replace(/_/g, ' ');
+                    html += `<div class="dashboard-stat"><span class="stat-value">${escapeHtml(String(v))}</span><span class="stat-label">${escapeHtml(label)}</span></div>`;
                 });
                 html += '</div>';
             }
@@ -1195,9 +1454,9 @@
         const match = content.match(/```problem-evolution\n([\s\S]*?)```/);
         if (!match) return null;
         try {
-            const data = JSON.parse(match[1]);
+            const data = JSON.parse(sanitizeJsonForParse(match[1]));
             const codeEscaped = escapeHtml(match[1]);
-            const title = data.title || '问题演化分析';
+            const title = data.title || data.problemname || data.problem_name || '问题演化分析';
             let html = '<div class="diagram-block" data-diagram-type="problem-evolution"><div class="diagram-toolbar">' +
                 '<button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>' +
                 '<button class="diagram-btn" data-action="download" title="下载为PNG"><i class="fas fa-download"></i> 下载</button>' +
@@ -1206,12 +1465,26 @@
                 '<button class="diagram-btn" data-action="copy" title="复制代码"><i class="fas fa-copy"></i> 复制</button>' +
                 '</div><div class="problem-evolution-container">';
             html += `<h4><i class="fas fa-project-diagram"></i> ${escapeHtml(title)}</h4>`;
+            const currentStatus = data.currentstatus || data.current_status || data.currentStatus || '';
+            if (currentStatus) {
+                html += `<div class="evolution-current-status"><strong>当前状态：</strong>${escapeHtml(currentStatus)}</div>`;
+            }
             if (data.phases && data.phases.length > 0) {
                 html += '<div class="evolution-kanban"><h5>问题演化阶段</h5><div class="kanban-columns">';
-                data.phases.forEach((p, i) => {
+                data.phases.forEach((p) => {
                     const statusClass = (p.status || 'pending').replace('_', '-');
-                    html += `<div class="kanban-col col-${statusClass}"><div class="kanban-col-title">${escapeHtml(p.name || '')}</div>`;
-                    (p.items || []).forEach(item => html += `<div class="kanban-card">${escapeHtml(typeof item === 'string' ? item : item.text || JSON.stringify(item))}</div>`);
+                    html += `<div class="kanban-col col-${statusClass}"><div class="kanban-col-title">${escapeHtml(p.name || p.phase || '')}</div>`;
+                    if (p.description) html += `<div class="kanban-col-desc">${escapeHtml(p.description)}</div>`;
+                    if (p.response) html += `<div class="kanban-col-response"><strong>响应：</strong>${escapeHtml(p.response)}</div>`;
+                    const items = p.items || [];
+                    const blockers = p.blockers || [];
+                    items.forEach(item => html += `<div class="kanban-card">${escapeHtml(typeof item === 'string' ? item : item.text || JSON.stringify(item))}</div>`);
+                    blockers.forEach(b => {
+                        const name = b.name || b.blocker || '';
+                        const desc = b.description ? `<p class="blocker-desc">${escapeHtml(b.description)}</p>` : '';
+                        const solution = b.breakthrough || b.solution || '';
+                        html += `<div class="blocker-card"><div class="blocker-name">${escapeHtml(name)}</div>${desc}<div class="blocker-solution"><strong>突破方案：</strong>${escapeHtml(solution)}</div></div>`;
+                    });
                     html += '</div>';
                 });
                 html += '</div></div>';
@@ -1219,7 +1492,8 @@
             if (data.blockers && data.blockers.length > 0) {
                 html += '<div class="blocker-breakthrough"><h5><i class="fas fa-exclamation-triangle"></i> 当前阻塞点与突破方案</h5>';
                 data.blockers.forEach(b => {
-                    html += `<div class="blocker-card"><div class="blocker-name">${escapeHtml(b.name || b.blocker || '')}</div><div class="blocker-solution"><strong>突破方案：</strong>${escapeHtml(b.breakthrough || b.solution || '')}</div></div>`;
+                    const desc = b.description ? `<p class="blocker-desc">${escapeHtml(b.description)}</p>` : '';
+                    html += `<div class="blocker-card"><div class="blocker-name">${escapeHtml(b.name || b.blocker || '')}</div>${desc}<div class="blocker-solution"><strong>突破方案：</strong>${escapeHtml(b.breakthrough || b.solution || '')}</div></div>`;
                 });
                 html += '</div>';
             }
@@ -1235,7 +1509,7 @@
         const match = content.match(/```milestones\n([\s\S]*?)```/);
         if (!match) return null;
         try {
-            const parsed = JSON.parse(match[1]);
+            const parsed = JSON.parse(sanitizeJsonForParse(match[1]));
             const codeEscaped = escapeHtml(match[1]);
             const data = Array.isArray(parsed) ? { milestones: parsed } : parsed;
             let title = data.title || data.标题 || '项目里程碑';
@@ -1290,13 +1564,13 @@
         const match = content.match(/```dependency-graph\n([\s\S]*?)```/);
         if (!match) return null;
         try {
-            const data = JSON.parse(match[1]);
+            const data = JSON.parse(sanitizeJsonForParse(match[1]));
             const codeEscaped = escapeHtml(match[1]);
-            const nodes = data.nodes || [];
-            const edges = data.edges || [];
+            const nodes = data.nodes || data.节点 || [];
+            const edges = data.edges || data.边 || [];
             const title = data.title || '依赖关系图';
             const nodeMap = {};
-            nodes.forEach(n => { nodeMap[n.id || n.nodeId || n.label] = n.label || n.name || n.id; });
+            nodes.forEach(n => { const id = n.id || n.nodeId || n.label || n.节点id; nodeMap[id] = n.label || n.name || n.标签 || id; });
             let html = '<div class="diagram-block" data-diagram-type="dependency-graph"><div class="diagram-toolbar">' +
                 '<button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>' +
                 '<button class="diagram-btn" data-action="download" title="下载为PNG"><i class="fas fa-download"></i> 下载</button>' +
@@ -1313,14 +1587,87 @@
             });
             html += '</div><div class="dep-edges-list"><table class="dep-table"><thead><tr><th>前置</th><th></th><th>后续</th><th>类型</th></tr></thead><tbody>';
             edges.forEach(e => {
-                const fromLabel = nodeMap[e.from] || e.from;
-                const toLabel = nodeMap[e.to] || e.to;
-                html += `<tr><td>${escapeHtml(fromLabel)}</td><td><i class="fas fa-arrow-right"></i></td><td>${escapeHtml(toLabel)}</td><td><span class="dep-type">${escapeHtml(e.label || e.type || 'FS')}</span></td></tr>`;
+                const fromId = e.from ?? e.从;
+                const toId = e.to ?? e.到;
+                const fromLabel = nodeMap[fromId] ?? fromId;
+                const toLabel = nodeMap[toId] ?? toId;
+                html += `<tr><td>${escapeHtml(fromLabel)}</td><td><i class="fas fa-arrow-right"></i></td><td>${escapeHtml(toLabel)}</td><td><span class="dep-type">${escapeHtml(e.label ?? e.类型 ?? e.type ?? 'FS')}</span></td></tr>`;
             });
             html += '</tbody></table></div></div></div><pre class="diagram-code-panel" style="display:none"><code>' + codeEscaped + '</code></pre></div>';
             return html;
         } catch (e) {
             window.Logger?.error('Dependency graph render error:', e);
+            return null;
+        }
+    }
+
+    function renderRiskMatrix(content) {
+        const match = content.match(/```risk-matrix\n([\s\S]*?)```/);
+        if (!match) return null;
+        try {
+            const raw = match[1].trim();
+            const codeEscaped = escapeHtml(match[1]);
+            let high = [], medium = [], low = [];
+            if (raw.startsWith('{')) {
+                const data = JSON.parse(sanitizeJsonForParse(raw));
+                high = data.high || data.high_risk || data.高风险 || data.highRisk || [];
+                medium = data.medium || data.medium_risk || data.中风险 || data.mediumRisk || [];
+                low = data.low || data.low_risk || data.低风险 || data.lowRisk || [];
+            } else {
+                const lines = raw.split(/\r?\n/);
+                let current = null;
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    const t = line.trim();
+                    const highMatch = /^(#+\s*|\*{0,2})?(高风险|High\s*Risk|high_risk|high)(\s*[（(].*)?[：:]?\s*$/i.test(t);
+                    const medMatch = /^(#+\s*|\*{0,2})?(中风险|Medium\s*Risk|medium_risk|medium)(\s*[（(].*)?[：:]?\s*$/i.test(t);
+                    const lowMatch = /^(#+\s*|\*{0,2})?(低风险|Low\s*Risk|low_risk|low)(\s*[（(].*)?[：:]?\s*$/i.test(t);
+                    if (highMatch) { current = 'high'; continue; }
+                    if (medMatch) { current = 'medium'; continue; }
+                    if (lowMatch) { current = 'low'; continue; }
+                    const itemMatch = line.match(/^\s*[-*]?\s*\d+\.?\s*(.+)$/) || line.match(/^\s*[-*]\s+(.+)$/);
+                    if (itemMatch && current) {
+                        const item = itemMatch[1].trim();
+                        if (item && !/^(高风险|中风险|低风险|High|Medium|Low)/i.test(item)) {
+                            if (current === 'high') high.push(item);
+                            else if (current === 'medium') medium.push(item);
+                            else low.push(item);
+                        }
+                    }
+                }
+            }
+            high = Array.isArray(high) ? high : [String(high)];
+            medium = Array.isArray(medium) ? medium : [String(medium)];
+            low = Array.isArray(low) ? low : [String(low)];
+            if (high.length === 0 && medium.length === 0 && low.length === 0) return null;
+            let html = '<div class="diagram-block" data-diagram-type="risk-matrix"><div class="diagram-toolbar">' +
+                '<button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>' +
+                '<button class="diagram-btn" data-action="download" title="下载为PNG"><i class="fas fa-download"></i> 下载</button>' +
+                '<button class="diagram-btn" data-action="preview" title="预览"><i class="fas fa-search-plus"></i> 预览</button>' +
+                '<button class="diagram-btn" data-action="code" title="查看/隐藏代码"><i class="fas fa-code"></i> 代码</button>' +
+                '<button class="diagram-btn" data-action="copy" title="复制代码"><i class="fas fa-copy"></i> 复制</button>' +
+                '</div><div class="risk-matrix-container">';
+            html += '<h4><i class="fas fa-exclamation-triangle"></i> 风险矩阵</h4>';
+            html += '<div class="risk-matrix-grid">';
+            if (high.length > 0) {
+                html += '<div class="risk-matrix-col risk-high"><div class="risk-matrix-header"><i class="fas fa-circle"></i> 高风险</div><ul>';
+                high.forEach(item => html += `<li>${escapeHtml(String(typeof item === 'string' ? item : (item.text || item.desc || item.name || JSON.stringify(item))))}</li>`);
+                html += '</ul></div>';
+            }
+            if (medium.length > 0) {
+                html += '<div class="risk-matrix-col risk-medium"><div class="risk-matrix-header"><i class="fas fa-circle"></i> 中风险</div><ul>';
+                medium.forEach(item => html += `<li>${escapeHtml(String(typeof item === 'string' ? item : (item.text || item.desc || item.name || JSON.stringify(item))))}</li>`);
+                html += '</ul></div>';
+            }
+            if (low.length > 0) {
+                html += '<div class="risk-matrix-col risk-low"><div class="risk-matrix-header"><i class="fas fa-circle"></i> 低风险</div><ul>';
+                low.forEach(item => html += `<li>${escapeHtml(String(typeof item === 'string' ? item : (item.text || item.desc || item.name || JSON.stringify(item))))}</li>`);
+                html += '</ul></div>';
+            }
+            html += '</div></div><pre class="diagram-code-panel" style="display:none"><code>' + codeEscaped + '</code></pre></div>';
+            return html;
+        } catch (e) {
+            window.Logger?.error('Risk matrix render error:', e);
             return null;
         }
     }
@@ -1367,15 +1714,15 @@
             },
             gantt: {
                 useMaxWidth: true,
-                fontSize: 14,
-                sectionFontSize: 14,
-                barHeight: 28,
-                barGap: 10,
-                topPadding: 60,
-                leftPadding: 140,
-                rightPadding: 100,
-                gridLineStartPadding: 45,
-                titleTopMargin: 30,
+                fontSize: 16,
+                sectionFontSize: 16,
+                barHeight: 36,
+                barGap: 14,
+                topPadding: 80,
+                leftPadding: 220,
+                rightPadding: 120,
+                gridLineStartPadding: 55,
+                titleTopMargin: 40,
                 topAxis: true,
                 axisFormat: '%Y-%m-%d'
             }
@@ -1389,7 +1736,14 @@
         if (!mermaidMatch) return null;
         
         try {
-            const mermaidCode = mermaidMatch[1].trim();
+            let mermaidCode = mermaidMatch[1].trim();
+            // 预处理：将节点标签 [..] 和 {..} 内的换行转为 <br/>，否则 Mermaid 解析失败（Agent 常生成含换行的标签）
+            mermaidCode = mermaidCode.replace(/\[([\s\S]*?)\]/g, (_, inner) =>
+                '[' + inner.replace(/\r?\n/g, '<br/>') + ']');
+            mermaidCode = mermaidCode.replace(/\{([\s\S]*?)\}/g, (_, inner) =>
+                '{' + inner.replace(/\r?\n/g, '<br/>') + '}');
+            mermaidCode = mermaidCode.replace(/\(([\s\S]*?)\)/g, (_, inner) =>
+                '(' + inner.replace(/\r?\n/g, '<br/>') + ')');
             const mermaidId = 'mermaid-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
             
             // 初始化Mermaid
@@ -1454,7 +1808,7 @@
             const targetId = block.dataset.diagramTarget;
             const codePanel = block.querySelector('.diagram-code-panel');
             const codeEl = codePanel?.querySelector('code');
-            const vizContainer = block.querySelector('.mermaid-container, .chart-container, .decision-matrix-container, .probability-container, .decision-chain-container, .project-dashboard-container, .problem-evolution-container, .milestones-container, .dependency-graph-container');
+            const vizContainer = block.querySelector('.mermaid-container, .chart-container, .decision-matrix-container, .probability-container, .decision-chain-container, .project-dashboard-container, .problem-evolution-container, .milestones-container, .dependency-graph-container, .risk-matrix-container');
             const svgEl = block.querySelector('.mermaid svg, .mermaid-container svg');
 
             switch (action) {
@@ -1505,7 +1859,7 @@
         overlay.className = 'diagram-fullscreen-overlay';
         overlay.innerHTML = `<div class="diagram-fullscreen-content"><button class="diagram-close-btn"><i class="fas fa-times"></i></button><div class="diagram-fullscreen-body"></div></div>`;
         const body = overlay.querySelector('.diagram-fullscreen-body');
-        const viz = block.querySelector('.mermaid-container, .chart-container, .decision-matrix-container, .probability-container, .decision-chain-container, .project-dashboard-container, .problem-evolution-container, .milestones-container, .dependency-graph-container');
+        const viz = block.querySelector('.mermaid-container, .chart-container, .decision-matrix-container, .probability-container, .decision-chain-container, .project-dashboard-container, .problem-evolution-container, .milestones-container, .dependency-graph-container, .risk-matrix-container');
         if (viz) {
             const canvas = viz.querySelector('canvas');
             if (canvas) {
@@ -1582,7 +1936,7 @@
 
         // 【关键】含图表/仪表板块时强制使用 markdown，否则会被当作 code 格式整段转义，导致 HTML 与图表无法渲染
         const diagramMarkers = ['```project-dashboard', '```mermaid', '```chart', '```decision-matrix',
-            '```decision-chain', '```probability', '```problem-evolution', '```milestones', '```dependency-graph'];
+            '```decision-chain', '```probability', '```problem-evolution', '```milestones', '```dependency-graph', '```risk-matrix'];
         if (diagramMarkers.some(m => content.includes(m))) {
             return 'markdown';
         }

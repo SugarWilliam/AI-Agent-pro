@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-8.3.0-blue.svg)
+![Version](https://img.shields.io/badge/version-8.3.1-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Web-lightgrey.svg)
 
@@ -114,6 +114,8 @@ AI-Agent-pro/
 ├── README.md               # 项目说明
 ├── .gitignore              # Git忽略文件
 ├── start-server.sh         # 启动脚本
+├── deploy.sh               # 部署脚本（支持 --token）
+├── release.sh              # 正式发布脚本
 ├── run-tests.sh            # 测试脚本
 │
 ├── css/                    # 样式文件
@@ -366,6 +368,12 @@ http://localhost:8080/test/comprehensive-test.html
 ---
 
 ## 📝 更新日志
+
+### v8.3.1 (2026-03-04)
+
+- **项目整理**：清理冗余测试脚本、合并 DEPLOY_NOW 到 deploy.sh
+- **project-dashboard**：支持 `` 双反引号、JSON 容错解析、managementgaps 嵌套对象
+- **文档**：DIAGRAM_FORMAT_SPEC 更新、版本号统一
 
 ### v8.3.0 (2026-03-03)
 

@@ -1,13 +1,48 @@
 /**
- * AI Agent Pro v8.3.0 - 应用状态管理
+ * AI Agent Pro v8.3.1 - 应用状态管理
  * 多模态AI Agent - 支持输入输出多模态
  */
 
 (function() {
     'use strict';
 
-    const VERSION = '8.3.0';
+    const VERSION = '8.3.1';
     const STORAGE_KEY = 'ai_agent_state_v6';
+
+    /** Agent 与渲染器对接：图表格式规范（Agent 必须按此输出，渲染器按此解析） */
+    const DIAGRAM_FORMAT_SPEC = {
+        projectDashboard: `使用 \`\`\`project-dashboard 代码块（或 \`\`\`json 包裹 { "project-dashboard": {...} }）。JSON 结构：
+{
+  "project": "项目名",
+  "owner": "负责人",
+  "date": "日期",
+  "status": "状态",
+  "leverage_points": ["杠杆点1", "杠杆点2"],
+  "blocker_priority": [{"level": "P0/致命", "items": ["阻塞项1", "阻塞项2"]}],
+  "critical_closure": [{"problem": "问题名", "status": "状态", "next_action": "下一步"}],
+  "management_gaps": {
+    "rework_tug_of_war": {"识别": "xxx", "根因": "xxx"} 或 数组,
+    "process_anomalies": {"评审流程异常": "xxx", ...} 或 数组,
+    "delay_anomalies": {"里程碑延期": "xxx", "根因归类": "xxx"} 或 数组,
+    "info_chain_fragmentation": {"识别": "xxx", "根因": "xxx"} 或 数组,
+    "orphan_issues": ["悬置问题1"],
+    "execution_friction": ["执行摩擦1"]
+  },
+  "key_actions": [{"action": "行动", "owner": "责任人", "description": "描述"}],
+  "resource_load": [{"name": "资源", "load": "负荷"}],
+  "dependencies": [],
+  "blocking_deps": [],
+  "cognitive_biases": []
+}
+字段名用英文下划线，JSON 用英文双引号。`,
+        projectDashboardShort: `project-dashboard 代码块，结构：project、owner、leverage_points、blocker_priority[{level,items}]、critical_closure[{problem,status,next_action}]、management_gaps、key_actions[{action,owner,description}]`,
+        problemEvolution: `使用 \`\`\`problem-evolution 代码块。JSON 结构：
+{"problemname": "问题名", "phases":[{"phase": "阶段名", "description": "描述", "response": "响应"}], "blockers":[{"blocker": "阻塞点", "breakthrough": "突破方案"}], "currentstatus": "当前状态"}
+字段名用英文下划线，JSON 用英文双引号。`,
+        mermaid: `节点标签内换行必须用 <br/>，禁止真实换行。例：A[第一行<br/>第二行] 或 B{平台<br/>组件}。`,
+        riskMatrix: `使用 \`\`\`risk-matrix 代码块。支持 JSON：{high:[], medium:[], low:[]} 或 文本：高风险/中风险/低风险 标题后跟列表项。`,
+        jsonRule: `JSON 一律使用英文双引号 "，禁止弯引号 ""。`
+    };
     const CUSTOM_MODELS_KEY = 'ai_agent_custom_models_v6';
     const CUSTOM_SUBAGENTS_KEY = 'ai_agent_custom_subagents_v6';
     const SYNC_CONFIG_KEY = 'ai_agent_sync_config_v6';
@@ -327,7 +362,7 @@
 4. 卷积：信号处理、图像处理
 5. 统计分析：假设检验、回归分析、时间序列
 
-请使用适当的数学方法解决问题，提供详细的推导过程和计算结果。支持使用LaTeX格式展示数学公式，使用chart代码块展示可视化结果。`,
+请使用适当的数学方法解决问题，提供详细的推导过程和计算结果。支持使用LaTeX格式展示数学公式，使用chart代码块展示可视化结果（JSON格式：{type:"line"|"bar"|"pie", data:{labels:[], datasets:[{label,data:[]}]}}）。`,
             outputFormat: 'markdown'
         },
         {
@@ -343,7 +378,17 @@
 4. 成本效益分析：量化决策影响
 5. Mermaid流程图：可视化决策流程
 
-请使用decision-matrix代码块展示决策矩阵，使用decision-chain代码块展示决策链，使用probability代码块展示概率分布，使用mermaid代码块展示决策流程图。支持project-dashboard（项目管理仪表板，JSON格式：project/项目、owner/负责人、date/日期、status/状态、timeline{now,next_milestone,critical_path}、top_risks[{id,description,level,impact,owner,mitigation}]，可含stats/tasks/milestones）、problem-evolution（问题演化看板与阻塞点突破）、milestones（里程碑，JSON格式：{"title":"标题","milestones":[{"name":"名","date":"日期"}]}）、dependency-graph（依赖关系图）代码块。`,
+请使用decision-matrix代码块展示决策矩阵，使用decision-chain代码块展示决策链，使用probability代码块展示概率分布，使用mermaid代码块展示决策流程图。支持project-dashboard、problem-evolution、milestones、dependency-graph代码块。
+
+【图表格式规范】必须严格遵循，否则渲染失败：
+- mermaid：${DIAGRAM_FORMAT_SPEC.mermaid}
+- ${DIAGRAM_FORMAT_SPEC.jsonRule}
+- decision-matrix：{criteria:[{name,weight}], alternatives:[{方案,评分:[...]}]} 或 Markdown表格
+- decision-chain：{nodes:[{id,label,type}], edges:[{from,to,label}]}
+- probability：{labels:[], data:[], type:"bar"}
+- chart：Chart.js标准 {type,data:{labels,datasets}}
+- dependency-graph：{nodes:[{id,label}], edges:[{from,to,label|type}]}
+- project-dashboard：${DIAGRAM_FORMAT_SPEC.projectDashboardShort}`,
             outputFormat: 'markdown'
         },
         {
@@ -453,6 +498,8 @@
 输出格式：
 使用 \\\`\\\`\\\`mermaid 代码块输出图表
 
+【必须遵守】节点标签内换行用 <br/>，禁止真实换行。例：A[第一行<br/>第二行] 或 B{平台<br/>组件}。否则渲染失败。
+
 示例：
 \\\`\\\`\\\`mermaid
 flowchart TD
@@ -507,7 +554,7 @@ flowchart TD
             description: '甘特图、项目进度、里程碑、关键路径',
             enabled: true,
             skillMD: generateSkillMD('甘特图与进度', '甘特图、项目进度', `你是一位项目进度专家，擅长使用甘特图规划项目时间线。请帮助用户制定项目进度计划，识别关键路径和里程碑，使用mermaid gantt输出。`, ['gantt', 'schedule', 'timeline']),
-            prompt: '你是一位甘特图与进度管理专家。请帮助用户制定项目时间线，识别任务依赖和关键路径。使用 mermaid gantt 代码块输出甘特图，使用 milestones 代码块输出里程碑时间线（JSON格式：{"title":"标题","milestones":[{"name":"里程碑名","date":"日期","description":"描述"}]}），使用 project-dashboard 代码块输出项目管理仪表板（可含 milestones 数组展示里程碑）。',
+            prompt: `你是一位甘特图与进度管理专家。请帮助用户制定项目时间线，识别任务依赖和关键路径。使用 mermaid gantt 代码块输出甘特图（${DIAGRAM_FORMAT_SPEC.mermaid}），使用 milestones 代码块输出里程碑（{title, milestones:[{name,date,description}]}），使用 project-dashboard 代码块输出项目管理仪表板。${DIAGRAM_FORMAT_SPEC.jsonRule}`,
             outputFormat: 'markdown'
         },
         {
@@ -516,7 +563,7 @@ flowchart TD
             description: '任务依赖、前置关系、FS/SS/FF/SF、依赖图',
             enabled: true,
             skillMD: generateSkillMD('依赖关系分析', '任务依赖、前置关系', `你是一位依赖关系分析专家，擅长识别任务间的FS(完成-开始)、SS(开始-开始)、FF(完成-完成)、SF(开始-完成)等依赖关系。请帮助用户建立准确的依赖网络。`, ['dependency', 'precedence', 'network']),
-            prompt: '你是一位依赖关系分析专家，擅长识别任务间的逻辑依赖（FS/SS/FF/SF）。请帮助用户建立任务依赖图，识别关键路径。使用 dependency-graph 代码块输出依赖关系（JSON格式：nodes、edges），或使用 mermaid flowchart 输出流程图。',
+            prompt: `你是一位依赖关系分析专家，擅长识别任务间的逻辑依赖（FS/SS/FF/SF）。请帮助用户建立任务依赖图，识别关键路径。使用 dependency-graph 代码块输出依赖关系（{nodes:[{id,label}], edges:[{from,to,label}]}），或使用 mermaid flowchart 输出流程图。${DIAGRAM_FORMAT_SPEC.mermaid} ${DIAGRAM_FORMAT_SPEC.jsonRule}`,
             outputFormat: 'markdown'
         },
         {
@@ -556,7 +603,10 @@ flowchart TD
 1. 问题是否闭环：问题是否已完整定义、边界清晰、可验证闭环
 2. 是否扩散：问题是否在扩大、蔓延、影响范围是否在增加
 3. 变迁与泛化：问题是否在演变、是否从个案泛化为普遍现象
-请给出识别结论、判断依据和应对建议。使用 problem-evolution 代码块输出问题演化看板和当前阻塞点突破方案（JSON格式：phases、blockers含breakthrough）。`,
+请给出识别结论、判断依据和应对建议。
+
+【problem-evolution 格式规范】必须严格按此输出，否则渲染失败：
+${DIAGRAM_FORMAT_SPEC.problemEvolution}`,
             outputFormat: 'markdown'
         }
     ];
@@ -2167,7 +2217,18 @@ ${prompt}
 2. 切实可行：方案需具体、可执行，含步骤、交付物、验收标准
 3. 结构化输出：使用列表、表格、Mermaid图表
 4. 整合多维度：技术+策略+方法+决策，避免空泛建议
-5. 风险前置：识别并标注关键风险`,
+5. 风险前置：识别并标注关键风险
+
+【核心输出结构】汇报项目/任务时，必须包含以下模块，使用 project-dashboard 代码块输出。
+
+【project-dashboard 格式规范】必须严格按此结构输出，否则渲染失败：
+${DIAGRAM_FORMAT_SPEC.projectDashboard}
+
+模块说明：
+1. 项目全景矩阵：status、leverage_points、blocker_priority、critical_closure、management_gaps、key_actions
+2. 关键资源负荷：resource_load（数组 [{name,load}]）
+3. 依赖情况：dependencies、blocking_deps、critical_path
+4. 认知偏差：cognitive_biases`,
             capabilities: ['研发项目管理协调', '根据任务组织调度Agent', '超级决策能力', '海量知识整合', '合理化思路', '切实可行方案', '技术策略方法决策', '问题闭环/扩散/变迁/泛化识别', 'PMP', 'WBS', '根因分析', '风险识别', '研发技术'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_pmp', 'skill_wbs', 'skill_root_cause', 'skill_risk_identification', 'skill_gantt', 'skill_dependency', 'skill_temporal_relation', 'skill_planner', 'skill_mece', 'skill_mermaid_visualization', 'skill_bug_analysis', 'skill_testing_strategy', 'skill_problem_evolution', 'skill_decision_expert', 'skill_cognitive_psychology', 'skill_swot', 'skill_first_principles', 'skill_iceberg_model', 'skill_pyramid', 'skill_smart'],
@@ -3173,6 +3234,7 @@ ${prompt}
     window.AppState = AppState;
     window.AIAgentApp = {
         VERSION,
+        DIAGRAM_FORMAT_SPEC,
         BUILTIN_MODELS,
         BUILTIN_SKILLS,
         BUILTIN_RULES,
