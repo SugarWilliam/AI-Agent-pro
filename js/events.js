@@ -998,17 +998,25 @@
         let attachments = [];
         
         if (window.AppState.uploadedFiles && window.AppState.uploadedFiles.length > 0) {
-            const fileContents = window.AppState.uploadedFiles.map(f => {
-                return `\n\n【文件：${f.file.name}】\n${f.content}`;
+            const parsedFiles = window.AppState.uploadedFiles.filter(f => f.attachment != null);
+            if (parsedFiles.length === 0 && !content.trim()) {
+                window.AIAgentUI?.showToast?.('请等待文件解析完成后再发送', 'info');
+                sendBtn.classList.remove('processing');
+                sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+                sendBtn.title = '发送';
+                return;
+            }
+            const fileContents = parsedFiles.map(f => {
+                return `\n\n【文件：${f.file.name}】\n${f.content || ''}`;
             }).join('');
             
             if (messageContent) {
                 messageContent += fileContents;
-            } else {
+            } else if (fileContents) {
                 messageContent = fileContents.substring(2);
             }
             
-            attachments = window.AppState.uploadedFiles.map(f => f.attachment);
+            attachments = parsedFiles.map(f => f.attachment);
         }
 
         // 添加用户消息
@@ -1221,7 +1229,8 @@
                     attachment = {
                         type: 'image',
                         name: file.name,
-                        data: base64
+                        data: base64,
+                        size: file.size
                     };
                     // 使用 RAGManager.parseImage 解析图片（Jina AI + Tesseract OCR 降级）
                     try {
@@ -1242,7 +1251,8 @@
                     attachment = {
                         type: 'file',
                         name: file.name,
-                        content: content.substring(0, 1000)
+                        content: content.substring(0, 1000),
+                        size: file.size
                     };
                 } else if (file.type === 'application/pdf') {
                     try {
@@ -1281,7 +1291,8 @@
                     attachment = {
                         type: 'pdf',
                         name: file.name,
-                        content: content.substring(0, 1000)
+                        content: content.substring(0, 1000),
+                        size: file.size
                     };
                 } else if (file.type.includes('word') || file.type.includes('document')) {
                     try {
@@ -1297,14 +1308,16 @@
                     attachment = {
                         type: 'doc',
                         name: file.name,
-                        content: content.substring(0, 1000)
+                        content: content.substring(0, 1000),
+                        size: file.size
                     };
                 } else if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
                     content = await parseCSVFile(file);
                     attachment = {
                         type: 'csv',
                         name: file.name,
-                        content: content.substring(0, 1000)
+                        content: content.substring(0, 1000),
+                        size: file.size
                     };
                 } else if (file.type.includes('sheet') || file.type.includes('excel') || 
                            file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
@@ -1321,7 +1334,8 @@
                     attachment = {
                         type: 'excel',
                         name: file.name,
-                        content: content.substring(0, 1000)
+                        content: content.substring(0, 1000),
+                        size: file.size
                     };
                 } else if (file.type.includes('presentation') || file.type.includes('powerpoint') ||
                            file.name.endsWith('.ppt') || file.name.endsWith('.pptx')) {
@@ -1338,7 +1352,8 @@
                     attachment = {
                         type: 'ppt',
                         name: file.name,
-                        content: content.substring(0, 1000)
+                        content: content.substring(0, 1000),
+                        size: file.size
                     };
                 } else if (file.type === 'text/html' || file.name.endsWith('.html') || 
                            file.name.endsWith('.htm') || file.name.endsWith('.h5')) {
@@ -1346,14 +1361,16 @@
                     attachment = {
                         type: 'html',
                         name: file.name,
-                        content: content.substring(0, 1000)
+                        content: content.substring(0, 1000),
+                        size: file.size
                     };
                 } else if (file.name.endsWith('.md') || file.name.endsWith('.markdown')) {
                     content = await readFileAsText(file);
                     attachment = {
                         type: 'markdown',
                         name: file.name,
-                        content: content.substring(0, 1000)
+                        content: content.substring(0, 1000),
+                        size: file.size
                     };
                 } else {
                     // 默认处理：尝试作为文本读取，失败则只显示文件名
@@ -1364,13 +1381,15 @@
                             attachment = {
                                 type: 'file',
                                 name: file.name,
-                                content: content.substring(0, 1000)
+                                content: content.substring(0, 1000),
+                                size: file.size
                             };
                         } else {
                             content = `[文件: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n文件类型: ${file.type || '未知'}`;
                             attachment = {
                                 type: 'file',
-                                name: file.name
+                                name: file.name,
+                                size: file.size
                             };
                         }
                     } catch (readError) {
@@ -1378,7 +1397,8 @@
                         content = `[文件: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n文件类型: ${file.type || '未知'}`;
                         attachment = {
                             type: 'file',
-                            name: file.name
+                            name: file.name,
+                            size: file.size
                         };
                     }
                 }
@@ -1404,7 +1424,7 @@
                 const failItem = window.AppState.uploadedFiles[itemIndex];
                 if (failItem) {
                     failItem.content = `[文件: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n处理失败: ${error.message}`;
-                    failItem.attachment = { type: 'file', name: file.name };
+                    failItem.attachment = { type: 'file', name: file.name, size: file.size };
                     failItem.status = 'error';
                     failItem.progress = 0;
                     renderFileAttachments();

@@ -1283,6 +1283,46 @@ body {
     border-top-right-radius: var(--radius-xs);
 }
 
+/* 消息附件：仅显示文件名，不展开内容 */
+.message-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.message-attachment-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.message-attachment-item.message-attachment-preview {
+    cursor: pointer;
+}
+
+.message-attachment-item.message-attachment-preview:hover {
+    background: var(--bg-elevated);
+    color: var(--primary);
+}
+
+.message-attachment-item i {
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+.message-attachment-size {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-left: 4px;
+}
+
 /* 思考过程样式 - 淡色暗色 */
 .thinking-section {
     margin-bottom: 12px;

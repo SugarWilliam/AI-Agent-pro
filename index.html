@@ -7,8 +7,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
     <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-title" content="AI Agent Pro">
     <title>AI Agent Pro v8.3.0</title>
     <link rel="icon" href="logo.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="vendor/highlightjs/atom-one-dark.min.css">
     <script src="vendor/chartjs/chart.umd.min.js"></script>
@@ -722,6 +725,21 @@
         <button class="preview-close" onclick="AIAgentUI.closeImagePreview()">
             <i class="fas fa-times"></i>
         </button>
+    </div>
+
+    <!-- 文件内容预览 -->
+    <div id="preview-file" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 id="preview-file-title"><i class="fas fa-file"></i> 文件预览</h3>
+                <button class="modal-close" onclick="AIAgentUI.closeModal('preview-file')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <pre id="preview-file-content" style="max-height: 400px; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 12px;"></pre>
+            </div>
+        </div>
     </div>
 
     <!-- 隐藏的文件输入 -->

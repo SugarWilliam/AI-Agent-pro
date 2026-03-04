@@ -121,16 +121,30 @@
         const avatar = isUser ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
         const name = isUser ? '我' : (window.AppState.subAgents?.[window.AppState.currentSubAgent]?.name || 'AI助手');
 
-        // 渲染附件
+        // 渲染附件：仅显示图标+文件名+大小，不展开内容，点击可预览
         let attachmentsHtml = '';
         if (msg.attachments?.length > 0) {
-            attachmentsHtml = '<div class="message-attachments" style="margin-bottom: 8px;">' +
-                msg.attachments.map(att => {
-                    if (att.type === 'image') {
-                        return `<img src="${att.data}" alt="${att.name}" style="max-width: 200px; max-height: 150px; border-radius: var(--radius-md); cursor: pointer;" onclick="AIAgentUI.previewImage('${att.data}')">`;
-                    } else {
-                        return `<div style="padding: 8px 12px; background: var(--bg-tertiary); border-radius: var(--radius-md); display: flex; align-items: center; gap: 8px; font-size: 13px;"><i class="fas fa-file"></i> ${escapeHtml(att.name)}</div>`;
+            const formatSize = (bytes) => {
+                if (!bytes) return '';
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+            };
+            attachmentsHtml = '<div class="message-attachments">' +
+                msg.attachments.map((att, idx) => {
+                    if (!att) return '';
+                    const icon = att.type === 'image' ? 'fa-image' : 'fa-file';
+                    const name = escapeHtml(att.name || '附件');
+                    const sizeStr = att.size != null ? formatSize(att.size) : '';
+                    const sizeHtml = sizeStr ? `<span class="message-attachment-size">${sizeStr}</span>` : '';
+                    if (att.type === 'image' && att.data) {
+                        return `<div class="message-attachment-item message-attachment-preview" onclick="AIAgentUI.previewImage('${att.data.replace(/'/g, "\\'")}')" title="点击预览">` +
+                            `<i class="fas ${icon}"></i> <span class="message-attachment-name">${name}</span>${sizeHtml}</div>`;
                     }
+                    const hasContent = att.content && att.content.trim().length > 0;
+                    const clickable = hasContent ? ` onclick="AIAgentUI.previewFileAttachment('${msg.id}', ${idx})" title="点击预览"` : ` title="文件名: ${name}"`;
+                    return `<div class="message-attachment-item${hasContent ? ' message-attachment-preview' : ''}"${clickable}>` +
+                        `<i class="fas ${icon}"></i> <span class="message-attachment-name">${name}</span>${sizeHtml}</div>`;
                 }).join('') +
             '</div>';
         }
@@ -168,7 +182,11 @@
             const outputFormat = msg.outputFormat || detectOutputFormat(msg.content);
             contentHtml = renderContentByFormat(renderMarkdown(msg.content), outputFormat);
         } else {
-            contentHtml = escapeHtml(msg.content).replace(/\n/g, '<br>');
+            let displayContent = msg.content || '';
+            if (msg.attachments?.length > 0) {
+                displayContent = displayContent.replace(/【文件[：:][^】]+】[\s\S]*/g, '').trim();
+            }
+            contentHtml = displayContent ? escapeHtml(displayContent).replace(/\n/g, '<br>') : '';
         }
 
         // 左下角操作按钮（复制、下载）- 使用data属性而不是onclick
@@ -4321,6 +4339,17 @@ ${ex.content}`).join('\n\n')}
         closeModal('preview-image');
     }
 
+    function previewFileAttachment(messageId, attachmentIndex) {
+        const msg = (window.AppState?.messages || []).find(m => m.id === messageId);
+        const att = msg?.attachments?.[attachmentIndex];
+        if (!att?.content) return;
+        const titleEl = document.getElementById('preview-file-title');
+        const contentEl = document.getElementById('preview-file-content');
+        if (titleEl) titleEl.innerHTML = `<i class="fas fa-file"></i> ${escapeHtml(att.name || '文件预览')}`;
+        if (contentEl) contentEl.textContent = att.content;
+        openModal('preview-file');
+    }
+
     // ==================== 设置事件绑定 ====================
     function initSettingsEvents() {
         // 主题设置
@@ -4428,6 +4457,7 @@ ${ex.content}`).join('\n\n')}
         deleteMessage,
         renderMarkdown,
         previewImage,
+        previewFileAttachment,
         showToast,
         scrollToBottom,
         formatTime,
