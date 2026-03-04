@@ -17,6 +17,7 @@
   "owner": "负责人",
   "date": "日期",
   "status": "状态",
+  "alert_banner": {"level": "高风险延期", "message": "工厂版本 2025.11.24→2026.03.11；正式版本..."} 或 字符串,
   "leverage_points": ["杠杆点1", "杠杆点2"],
   "blocker_priority": [{"level": "P0/致命", "items": ["阻塞项1", "阻塞项2"]}],
   "critical_closure": [{"problem": "问题名", "status": "状态", "next_action": "下一步"}],
@@ -35,7 +36,15 @@
   "cognitive_biases": []
 }
 字段名用英文下划线，JSON 用英文双引号。`,
-        projectDashboardShort: `project-dashboard 代码块，结构：project、owner、leverage_points、blocker_priority[{level,items}]、critical_closure[{problem,status,next_action}]、management_gaps、key_actions[{action,owner,description}]`,
+        projectDashboardShort: `project-dashboard 代码块，结构：alert_banner、project、owner、stats、leverage_points、blocker_priority[{level,items}]、critical_closure[{problem,status,next_action}]、management_gaps、key_actions[{action,owner,description}]`,
+        projectDashboardH5: `【推荐】使用 \`\`\`html 输出完整 H5 驾驶舱页面。结构要求：
+- 完整 <!DOCTYPE html> 文档，含 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+- 引入 Tailwind CDN：<script src="https://cdn.tailwindcss.com"></script>
+- 引入 Font Awesome：<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+- 深色主题背景（如 #0f172a），玻璃拟态面板（glass-panel、backdrop-filter）
+- 必含模块：顶部告警栏、项目头部（project/owner/date/status）、关键指标卡片（P0/P1 数量）、三大杠杆点、阻塞项矩阵（P0/P1）、人员负载、管理缺口、孤儿问题、关键行动、认知偏差
+- 响应式：grid-cols-1 md:grid-cols-4、flex-col md:flex-row
+- 可选：实时时钟、数字动画、risk-card 悬停效果`,
         problemEvolution: `使用 \`\`\`problem-evolution 代码块。JSON 结构：
 {"problemname": "问题名", "phases":[{"phase": "阶段名", "description": "描述", "response": "响应"}], "blockers":[{"blocker": "阻塞点", "breakthrough": "突破方案"}], "currentstatus": "当前状态"}
 字段名用英文下划线，JSON 用英文双引号。`,
@@ -1668,7 +1677,8 @@ ${prompt}
             rules: ['rule_format', 'rule_tone', 'rule_safety', 'rule_multimodal'],
             mcp: ['mcp_web_search'],
             rag: ['rag_general', 'rag_logic', 'rag_neuroscience'],
-            color: '#3b82f6'
+            color: '#3b82f6',
+            outputFormat: 'markdown'
         },
         creative: {
             id: 'creative',
@@ -1719,6 +1729,7 @@ ${prompt}
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_writer', 'skill_brainstorm', 'skill_designer'],
             rules: ['rule_format', 'rule_tone', 'rule_examples', 'rule_multimodal'],
+            outputFormat: 'markdown',
             mcp: ['mcp_web_search'],
             rag: ['rag_literature', 'rag_logic', 'rag_neuroscience'],
             color: '#8b5cf6'
@@ -1774,7 +1785,8 @@ ${prompt}
             rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure'],
             mcp: ['mcp_web_search', 'mcp_filesystem'],
             rag: ['rag_linux', 'rag_ai', 'rag_logic', 'rag_neuroscience'],
-            color: '#10b981'
+            color: '#10b981',
+            outputFormat: 'markdown'
         },
         task: {
             id: 'task',
@@ -1823,7 +1835,8 @@ ${prompt}
             rules: ['rule_format', 'rule_structure'],
             mcp: ['mcp_web_search'],
             rag: ['rag_logic', 'rag_neuroscience'],
-            color: '#f59e0b'
+            color: '#f59e0b',
+            outputFormat: 'markdown'
         },
         plan: {
             id: 'plan',
@@ -1876,7 +1889,8 @@ ${prompt}
             rules: ['rule_format', 'rule_structure'],
             mcp: ['mcp_web_search'],
             rag: ['rag_logic', 'rag_neuroscience'],
-            color: '#ec4899'
+            color: '#ec4899',
+            outputFormat: 'markdown'
         },
         super_decision: {
             id: 'super_decision',
@@ -2125,7 +2139,8 @@ ${prompt}
             rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
             rag: ['rag_finance', 'rag_social', 'rag_first_principles', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_logic', 'rag_temporal_logic', 'rag_common_sense', 'rag_history', 'rag_industry_reports', 'rag_government_reports'],
-            color: '#8b5cf6'
+            color: '#8b5cf6',
+            outputFormat: 'markdown'
         },
         cognitive: {
             id: 'cognitive',
@@ -2167,7 +2182,8 @@ ${prompt}
             rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
             rag: ['rag_psychology', 'rag_neuroscience', 'rag_first_principles', 'rag_iceberg_model', 'rag_social'],
-            color: '#14b8a6'
+            color: '#14b8a6',
+            outputFormat: 'markdown'
         },
         work_secretary: {
             id: 'work_secretary',
@@ -2219,9 +2235,12 @@ ${prompt}
 4. 整合多维度：技术+策略+方法+决策，避免空泛建议
 5. 风险前置：识别并标注关键风险
 
-【核心输出结构】汇报项目/任务时，必须包含以下模块，使用 project-dashboard 代码块输出。
+【核心输出结构】汇报项目/任务时，必须包含以下模块。
 
-【project-dashboard 格式规范】必须严格按此结构输出，否则渲染失败：
+【推荐】优先使用 \`\`\`html 输出完整 H5 驾驶舱页面（PC+移动端适配，玻璃拟态、Tailwind、Font Awesome）：
+${DIAGRAM_FORMAT_SPEC.projectDashboardH5}
+
+【备选】使用 \`\`\`project-dashboard 或 \`\`\`json 输出 JSON 结构：
 ${DIAGRAM_FORMAT_SPEC.projectDashboard}
 
 模块说明：
@@ -2235,7 +2254,8 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
             rules: ['rule_format', 'rule_structure', 'rule_accuracy', 'rule_examples'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
             rag: ['rag_pmp', 'rag_huawei_rdpm', 'rag_wbs', 'rag_root_cause', 'rag_risk_identification', 'rag_software_pm', 'rag_linux', 'rag_ccpp', 'rag_memory_analysis', 'rag_embedded', 'rag_image_quality', 'rag_h264_h265', 'rag_ai_security', 'rag_bug_debug', 'rag_testing', 'rag_problem_evolution', 'rag_logic', 'rag_temporal_logic', 'rag_first_principles', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_common_sense', 'rag_history', 'rag_industry_reports', 'rag_government_reports', 'rag_finance', 'rag_social'],
-            color: '#0ea5e9'
+            color: '#0ea5e9',
+            outputFormat: 'h5'
         }
     };
 
@@ -2526,6 +2546,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                             if (c?.serviceTarget !== undefined) AppState.subAgents[id].serviceTarget = c.serviceTarget;
                             if (c?.ignoreInfoDesc !== undefined) AppState.subAgents[id].ignoreInfoDesc = c.ignoreInfoDesc;
                             if (c?.delegateTo !== undefined) AppState.subAgents[id].delegateTo = Array.isArray(c.delegateTo) ? c.delegateTo : [];
+                            if (c?.outputFormat !== undefined) AppState.subAgents[id].outputFormat = c.outputFormat;
                         }
                     });
                 }
@@ -2543,7 +2564,8 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                 if (agent) subAgentConfigs[id] = {
                     skills: agent.skills || [], rules: agent.rules || [], mcp: agent.mcp || [], rag: agent.rag || [],
                     modelPreference: agent.modelPreference || [], serviceTarget: agent.serviceTarget,
-                    ignoreInfoDesc: agent.ignoreInfoDesc, delegateTo: agent.delegateTo ?? []
+                    ignoreInfoDesc: agent.ignoreInfoDesc, delegateTo: agent.delegateTo ?? [],
+                    outputFormat: agent.outputFormat ?? 'markdown'
                 };
             });
             const state = {
@@ -2617,7 +2639,8 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                         modelPreference: agent.modelPreference || [],
                         serviceTarget: agent.serviceTarget,
                         ignoreInfoDesc: agent.ignoreInfoDesc,
-                        delegateTo: agent.delegateTo ?? []
+                        delegateTo: agent.delegateTo ?? [],
+                        outputFormat: agent.outputFormat ?? 'markdown'
                     };
                 }
             });
@@ -2644,6 +2667,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                         if (config.serviceTarget !== undefined) AppState.subAgents[id].serviceTarget = config.serviceTarget;
                         if (config.ignoreInfoDesc !== undefined) AppState.subAgents[id].ignoreInfoDesc = config.ignoreInfoDesc;
                         if (config.delegateTo !== undefined) AppState.subAgents[id].delegateTo = Array.isArray(config.delegateTo) ? config.delegateTo : [];
+                        if (config.outputFormat !== undefined) AppState.subAgents[id].outputFormat = config.outputFormat;
                     }
                 });
             }

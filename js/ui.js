@@ -496,18 +496,24 @@
                 } catch (_) { /* 非合法 JSON，按普通代码块处理 */ }
                 }
             }
-            // 兼容 AI 在 ```html 中输出 diagram-block + 内嵌 JSON 的情况
-            if (lang === 'html' && /diagram-block|project-dashboard/i.test(trimmed)) {
-                const jsonMatch = trimmed.match(/\{[\s\S]*?"(?:project|项目|owner|负责人)"[\s\S]*?"(?:timeline|时间线|top_risks|status|状态)"[\s\S]*?\}/);
-                if (jsonMatch) {
-                    try {
-                        const data = JSON.parse(sanitizeJsonForParse(jsonMatch[0]));
-                        const d = data['project-dashboard'] || data.projectDashboard || data;
-                        if (d && (d.project || d.项目 || d.owner || d.负责人)) {
-                            diagramBlocks.push({ type: 'project-dashboard', raw: match, code: jsonMatch[0] });
-                            return `\x00DIAGRAM${diagramBlocks.length - 1}\x00`;
-                        }
-                    } catch (_) { /* 解析失败则按代码块显示 */ }
+            if (lang === 'html') {
+                const isFullH5 = /<!DOCTYPE\s+html|<\s*html\b/i.test(trimmed) && /tailwind|glass-panel|驾驶舱|项目危机管控|危机管控|backdrop-filter/i.test(trimmed);
+                if (isFullH5) {
+                    diagramBlocks.push({ type: 'project-cockpit-h5', raw: match, code: trimmed });
+                    return `\x00DIAGRAM${diagramBlocks.length - 1}\x00`;
+                }
+                if (/diagram-block|project-dashboard/i.test(trimmed)) {
+                    const jsonMatch = trimmed.match(/\{[\s\S]*?"(?:project|项目|owner|负责人)"[\s\S]*?"(?:timeline|时间线|top_risks|status|状态)"[\s\S]*?\}/);
+                    if (jsonMatch) {
+                        try {
+                            const data = JSON.parse(sanitizeJsonForParse(jsonMatch[0]));
+                            const d = data['project-dashboard'] || data.projectDashboard || data;
+                            if (d && (d.project || d.项目 || d.owner || d.负责人)) {
+                                diagramBlocks.push({ type: 'project-dashboard', raw: match, code: jsonMatch[0] });
+                                return `\x00DIAGRAM${diagramBlocks.length - 1}\x00`;
+                            }
+                        } catch (_) { /* 解析失败则按代码块显示 */ }
+                    }
                 }
             }
             codeBlocks.push(`<pre class="code-block"><code class="language-${lang || 'text'}">${escapeHtml(trimmed)}</code></pre>`);
@@ -616,6 +622,7 @@
             if (d.type === 'milestones') return renderMilestones('```milestones\n' + d.code + '\n```') || d.raw;
             if (d.type === 'dependency-graph') return renderDependencyGraph('```dependency-graph\n' + d.code + '\n```') || d.raw;
             if (d.type === 'risk-matrix') return renderRiskMatrix('```risk-matrix\n' + d.code + '\n```') || d.raw;
+            if (d.type === 'project-cockpit-h5') return renderProjectCockpitH5(d.code) || d.raw;
             return d.raw;
         });
 
@@ -659,7 +666,33 @@
     function sanitizeJsonForParse(str) {
         if (typeof str !== 'string') return str;
         str = str.replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"').replace(/[\u2018\u2019\u201A\u201B\u2032]/g, "'");
+        str = str.replace(/,(\s*[}\]])/g, '$1');
         return str;
+    }
+
+    /** problem-evolution 专用：JSON 容错解析 */
+    function parseProblemEvolutionJson(str) {
+        if (typeof str !== 'string') return null;
+        let s = str.replace(/^\s*problem-evolution\s*/i, '').trim();
+        s = sanitizeJsonForParse(s);
+        s = s.replace(/"(?:[^"\\]|\\.)*"/g, (m) => {
+            const inner = m.slice(1, -1);
+            if (!/\r?\n/.test(inner)) return m;
+            return '"' + inner.replace(/\r\n/g, '\\n').replace(/\r/g, '\\r').replace(/\n/g, '\\n') + '"';
+        });
+        s = s.replace(/\}\s*\{/g, '},{').replace(/\]\s*\{/g, '],{').replace(/\}\s*\[/g, '},[').replace(/\]\s*\[/g, '],[');
+        s = s.replace(/"\s*\n\s*"/g, '",\n"');
+        try {
+            return JSON.parse(s);
+        } catch (e) {
+            s = s.replace(/([^\\])"(?=\s*[a-zA-Z\u4e00-\u9fa5])/g, '$1\\"');
+            try { return JSON.parse(s); } catch (_) { /* fall through */ }
+            const braceMatch = s.match(/\{[\s\S]*\}/);
+            if (braceMatch) {
+                try { return JSON.parse(braceMatch[0]); } catch (_) { /* fall through */ }
+            }
+            throw e;
+        }
     }
 
     /** project-dashboard 专用：更激进的 JSON 容错，处理 AI 常输出的非法格式 */
@@ -1131,6 +1164,51 @@
         }
     }
 
+    /** project-cockpit-h5 渲染：Agent 输出的完整 H5 驾驶舱页面，用 iframe 隔离渲染 */
+    function renderProjectCockpitH5(htmlContent) {
+        if (!htmlContent || typeof htmlContent !== 'string') return null;
+        try {
+            const codeEscaped = escapeHtml(htmlContent);
+            const iframeId = 'cockpit-h5-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            let html = '<div class="diagram-block" data-diagram-type="project-cockpit-h5"><div class="diagram-toolbar">' +
+                '<button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>' +
+                '<button class="diagram-btn" data-action="open-new" title="新窗口打开"><i class="fas fa-external-link-alt"></i> 新窗口</button>' +
+                '<button class="diagram-btn" data-action="code" title="查看/隐藏代码"><i class="fas fa-code"></i> 代码</button>' +
+                '<button class="diagram-btn" data-action="copy" title="复制代码"><i class="fas fa-copy"></i> 复制</button>' +
+                '</div><div class="project-cockpit-h5-container" style="min-height:700px;max-height:90vh;border-radius:var(--radius-md);overflow:auto;background:var(--bg-tertiary);">' +
+                '<iframe id="' + iframeId + '" sandbox="allow-scripts allow-same-origin" style="width:100%;min-height:700px;border:none;display:block;" title="项目驾驶舱"></iframe>' +
+                '</div><pre class="diagram-code-panel" style="display:none"><code>' + codeEscaped + '</code></pre></div>';
+            setTimeout(() => {
+                const iframe = document.getElementById(iframeId);
+                if (iframe) {
+                    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+                    if (doc) {
+                        try {
+                            doc.open();
+                            doc.write(htmlContent);
+                            doc.close();
+                        } catch (writeErr) {
+                            try {
+                                const safeHtml = htmlContent.replace(/<script\b(?![^>]*\bsrc\s*=)[^>]*>[\s\S]*?<\/script>/gi, '');
+                                doc.open();
+                                doc.write(safeHtml);
+                                doc.close();
+                            } catch (_) {
+                                doc.open();
+                                doc.write('<body style="padding:20px;color:#94a3b8;font-family:sans-serif;"><p>H5 内容包含无效脚本，渲染已跳过。请点击「代码」查看原文。</p></body>');
+                                doc.close();
+                            }
+                        }
+                    }
+                }
+            }, 0);
+            return html;
+        } catch (e) {
+            window.Logger?.error('Project cockpit H5 render error:', e);
+            return null;
+        }
+    }
+
     /** project-dashboard 渲染：格式规范见 js/app.js DIAGRAM_FORMAT_SPEC 及 docs/DIAGRAM_FORMAT_SPEC.md；支持 ``` 或 `` 包裹 */
     function renderProjectDashboard(content) {
         const match = content.match(/(```|``)project-dashboard\s*\n([\s\S]*?)\1/);
@@ -1149,6 +1227,14 @@
                 '<button class="diagram-btn" data-action="code" title="查看/隐藏代码"><i class="fas fa-code"></i> 代码</button>' +
                 '<button class="diagram-btn" data-action="copy" title="复制代码"><i class="fas fa-copy"></i> 复制</button>' +
                 '</div><div class="project-dashboard-container">';
+
+            const alertBanner = data.alert_banner || data.alertBanner || data.alertbanner || data.顶部告警 || data.告警栏 || '';
+            if (alertBanner) {
+                const alertLevel = typeof alertBanner === 'object' ? (alertBanner.level || alertBanner.级别 || alertBanner.type || '') : '';
+                const alertMsg = typeof alertBanner === 'object' ? (alertBanner.message || alertBanner.消息 || alertBanner.text || '') : String(alertBanner);
+                html += '<div class="dashboard-alert"><i class="fas fa-exclamation-triangle"></i> <span class="dashboard-alert-level">' + escapeHtml(String(alertLevel)) + '</span>' + (alertMsg ? ' <span class="dashboard-alert-msg">' + escapeHtml(String(alertMsg)) + '</span>' : '') + '</div>';
+            }
+
             html += `<h4><i class="fas fa-tachometer-alt"></i> ${escapeHtml(String(title))}</h4>`;
 
             const project = data.project || data.项目;
@@ -1163,6 +1249,28 @@
                 if (status) html += `<div class="dashboard-overview-row"><span class="dashboard-label">状态</span><span class="dashboard-value dashboard-status">${escapeHtml(String(status))}</span></div>`;
                 html += '</div>';
             }
+
+            const blockerPriorityRaw = data.blocker_priority || data.blockerPriority || data.blockerpriority || data.阻塞项优先级 || [];
+            let p0Count = 0, p1Count = 0;
+            if (Array.isArray(blockerPriorityRaw)) {
+                blockerPriorityRaw.forEach(b => {
+                    const item = typeof b === 'string' ? {} : (b || {});
+                    const level = String(item.level || item.priority || '');
+                    const subItems = item.items || item.blockers || [];
+                    const n = subItems.length || 1;
+                    if (level.indexOf('P0') >= 0 || level.indexOf('致命') >= 0) p0Count += n;
+                    else if (level.indexOf('P1') >= 0 || level.indexOf('严重') >= 0) p1Count += n;
+                });
+            }
+            const statsData = data.stats || data.统计 || {};
+            const tasksInProgress = statsData.tasks_in_progress ?? statsData.tasksInProgress ?? statsData.进行中 ?? '';
+            const tasksCompleted = statsData.tasks_completed ?? statsData.tasksCompleted ?? statsData.已完成 ?? '';
+            html += '<div class="dashboard-key-metrics">';
+                html += '<div class="dashboard-metric-card metric-p0"><span class="metric-value">' + p0Count + '</span><span class="metric-label">P0/致命</span></div>';
+                html += '<div class="dashboard-metric-card metric-p1"><span class="metric-value">' + p1Count + '</span><span class="metric-label">P1/严重</span></div>';
+                html += '<div class="dashboard-metric-card metric-progress"><span class="metric-value">' + escapeHtml(String(tasksInProgress || '—')) + '</span><span class="metric-label">进行中</span></div>';
+                html += '<div class="dashboard-metric-card metric-done"><span class="metric-value">' + escapeHtml(String(tasksCompleted || '—')) + '</span><span class="metric-label">已完成</span></div>';
+            html += '</div>';
 
             const timeline = data.timeline || data.时间线;
             if (timeline && typeof timeline === 'object') {
@@ -1188,7 +1296,6 @@
                 html += '</ul></div>';
             }
 
-            const blockerPriorityRaw = data.blocker_priority || data.blockerPriority || data.blockerpriority || data.阻塞项优先级 || [];
             let blockerPriority = [];
             if (Array.isArray(blockerPriorityRaw)) {
                 blockerPriorityRaw.forEach(b => {
@@ -1255,7 +1362,7 @@
                     if (Array.isArray(v)) return v;
                     if (typeof v === 'string') return [v];
                     if (v && typeof v === 'object') {
-                        if (v.识别 || v.根因) return [v];
+                        if (v.识别 || v.根因 || v.里程碑延期 || v.根因归类) return [v];
                         return Object.entries(v).map(([k, val]) => {
                             if (val && typeof val === 'object' && (val.识别 || val.根因)) return val;
                             const s = typeof val === 'string' ? val : (val && typeof val === 'object' ? JSON.stringify(val) : String(val));
@@ -1273,11 +1380,19 @@
                     html += '<div class="dashboard-gaps"><h5><i class="fas fa-exclamation-circle"></i> 管理漏洞</h5>';
                     const renderGapItem = (x) => {
                         if (typeof x === 'string') return escapeHtml(x);
-                        if (x && typeof x === 'object' && (x.识别 || x.根因)) {
-                            const parts = [];
-                            if (x.识别) parts.push(`识别：${x.识别}`);
-                            if (x.根因) parts.push(`根因：${x.根因}`);
-                            return escapeHtml(parts.join('；'));
+                        if (x && typeof x === 'object') {
+                            if (x.识别 || x.根因) {
+                                const parts = [];
+                                if (x.识别) parts.push(`识别：${x.识别}`);
+                                if (x.根因) parts.push(`根因：${x.根因}`);
+                                return escapeHtml(parts.join('；'));
+                            }
+                            if (x.里程碑延期 || x.根因归类) {
+                                const parts = [];
+                                if (x.里程碑延期) parts.push(`里程碑延期：${x.里程碑延期}`);
+                                if (x.根因归类) parts.push(`根因归类：${x.根因归类}`);
+                                return escapeHtml(parts.join('；'));
+                            }
                         }
                         return escapeHtml(String(x.text || x.desc || JSON.stringify(x)));
                     };
@@ -1404,7 +1519,6 @@
                 html += '</div>';
             }
 
-            const statsData = data.stats || data.统计 || {};
             if (Array.isArray(statsData) && statsData.length > 0) {
                 html += '<div class="dashboard-stats">';
                 statsData.forEach(s => {
@@ -1451,11 +1565,11 @@
     }
 
     function renderProblemEvolution(content) {
-        const match = content.match(/```problem-evolution\n([\s\S]*?)```/);
+        const match = content.match(/(```|``)problem-evolution\s*\n([\s\S]*?)\1/);
         if (!match) return null;
         try {
-            const data = JSON.parse(sanitizeJsonForParse(match[1]));
-            const codeEscaped = escapeHtml(match[1]);
+            const data = parseProblemEvolutionJson(match[2]);
+            const codeEscaped = escapeHtml(match[2].trim());
             const title = data.title || data.problemname || data.problem_name || '问题演化分析';
             let html = '<div class="diagram-block" data-diagram-type="problem-evolution"><div class="diagram-toolbar">' +
                 '<button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>' +
@@ -1808,12 +1922,53 @@
             const targetId = block.dataset.diagramTarget;
             const codePanel = block.querySelector('.diagram-code-panel');
             const codeEl = codePanel?.querySelector('code');
-            const vizContainer = block.querySelector('.mermaid-container, .chart-container, .decision-matrix-container, .probability-container, .decision-chain-container, .project-dashboard-container, .problem-evolution-container, .milestones-container, .dependency-graph-container, .risk-matrix-container');
+            const vizContainer = block.querySelector('.mermaid-container, .chart-container, .decision-matrix-container, .probability-container, .decision-chain-container, .project-dashboard-container, .project-cockpit-h5-container, .problem-evolution-container, .milestones-container, .dependency-graph-container, .risk-matrix-container');
             const svgEl = block.querySelector('.mermaid svg, .mermaid-container svg');
 
             switch (action) {
                 case 'fullscreen':
-                    openDiagramFullscreen(block);
+                    if (block.dataset.diagramType === 'project-cockpit-h5' && codeEl) {
+                        const w = window.open('', '_blank', 'noopener,noreferrer');
+                        if (w) {
+                            try {
+                                w.document.write(codeEl.textContent);
+                                w.document.close();
+                            } catch (err) {
+                                window.Logger?.warn('全屏写入失败', err);
+                                w.close();
+                                showToast?.('全屏打开失败', 'error');
+                            }
+                        } else {
+                            showToast?.('弹窗被拦截，请允许站点弹窗后重试', 'warning');
+                        }
+                    } else {
+                        openDiagramFullscreen(block);
+                    }
+                    break;
+                case 'open-new':
+                    if (codeEl) {
+                        const w = window.open('', '_blank', 'noopener,noreferrer');
+                        if (w) {
+                            try {
+                                const raw = codeEl.textContent;
+                                const isHtml = /^\s*<(!DOCTYPE|html|head|body)/i.test(raw);
+                                if (isHtml) {
+                                    w.document.write(raw);
+                                } else {
+                                    w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>预览</title></head><body><pre style="padding:20px;white-space:pre-wrap;">' + escapeHtml(raw) + '</pre></body></html>');
+                                }
+                                w.document.close();
+                            } catch (err) {
+                                window.Logger?.warn('新窗口写入失败', err);
+                                w.close();
+                                showToast?.('新窗口打开失败', 'error');
+                            }
+                        } else {
+                            showToast?.('弹窗被拦截，请允许站点弹窗后重试', 'warning');
+                        }
+                    } else {
+                        showToast?.('当前图表无代码内容，无法在新窗口打开', 'info');
+                    }
                     break;
                 case 'download':
                     if (svgEl) downloadDiagramAsPng(svgEl);
@@ -1859,18 +2014,40 @@
         overlay.className = 'diagram-fullscreen-overlay';
         overlay.innerHTML = `<div class="diagram-fullscreen-content"><button class="diagram-close-btn"><i class="fas fa-times"></i></button><div class="diagram-fullscreen-body"></div></div>`;
         const body = overlay.querySelector('.diagram-fullscreen-body');
-        const viz = block.querySelector('.mermaid-container, .chart-container, .decision-matrix-container, .probability-container, .decision-chain-container, .project-dashboard-container, .problem-evolution-container, .milestones-container, .dependency-graph-container, .risk-matrix-container');
+        const viz = block.querySelector('.mermaid-container, .chart-container, .decision-matrix-container, .probability-container, .decision-chain-container, .project-dashboard-container, .project-cockpit-h5-container, .problem-evolution-container, .milestones-container, .dependency-graph-container, .risk-matrix-container');
         if (viz) {
             const canvas = viz.querySelector('canvas');
+            const iframe = viz.querySelector('iframe');
             if (canvas) {
-                const img = document.createElement('img');
-                img.src = canvas.toDataURL('image/png');
-                img.style.maxWidth = '100%';
-                img.style.maxHeight = '90vh';
-                body.appendChild(img);
+                try {
+                    const img = document.createElement('img');
+                    img.src = canvas.toDataURL('image/png');
+                    img.style.maxWidth = '100%';
+                    img.style.maxHeight = '90vh';
+                    body.appendChild(img);
+                } catch (e) {
+                    body.innerHTML = '<p style="color:#94a3b8;padding:20px;">图表渲染失败，无法全屏</p>';
+                }
+            } else if (iframe && iframe.contentDocument) {
+                try {
+                    const doc = iframe.contentDocument;
+                    const html = doc.body ? doc.body.innerHTML : (doc.documentElement ? doc.documentElement.outerHTML : '');
+                    if (html) {
+                        const wrap = document.createElement('div');
+                        wrap.style.cssText = 'min-width:90vw;min-height:80vh;overflow:auto;background:#1a1a25;padding:20px;';
+                        wrap.innerHTML = html;
+                        body.appendChild(wrap);
+                    } else {
+                        body.innerHTML = '<p style="color:#94a3b8;padding:20px;">iframe 内容无法复制</p>';
+                    }
+                } catch (e) {
+                    body.innerHTML = '<p style="color:#94a3b8;padding:20px;">iframe 跨域限制，无法全屏展示</p>';
+                }
             } else {
                 body.appendChild(viz.cloneNode(true));
             }
+        } else {
+            body.innerHTML = '<p style="color:#94a3b8;padding:20px;">未找到可全屏展示的内容</p>';
         }
         overlay.querySelector('.diagram-close-btn').onclick = () => overlay.remove();
         overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
@@ -2261,9 +2438,16 @@
     // ==================== 多模态输出操作 ====================
     function previewH5(btn) {
         const container = btn.closest('.h5-output-container');
-        const content = container.querySelector('.h5-preview-content').innerHTML;
-
-        const previewWindow = window.open('', '_blank');
+        const content = container?.querySelector('.h5-preview-content')?.innerHTML;
+        if (!content) {
+            showToast?.('预览内容为空', 'error');
+            return;
+        }
+        const previewWindow = window.open('', '_blank', 'noopener,noreferrer');
+        if (!previewWindow) {
+            showToast?.('弹窗被拦截，请允许站点弹窗后重试', 'warning');
+            return;
+        }
         previewWindow.document.write(`
             <!DOCTYPE html>
             <html lang="zh-CN">
@@ -2367,9 +2551,12 @@
 
         const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
         const url = URL.createObjectURL(blob);
-        const previewWindow = window.open(url, '_blank');
-
-        showToast('请在打开的页面中使用 Ctrl+P 保存为PDF', 'info');
+        const previewWindow = window.open(url, '_blank', 'noopener,noreferrer');
+        if (!previewWindow) {
+            showToast?.('弹窗被拦截，请允许站点弹窗后重试；或右键下载的 HTML 文件用浏览器打开后打印为 PDF', 'warning');
+        } else {
+            showToast('请在打开的页面中使用 Ctrl+P 保存为PDF', 'info');
+        }
     }
 
     function downloadAsDOC(contentOrId) {
@@ -3549,6 +3736,7 @@ ${ex.content}`).join('\n\n')}
                         ${skillCount > 0 ? `<span class="subagent-meta-tag"><i class="fas fa-magic"></i> ${skillCount}</span>` : ''}
                         ${mcpCount > 0 ? `<span class="subagent-meta-tag"><i class="fas fa-plug"></i> ${mcpCount}</span>` : ''}
                         ${ragCount > 0 ? `<span class="subagent-meta-tag"><i class="fas fa-database"></i> ${ragCount}</span>` : ''}
+                        <span class="subagent-meta-tag" title="输出格式">${(agent.outputFormat || 'markdown') === 'h5' ? '<i class="fas fa-desktop"></i> H5' : '<i class="fas fa-file-alt"></i> MD'}</span>
                     </div>
                 </div>
                 <div class="subagent-actions">
@@ -3581,6 +3769,7 @@ ${ex.content}`).join('\n\n')}
             const skillCount = agent.skills?.length || 0;
             const mcpCount = agent.mcp?.length || 0;
             const ragCount = agent.rag?.length || 0;
+            const fmtTag = (agent.outputFormat || 'markdown') === 'h5' ? '<span class="subagent-meta-tag" title="输出格式"><i class="fas fa-desktop"></i> H5</span>' : '<span class="subagent-meta-tag" title="输出格式"><i class="fas fa-file-alt"></i> MD</span>';
 
             item.innerHTML = `
                 <div class="subagent-icon">
@@ -3593,6 +3782,7 @@ ${ex.content}`).join('\n\n')}
                         ${skillCount > 0 ? `<span class="subagent-meta-tag"><i class="fas fa-magic"></i> ${skillCount}</span>` : ''}
                         ${mcpCount > 0 ? `<span class="subagent-meta-tag"><i class="fas fa-plug"></i> ${mcpCount}</span>` : ''}
                         ${ragCount > 0 ? `<span class="subagent-meta-tag"><i class="fas fa-database"></i> ${ragCount}</span>` : ''}
+                        ${fmtTag}
                     </div>
                 </div>
                 <div class="subagent-actions">
@@ -3653,6 +3843,10 @@ ${ex.content}`).join('\n\n')}
                         </div>
                     </div>
                     
+                    <div class="form-group">
+                        <label>输出格式</label>
+                        <p style="color: var(--text-secondary); font-size: 13px;">${(agent.outputFormat || 'markdown') === 'h5' ? 'H5 驾驶舱' : 'Markdown'}</p>
+                    </div>
                     <div class="form-group">
                         <label>能力</label>
                         <p style="color: var(--text-secondary); font-size: 13px;">${(agent.capabilities || []).join(', ')}</p>
@@ -3762,6 +3956,14 @@ ${ex.content}`).join('\n\n')}
                         <small class="form-hint">选择后，发送消息将自动按 Workflow 链执行：${escapeHtml(agent.name || '当前助手')}(分析调度) → 所选助手 → ${escapeHtml(agent.name || '当前助手')}(整合输出)</small>
                     </div>
                     <div class="form-group">
+                        <label>输出格式</label>
+                        <select id="edit-subagent-output-format" style="padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
+                            <option value="markdown" ${(agent.outputFormat || 'markdown') === 'markdown' ? 'selected' : ''}>Markdown</option>
+                            <option value="h5" ${(agent.outputFormat || '') === 'h5' ? 'selected' : ''}>H5 驾驶舱</option>
+                        </select>
+                        <small class="form-hint">Markdown：标准文档格式；H5：完整 HTML 驾驶舱页面（适合工作秘书等项目汇报场景）</small>
+                    </div>
+                    <div class="form-group">
                         <label>系统提示词</label>
                         <textarea id="edit-subagent-prompt" rows="3" placeholder="输入系统提示词...">${escapeHtml(agent.systemPrompt || '')}</textarea>
                     </div>
@@ -3846,6 +4048,10 @@ ${ex.content}`).join('\n\n')}
             const delegateEl = dialog.querySelector('#edit-subagent-delegate-to');
             if (delegateEl) {
                 agent.delegateTo = Array.from(delegateEl.querySelectorAll('.delegate-agent-card.selected')).map(c => c.dataset.agentId);
+            }
+            const outputFormatEl = dialog.querySelector('#edit-subagent-output-format');
+            if (outputFormatEl) {
+                agent.outputFormat = outputFormatEl.value || 'markdown';
             }
             
             // 收集选中的资源

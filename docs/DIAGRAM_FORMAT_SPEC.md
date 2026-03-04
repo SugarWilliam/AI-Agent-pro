@@ -33,6 +33,13 @@
 - 支持 `problem`/`name`、`next_action`、`description` 等字段
 - JSON 容错：字符串内换行、尾逗号、缺失逗号、未转义引号
 
+### 方案 A：H5 驾驶舱（推荐）
+- 使用 ` ```html ` 输出完整 H5 页面
+- 结构：`<!DOCTYPE html>` + Tailwind CDN + Font Awesome + viewport
+- 必含：顶部告警栏、项目头部、关键指标卡片、三大杠杆点、阻塞项矩阵、人员负载、管理缺口、孤儿问题、关键行动、认知偏差
+- 响应式：`grid-cols-1 md:grid-cols-4`、`flex-col md:flex-row`
+- 渲染器：识别 `tailwindcss|glass-panel|驾驶舱|项目危机管控` 等关键词，用 iframe 隔离渲染
+
 ## 四、problem-evolution
 
 ### Agent 输出要求

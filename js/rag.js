@@ -258,7 +258,7 @@
                 let response;
                 window.Logger?.debug(`发送请求到 https://r.jina.ai/, Base64长度: ${base64.length} 字符`);
                 try {
-                    response = await fetch('https://r.jina.ai/', {
+                    response = await (window.JinaProxy?.jinaFetch || fetch)('https://r.jina.ai/', {
                         method: 'POST',
                         headers: headers,
                         body: JSON.stringify({ pdf: base64 })
@@ -284,7 +284,7 @@
                 // 方法2: 使用 file 字段（与 DOC/图片一致，部分场景更稳定）
                 try {
                     window.Logger?.debug(`尝试方法2: 使用file字段`);
-                    response = await fetch('https://r.jina.ai/', {
+                    response = await (window.JinaProxy?.jinaFetch || fetch)('https://r.jina.ai/', {
                         method: 'POST',
                         headers: headers,
                         body: JSON.stringify({ file: base64 })
@@ -312,7 +312,7 @@
                         'X-Return-Format': 'text'
                     };
                     if (apiKey?.trim()) binaryHeaders['Authorization'] = `Bearer ${apiKey.trim()}`;
-                    response = await fetch('https://r.jina.ai/', {
+                    response = await (window.JinaProxy?.jinaFetch || fetch)('https://r.jina.ai/', {
                         method: 'POST',
                         headers: binaryHeaders,
                         body: await file.arrayBuffer()
@@ -380,7 +380,7 @@
                 let response;
                 try {
                     window.Logger?.debug(`尝试方法1: 使用file字段`);
-                    response = await fetch('https://r.jina.ai/', {
+                    response = await (window.JinaProxy?.jinaFetch || fetch)('https://r.jina.ai/', {
                         method: 'POST',
                         headers: headers,
                         body: JSON.stringify({ file: base64 })
@@ -408,7 +408,7 @@
                             binaryHeaders['Authorization'] = `Bearer ${apiKey.trim()}`;
                         }
                         
-                        response = await fetch('https://r.jina.ai/', {
+                        response = await (window.JinaProxy?.jinaFetch || fetch)('https://r.jina.ai/', {
                             method: 'POST',
                             headers: binaryHeaders,
                             body: await file.arrayBuffer()
@@ -473,7 +473,7 @@
                 let response;
                 try {
                     window.Logger?.debug(`尝试方法1: 使用file字段（Base64）`);
-                    response = await fetch('https://r.jina.ai/', {
+                    response = await (window.JinaProxy?.jinaFetch || fetch)('https://r.jina.ai/', {
                         method: 'POST',
                         headers: headers,
                         body: JSON.stringify({ file: base64 })
@@ -500,7 +500,7 @@
                             binaryHeaders['Authorization'] = `Bearer ${apiKey.trim()}`;
                         }
                         
-                        response = await fetch('https://r.jina.ai/', {
+                        response = await (window.JinaProxy?.jinaFetch || fetch)('https://r.jina.ai/', {
                             method: 'POST',
                             headers: binaryHeaders,
                             body: await file.arrayBuffer()
@@ -571,7 +571,7 @@
                 let response;
                 try {
                     window.Logger?.debug(`尝试方法1: 使用file字段（Base64）`);
-                    response = await fetch('https://r.jina.ai/', {
+                    response = await (window.JinaProxy?.jinaFetch || fetch)('https://r.jina.ai/', {
                         method: 'POST',
                         headers: headers,
                         body: JSON.stringify({ file: base64 })
@@ -598,7 +598,7 @@
                             binaryHeaders['Authorization'] = `Bearer ${apiKey.trim()}`;
                         }
                         
-                        response = await fetch('https://r.jina.ai/', {
+                        response = await (window.JinaProxy?.jinaFetch || fetch)('https://r.jina.ai/', {
                             method: 'POST',
                             headers: binaryHeaders,
                             body: await file.arrayBuffer()
@@ -691,7 +691,7 @@
                 let response;
                 try {
                     window.Logger?.debug(`尝试方法1: 使用file字段（Base64）`);
-                    response = await fetch('https://r.jina.ai/', {
+                    response = await (window.JinaProxy?.jinaFetch || fetch)('https://r.jina.ai/', {
                         method: 'POST',
                         headers: headers,
                         body: JSON.stringify({ file: base64 })
@@ -711,7 +711,7 @@
                     try {
                         const dataUrl = `data:${file.type};base64,${base64}`;
                         window.Logger?.debug(`尝试方法2: 使用 data URL (长度: ${dataUrl.length})`);
-                        response = await fetch('https://r.jina.ai/', {
+                        response = await (window.JinaProxy?.jinaFetch || fetch)('https://r.jina.ai/', {
                             method: 'POST',
                             headers: { ...headers, 'Content-Type': 'application/json' },
                             body: JSON.stringify({ url: dataUrl })
@@ -730,7 +730,7 @@
                             'X-Return-Format': 'text'
                         };
                         if (apiKey?.trim()) binaryHeaders['Authorization'] = `Bearer ${apiKey.trim()}`;
-                        response = await fetch('https://r.jina.ai/', {
+                        response = await (window.JinaProxy?.jinaFetch || fetch)('https://r.jina.ai/', {
                             method: 'POST',
                             headers: binaryHeaders,
                             body: await file.arrayBuffer()
@@ -877,7 +877,8 @@
                 }
                 
                 // 使用Jina AI Reader API获取网页内容
-                const response = await fetch(`https://r.jina.ai/http://${url.replace(/^https?:\/\//, '')}`, {
+                const jinaUrl = `https://r.jina.ai/http://${url.replace(/^https?:\/\//, '')}`;
+                const response = await (window.JinaProxy?.jinaFetch || fetch)(jinaUrl, {
                     headers: headers
                 });
                 
@@ -1585,7 +1586,8 @@
                         headers['Authorization'] = `Bearer ${apiKey}`;
                     }
                     
-                    const response = await fetch(`https://r.jina.ai/http://${source.url.replace(/^https?:\/\//, '')}`, {
+                    const jinaUrl = `https://r.jina.ai/http://${source.url.replace(/^https?:\/\//, '')}`;
+                    const response = await (window.JinaProxy?.jinaFetch || fetch)(jinaUrl, {
                         headers: headers
                     });
                     

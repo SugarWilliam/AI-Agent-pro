@@ -387,6 +387,7 @@ docker run -d -p 8080:80 --name ai-agent-pro ai-agent-pro
 **注意**：
 - 未配置密钥时，使用降级方案（仅显示文件基本信息）
 - 配置密钥后，可完整解析文档内容
+- **CORS 问题**：浏览器直连 `r.jina.ai` 会因 CORS 被拦截。本地开发请使用 `./start-server.sh` 启动的 `server.py`（含 Jina 代理 `/api/jina-proxy`），可规避 CORS
 
 ### 5.3 主题配置
 

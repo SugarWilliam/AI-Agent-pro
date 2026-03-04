@@ -2793,7 +2793,8 @@ tags: code, review, quality
                 headers['Authorization'] = `Bearer ${apiKey}`;
             }
             
-            const response = await fetch('https://r.jina.ai/http://example.com', {
+            const jinaUrl = 'https://r.jina.ai/http://example.com';
+            const response = await (window.JinaProxy?.jinaFetch || fetch)(jinaUrl, {
                 method: 'GET',
                 headers: headers
             });

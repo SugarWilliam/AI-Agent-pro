@@ -589,6 +589,10 @@ ${rows}
                 const target = subAgent.serviceTarget?.trim() || '用户';
                 sysPrompt = sysPrompt.replace(/\{\{serviceTarget\}\}/g, target);
             }
+            if (subAgent.id === 'work_secretary' && outputFormat === 'h5') {
+                sysPrompt = sysPrompt.replace(/【备选】使用[\s\S]*?模块说明：/,
+                    '【禁止】不得使用 project-dashboard 或 json 格式，必须输出完整 H5 驾驶舱。\n\n模块说明：');
+            }
             prompt += sysPrompt + '\n\n';
             
             if (rulesPrompt) {
@@ -642,6 +646,8 @@ ${rows}
                 prompt += `- 使用Markdown表格展示数据\n`;
             } else if (outputFormat === 'list') {
                 prompt += `- 使用有序或无序列表组织内容\n`;
+            } else if (outputFormat === 'h5') {
+                prompt += `- 【强制】必须使用 \`\`\`html 输出完整 H5 驾驶舱页面，禁止使用 \`\`\`project-dashboard 或 \`\`\`json。要求：<!DOCTYPE html>、Tailwind CDN、Font Awesome、玻璃拟态、深色主题、PC+移动端适配。\n`;
             }
             
             return prompt;
@@ -756,7 +762,9 @@ ${rows}
                                     }
                                 }
                             } catch (e) {
-                                window.Logger?.error('解析流数据失败:', e);
+                                if (data.trim().length > 0 && !data.includes('[DONE]')) {
+                                    window.Logger?.warn?.('流式 JSON 片段解析跳过:', data.substring(0, 80) + (data.length > 80 ? '...' : ''));
+                                }
                             }
                         }
                     }
@@ -1204,7 +1212,8 @@ ${rows}
                             const controller = new AbortController();
                             const timeoutId = setTimeout(() => controller.abort(), jinaTimeoutMs);
                             
-                            const jinaResponse = await fetch(jinaSearchUrl, {
+                            const jinaResponse = await (window.JinaProxy?.jinaFetch || fetch)(jinaSearchUrl, {
+                                method: 'GET',
                                 headers: searchHeaders,
                                 signal: controller.signal
                             });
@@ -1308,7 +1317,8 @@ ${rows}
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), 25000);
                         
-                        const directResponse = await fetch(directSearchUrl, {
+                        const directResponse = await (window.JinaProxy?.jinaFetch || fetch)(directSearchUrl, {
+                            method: 'GET',
                             headers: {
                                 'X-Return-Format': 'text',
                                 'Authorization': `Bearer ${jinaApiKey}`,
@@ -1582,8 +1592,9 @@ ${rows}
                 let response;
                 
                 if (source.type === 'jina' && jinaApiKey) {
-                    // 使用Jina AI解析
-                    response = await fetch(source.jinaUrl, {
+                    // 使用Jina AI解析（优先走代理避免 CORS）
+                    response = await (window.JinaProxy?.jinaFetch || fetch)(source.jinaUrl, {
+                        method: 'GET',
                         headers: {
                             'X-Return-Format': 'text',
                             'Authorization': `Bearer ${jinaApiKey}`,
@@ -2961,7 +2972,7 @@ ${rows}
 
                     let response;
                     try {
-                        response = await fetch('https://r.jina.ai/', {
+                        response = await (window.JinaProxy?.jinaFetch || fetch)('https://r.jina.ai/', {
                             method: 'POST',
                             headers: fetchHeaders,
                             body: JSON.stringify({ url: cleanUrl })
@@ -2984,7 +2995,8 @@ ${rows}
                         const encodedUrl = encodeURIComponent(cleanUrl);
                         const jinaUrl = `https://r.jina.ai/${encodedUrl}`;
                         window.Logger?.debug(`尝试 GET: ${jinaUrl}`);
-                        response = await fetch(jinaUrl, {
+                        response = await (window.JinaProxy?.jinaFetch || fetch)(jinaUrl, {
+                            method: 'GET',
                             headers: { 'X-Return-Format': 'text', 'Authorization': `Bearer ${jinaApiKey}` }
                         });
                         if (response.ok) {
@@ -3106,11 +3118,13 @@ ${rows}
 
         // ==================== 简化版sendMessage（兼容旧接口）====================
         async sendMessage(messages, modelId, enableWebSearch = false, onStream = null, isWorkflow = false) {
+            const subAgentId = window.AppState?.currentSubAgent;
+            const outputFormat = window.AppState?.subAgents?.[subAgentId]?.outputFormat ?? 'markdown';
             return await this.invokeIntelligentAgent(messages, {
                 modelId: modelId || 'auto',
                 enableWebSearch,
                 onStream,
-                outputFormat: 'markdown',
+                outputFormat,
                 taskType: 'general',
                 isWorkflow
             });
@@ -3233,11 +3247,12 @@ ${rows}
                         this._updateWorkflowStepProgress(steps, i, stepOutputs, stepUsedResources);
                         if (isLast && onStream) onStream(content);
                     };
+                    const stepOutputFormat = agent.outputFormat ?? 'markdown';
                     const result = await this.invokeIntelligentAgent(messages, {
                         modelId: modelId || 'auto',
                         enableWebSearch: isFirst,
                         onStream: streamCallback,
-                        outputFormat: 'markdown',
+                        outputFormat: stepOutputFormat,
                         taskType: 'general',
                         isWorkflow: true,
                         subAgentId: agentId,

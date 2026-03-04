@@ -3424,6 +3424,71 @@ body {
     font-size: 15px;
 }
 
+.dashboard-alert {
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    background: var(--bg-tertiary);
+    border-left: 4px solid var(--warning);
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dashboard-alert i {
+    color: var(--warning);
+    flex-shrink: 0;
+}
+
+.dashboard-alert-level {
+    font-weight: 600;
+    color: var(--warning);
+}
+
+.dashboard-alert-msg {
+    color: var(--text-secondary);
+}
+
+.dashboard-key-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+@media (max-width: 640px) {
+    .dashboard-key-metrics { grid-template-columns: repeat(2, 1fr); }
+}
+
+.dashboard-metric-card {
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--border);
+}
+
+.dashboard-metric-card.metric-p0 { border-left-color: var(--error); }
+.dashboard-metric-card.metric-p1 { border-left-color: var(--warning); }
+.dashboard-metric-card.metric-progress { border-left-color: var(--primary); }
+.dashboard-metric-card.metric-done { border-left-color: var(--success); }
+
+.dashboard-metric-card .metric-value {
+    display: block;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.dashboard-metric-card.metric-p0 .metric-value { color: var(--error); }
+.dashboard-metric-card.metric-p1 .metric-value { color: var(--warning); }
+.dashboard-metric-card.metric-progress .metric-value { color: var(--primary); }
+.dashboard-metric-card.metric-done .metric-value { color: var(--success); }
+
+.dashboard-metric-card .metric-label {
+    font-size: 11px;
+    color: var(--text-tertiary);
+}
+
 .dashboard-overview {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -4130,6 +4195,7 @@ body {
 .diagram-fullscreen-body .decision-matrix-container,
 .diagram-fullscreen-body .decision-chain-container,
 .diagram-fullscreen-body .project-dashboard-container,
+.diagram-fullscreen-body .project-cockpit-h5-container,
 .diagram-fullscreen-body .problem-evolution-container,
 .diagram-fullscreen-body .milestones-container,
 .diagram-fullscreen-body .dependency-graph-container,
@@ -4143,6 +4209,7 @@ body {
 .diagram-block .decision-matrix-container,
 .diagram-block .decision-chain-container,
 .diagram-block .project-dashboard-container,
+.diagram-block .project-cockpit-h5-container,
 .diagram-block .problem-evolution-container,
 .diagram-block .milestones-container,
 .diagram-block .dependency-graph-container,
