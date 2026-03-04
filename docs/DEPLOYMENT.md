@@ -35,7 +35,7 @@ AI Agent Pro 是一个**纯前端应用**，基于 HTML/CSS/JavaScript 构建，
 - **前端**: 原生JavaScript (ES6+)
 - **样式**: CSS3 + CSS Variables
 - **存储**: LocalStorage
-- **依赖**: CDN加载（Font Awesome、Chart.js、Mermaid等）
+- **依赖**: 本地 vendor（Font Awesome、Chart.js、Mermaid 等），主应用无需 CDN
 
 ---
 
@@ -65,7 +65,7 @@ AI Agent Pro 是一个**纯前端应用**，基于 HTML/CSS/JavaScript 构建，
 
 ### 2.3 网络要求
 
-- **必需**: 访问外部CDN（Font Awesome、Chart.js等）
+- **必需**: 无（主应用 vendor 本地化，离线可运行）
 - **可选**: 访问AI API（DeepSeek、GLM、Kimi等）
 - **可选**: 访问Jina AI API（文档解析）
 
@@ -100,11 +100,6 @@ chmod +x start-server.sh
 ```bash
 cd AI-Agent-pro
 python3 -m http.server 8080 --bind 0.0.0.0
-```
-
-或使用备用脚本（含 Cache-Control 优化）：
-```bash
-python3 simple-server.py
 ```
 
 **访问地址**: http://localhost:8080
@@ -167,7 +162,7 @@ php -S 0.0.0.0:8080
 
 **部署脚本**（项目根目录）：
 - `./deploy.sh [--auto] [--force]`：常规推送（支持 SSH/HTTPS）
-- `GITHUB_TOKEN=xxx ./DEPLOY_NOW.sh`：使用 Token 推送（解决 SSH 认证问题）
+- `GITHUB_TOKEN=xxx ./deploy.sh --token`：使用 Token 推送（解决 SSH 认证问题）
 
 ### 4.2 Vercel部署
 
@@ -387,6 +382,7 @@ docker run -d -p 8080:80 --name ai-agent-pro ai-agent-pro
 **注意**：
 - 未配置密钥时，使用降级方案（仅显示文件基本信息）
 - 配置密钥后，可完整解析文档内容
+- **CORS**：浏览器直连 `r.jina.ai` 可能被拦截；GitHub Pages 部署通常无此问题；本地开发若遇 CORS 错误，可尝试使用 develop 分支的 `server.py`（含 Jina 代理）
 
 ### 5.3 主题配置
 

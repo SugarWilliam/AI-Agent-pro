@@ -15,7 +15,7 @@
 | 资源加载 | ✅ 通过 | vendor 本地化，无 CDN 依赖 |
 | 版本一致性 | ✅ 通过 | 8.3.1 已统一 |
 | 文档 | ✅ 通过 | 设计/部署/功能说明书齐全 |
-| **安全** | ⚠️ 需关注 | API Key 硬编码（见下） |
+| **安全** | ✅ 已决策 | API Key 保留（仅内测），Release 标注 pre-release |
 
 ---
 
@@ -35,10 +35,13 @@ const DEFAULT_API_KEYS = {
 
 **风险**: 密钥随源码公开，可能被滥用、产生费用。
 
-**建议**（三选一）:
+**已选策略**: **保留（仅内测）** — 若仅内部/演示使用，可暂保留。
+
+**其他选项**（供后续版本参考）:
 1. **发布前移除**: 清空 `DEFAULT_API_KEYS`，改为 `''`，强制用户自行配置
 2. **占位符**: 使用 `'YOUR_API_KEY_HERE'` 等占位符
-3. **保留（仅内测）**: 若仅内部/演示使用，可暂保留，但需在 Release 说明中标注
+
+**注意**: 发布时须勾选「Set as a pre-release」，并在 Release 说明中标注「含演示用 API Key，仅供内测/演示」。
 
 ### 2.2 敏感文件
 
@@ -112,7 +115,7 @@ storage.js → logger → error-handler → event-manager → ui-utils
 
 ### 5.1 发布前
 
-- [ ] 确认 API Key 策略（移除/占位/保留）
+- [x] 确认 API Key 策略：保留（仅内测）
 - [ ] 运行 `./start-server.sh` 本地验证
 - [ ] 访问 http://localhost:8080 功能抽查
 - [ ] 检查浏览器控制台无报错
@@ -146,7 +149,7 @@ git checkout main && git merge gh-pages && git push origin main && git checkout 
 
 | 项 | 说明 | 优先级 |
 |----|------|--------|
-| API Key | 见 2.1 | 高 |
+| API Key | 已选保留（仅内测），Release 须勾 pre-release | 已决策 |
 | app.js 体积 | 可考虑拆分为 app-state、app-models、app-subagents | 低 |
 | 下载链接 | main.zip 需 main 分支存在；若仅用 gh-pages 可改为 gh-pages.zip | 低 |
 
