@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.3.2 - 计划模式模块
+ * AI Agent Pro v8.3.3 - 计划模式模块
  * TODO制定与执行跟踪
  * 强化：MECE分类、优先级、原子化、依赖关系、SubAgent绑定、Roadmap、里程碑、风险矩阵、资源约束、智能规划
  */

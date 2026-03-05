@@ -1,6 +1,6 @@
 # AI Agent Pro Release 正式版本准备清单
 
-**版本**: v8.3.2  
+**版本**: v8.3.3  
 **评审日期**: 2026-03-03  
 **目标**: 深度评审与 release 正式版本准备
 
@@ -13,7 +13,7 @@
 | 架构 | ✅ 通过 | 分层清晰，扩展性好 |
 | 代码质量 | ✅ 通过 | 规范良好，空值防护完善 |
 | 资源加载 | ✅ 通过 | vendor 本地化，无 CDN 依赖 |
-| 版本一致性 | ✅ 通过 | 8.3.2 已统一 |
+| 版本一致性 | ✅ 通过 | 8.3.3 已统一 |
 | 文档 | ✅ 通过 | 设计/部署/功能说明书齐全 |
 | **安全** | ⚠️ 需关注 | API Key 硬编码（见下） |
 
@@ -123,21 +123,21 @@ storage.js → logger → error-handler → event-manager → ui-utils
 # 1. 确保在 gh-pages 分支
 git checkout gh-pages
 
-# 2. 执行发布脚本（默认 8.3.2）
-./release.sh 8.3.2
+# 2. 执行发布脚本（默认 8.3.3）
+./release.sh 8.3.3
 
 # 或手动：
 git push origin gh-pages
-git tag -a v8.3.2 -m "Release v8.3.2"
-git push origin v8.3.2
+git tag -a v8.3.3 -m "Release v8.3.3"
+git push origin v8.3.3
 git checkout main && git merge gh-pages && git push origin main && git checkout gh-pages
 ```
 
 ### 5.3 发布后
 
-- [ ] 在 GitHub 创建 Release：https://github.com/SugarWilliam/AI-Agent-pro/releases/new?tag=v8.3.2
+- [ ] 在 GitHub 创建 Release：https://github.com/SugarWilliam/AI-Agent-pro/releases/new?tag=v8.3.3
 - [ ] **勾选「Set as a pre-release」**：此版本标注为非生产就绪（non-production ready）
-- [ ] 填写 Release 说明（可复制 CHANGELOG 8.3.2 内容）
+- [ ] 填写 Release 说明（可复制 CHANGELOG 8.3.3 内容）
 - [ ] 验证 Pages 部署：https://sugarwilliam.github.io/AI-Agent-pro/
 
 ---
@@ -152,6 +152,6 @@ git checkout main && git merge gh-pages && git push origin main && git checkout 
 
 ---
 
-**文档版本**: v8.3.2  
+**文档版本**: v8.3.3  
 **最后更新**: 2026-03-03  
 **维护者**: AI Agent Pro Team

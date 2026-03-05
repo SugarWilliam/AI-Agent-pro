@@ -1,6 +1,6 @@
 # AI Agent Pro 部署文档
 
-**版本**: v8.3.2  
+**版本**: v8.3.3  
 **日期**: 2026-03-04
 
 > GitHub Pages 部署步骤见 [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)。
@@ -609,6 +609,6 @@ sudo nginx -t
 
 ---
 
-**文档版本**: v8.3.2  
+**文档版本**: v8.3.3  
 **最后更新**: 2026-03-03  
 **维护者**: AI Agent Pro Team

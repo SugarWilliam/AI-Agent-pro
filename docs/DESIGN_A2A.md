@@ -343,10 +343,18 @@
 | 场景 | 行为 |
 |------|------|
 | delegateTo 为空 | 不进入 Workflow，单 Agent 对话 |
-| delegateTo 有值，主 Agent 输出有效 schedule | 用 schedule 替换链中 delegate 部分 |
-| delegateTo 有值，主 Agent 未输出 schedule | 用 delegateTo 顺序 |
-| delegateTo 有值，schedule 解析失败 | 用 delegateTo 顺序 |
+| delegateTo 有值，主 Agent 输出有效 schedule | 用 schedule 替换链中 delegate 部分（**prompt_expert 固定第二位**） |
+| delegateTo 有值，主 Agent 未输出 schedule | 用 delegateTo 顺序（**prompt_expert 固定第二位**） |
+| delegateTo 有值，schedule 解析失败 | 用 delegateTo 顺序（**prompt_expert 固定第二位**） |
 | [Workflow:...] 前缀 | 使用手动指定链，不经过动态调度 |
+
+### 8.4 硬性约束（v8.3.3）
+
+| 约束 | 说明 |
+|------|------|
+| **prompt_expert 固定第二位** | 当 delegateTo 含 prompt_expert 时，其必须排在主 Agent(分析)之后、其他子 Agent 之前，顺序不可颠倒 |
+| **schedule 仅编排其他助手** | 主 Agent 输出的 schedule 仅编排 plan/task/... 等助手，prompt_expert 无需且不应出现在 schedule 中 |
+| **UI 步骤体现主 Agent 编排** | 动态调度后，UI 显示的步骤顺序必须为主 Agent 的最优编排，而非 delegateTo 关联顺序 |
 
 ---
 
@@ -407,6 +415,7 @@
 | v1.1 | 2026-03-03 | 单元测试完成 |
 | v2.0 | 2026-03-03 | 合并完备性分析，增加需求详细解读，AgentCard 能力增强 |
 | v2.1 | 2026-03-04 | SubAgent 集群、提示词专家默认绑定、精准调动增强 |
+| v2.2 | 2026-03-05 | 硬性约束：prompt_expert 固定第二位，schedule 仅编排其他助手 |
 
 ---
 
@@ -424,10 +433,12 @@
 
 **默认绑定**：除 prompt_expert 外，各 SubAgent 默认 `delegateTo: ['prompt_expert']`。
 
-**执行流程**：
+**执行流程**（顺序不可颠倒）：
 ```
-主 Agent(分析) → 提示词专家(优化指令) → [其他 delegate] → 主 Agent(整合)
+主 Agent(分析) → 提示词专家(优化指令) → [其他 delegate，按 schedule 编排] → 主 Agent(整合)
 ```
+
+**硬性约束**：prompt_expert 固定第二位，无论 delegateTo 原始顺序如何；schedule 仅编排其他助手。
 
 **Workflow 链中 prompt_expert 的 instruction**：
 - 提炼、优化上一步的指令与描述，消除歧义，使后续助手可精准执行
@@ -460,5 +471,5 @@
 
 ---
 
-**文档版本**: v2.1  
+**文档版本**: v2.2  
 **维护者**: AI Agent Pro Team

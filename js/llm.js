@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.3.2 - LLM服务
+ * AI Agent Pro v8.3.3 - LLM服务
  * 多模态输入输出支持
  */
 
@@ -520,6 +520,10 @@
             if (!cards || cards.length === 0) return '';
             const capStr = c => ((c.capabilities || []).slice(0, 6).join('、') || '-').substring(0, 100);
             const rows = cards.map(c => `| ${c.id} | ${c.name} | ${c.description} | ${capStr(c)} |`).join('\n');
+            const hasPromptExpert = cards.some(c => c.id === 'prompt_expert');
+            const promptExpertNote = hasPromptExpert
+                ? '\n- 提示词专家(prompt_expert)固定为第二步，用于优化指令，无需在 schedule 中列出；schedule 仅编排其他助手的顺序与指令\n'
+                : '';
             return `【可选调度助手】根据任务分析，选择需要的助手及执行顺序。下表列出各助手的能力，请根据任务匹配最合适的助手：
 
 | id | name | description | capabilities |
@@ -535,7 +539,7 @@ ${rows}
 - agentId 必须为上表中的 id
 - 可只选部分助手（如只需 plan 和 task 则只列二者）
 - instruction 为该步骤的具体指令
-- 若不输出此块，将按默认顺序执行全部\n\n`;
+- 若不输出此块，将按默认顺序执行全部${promptExpertNote}\n\n`;
         },
 
         /**
@@ -3251,12 +3255,19 @@ ${rows}
                         allThinking += `\n\n--- ${stepLabel} 思考过程 ---\n${result.thinking}`;
                     }
                     // 动态调度：步骤 0 完成后解析 schedule，若有效则替换链中 delegate 部分
+                    // 设计约束：prompt_expert 固定第二位，schedule 仅编排其他助手（plan/task/...）的最优顺序
                     if (isFirst && enableDynamicSchedule && mainAgentId && delegateIds.length > 0 && steps.length > 2) {
                         const parsed = this.parseScheduleFromOutput(lastContent, delegateIds);
                         if (parsed && parsed.length > 0) {
                             const integrateStep = steps[steps.length - 1];
-                            steps = [steps[0], ...parsed, integrateStep];
-                            window.Logger?.info?.('✅ 动态调度生效，链已按主 Agent 输出更新:', parsed.map(p => p.agentId).join(' → '));
+                            const promptExpertStep = steps.find(s => s.agentId === 'prompt_expert');
+                            const parsedOthers = parsed.filter(p => p.agentId !== 'prompt_expert');
+                            if (promptExpertStep) {
+                                steps = [steps[0], promptExpertStep, ...parsedOthers, integrateStep];
+                            } else {
+                                steps = [steps[0], ...parsed, integrateStep];
+                            }
+                            window.Logger?.info?.('✅ 动态调度生效，链已按主 Agent 输出更新:', steps.slice(1, -1).map(s => s.agentId).join(' → '));
                         }
                     }
                 }

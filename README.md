@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-8.3.2-blue.svg)
+![Version](https://img.shields.io/badge/version-8.3.3-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Web-lightgrey.svg)
 
@@ -369,6 +369,10 @@ http://localhost:8000/test/comprehensive-test.html
 ---
 
 ## 📝 更新日志
+
+### v8.3.3 (2026-03-05)
+
+- **Workflow 执行顺序修复**：prompt_expert 固定第二位（顺序不可颠倒）；schedule 仅编排其他助手；UI 步骤体现主 Agent 最优编排
 
 ### v8.3.2 (2026-03-04)
 

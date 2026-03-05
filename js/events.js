@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.3.2 - 事件处理模块
+ * AI Agent Pro v8.3.3 - 事件处理模块
  * 未来科技感交互设计
  */
 
@@ -1006,9 +1006,12 @@
                     const lastInstruction = hasPromptExpert
                         ? '整合各助手输出（含提示词专家的精准描述），完成最终结论与交付物'
                         : '整合各助手输出，完成最终结论与交付物';
+                    // 设计约束：prompt_expert 必须排在主 Agent 分析之后、其他 Agent 之前（固定第二位）
+                    const othersWithoutPrompt = validDelegates.filter(id => id !== 'prompt_expert');
+                    const orderedDelegates = hasPromptExpert ? ['prompt_expert', ...othersWithoutPrompt] : validDelegates;
                     workflowChainSteps = [
                         { agentId: mainId, label: mainName, instruction: firstInstruction },
-                        ...validDelegates.map(id => ({
+                        ...orderedDelegates.map(id => ({
                             agentId: id,
                             label: '',
                             instruction: id === 'prompt_expert' ? '提炼、优化上一步的指令与描述，消除歧义，使后续助手可精准执行' : ''

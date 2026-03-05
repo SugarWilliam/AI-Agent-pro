@@ -1,12 +1,12 @@
 /**
- * AI Agent Pro v8.3.2 - 应用状态管理
+ * AI Agent Pro v8.3.3 - 应用状态管理
  * 多模态AI Agent - 支持输入输出多模态
  */
 
 (function() {
     'use strict';
 
-    const VERSION = '8.3.2';
+    const VERSION = '8.3.3';
     const STORAGE_KEY = 'ai_agent_state_v6';
 
     /** Agent 与渲染器对接：图表格式规范（Agent 必须按此输出，渲染器按此解析） */

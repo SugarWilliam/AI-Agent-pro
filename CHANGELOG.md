@@ -4,6 +4,24 @@
 
 ---
 
+## [8.3.3] - 2026-03-05
+
+### Workflow 执行顺序修复（设计约束落地）
+
+**prompt_expert 固定第二位**
+- 当 delegateTo 含 prompt_expert 时，其必须排在主 Agent(分析)之后、其他子 Agent 之前，顺序不可颠倒
+- events.js：构建链时 orderedDelegates 强制 prompt_expert 为首位 delegate
+- llm.js：动态调度时保留 prompt_expert 第二位，schedule 仅编排其他助手（plan/task/...）
+
+**UI 步骤体现主 Agent 编排**
+- 动态调度后，UI 显示的步骤顺序为主 Agent 的最优编排，而非 delegateTo 关联顺序
+
+**文档**
+- docs/DESIGN_A2A.md：新增 8.4 硬性约束、版本 v2.2
+- docs/MODIFICATIONS_2026-03.md：v1.1 约束说明
+
+---
+
 ## [8.3.2] - 2026-03-04
 
 ### 任务与计划强化
@@ -226,6 +244,7 @@
 
 ---
 
+[8.3.3]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.3
 [8.3.2]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.2
 [8.3.1]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.1
 [8.3.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.0

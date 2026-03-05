@@ -107,7 +107,8 @@
 ### 4.4 涉及文件
 
 - `js/app.js`：各 SubAgent 的 delegateTo
-- `js/events.js`：workflowChainSteps 构建，prompt_expert 的 instruction
+- `js/events.js`：workflowChainSteps 构建，**prompt_expert 固定第二位**（orderedDelegates）
+- `js/llm.js`：动态调度时保留 prompt_expert 第二位，schedule 仅编排其他助手
 
 ---
 
@@ -154,8 +155,9 @@
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | v1.0 | 2026-03-04 | 初版：任务与计划强化、SubAgent 强化、提示词专家默认绑定、SubAgent 集群文档化 |
+| v1.1 | 2026-03-05 | 硬性约束：prompt_expert 固定第二位（顺序不可颠倒）；schedule 仅编排其他助手；UI 步骤体现主 Agent 最优编排 |
 
 ---
 
-**文档版本**: v1.0  
+**文档版本**: v1.1  
 **维护者**: AI Agent Pro Team
