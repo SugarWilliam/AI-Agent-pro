@@ -3296,6 +3296,69 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
         debouncedSave();
     }
 
+    const I18N = {
+        'new-chat': { 'zh-CN': '新建对话', 'en': 'New Chat' },
+        'chat-history': { 'zh-CN': '对话历史', 'en': 'Chat History' },
+        'settings': { 'zh-CN': '设置', 'en': 'Settings' },
+        'general-settings': { 'zh-CN': '通用设置', 'en': 'General' },
+        'theme': { 'zh-CN': '主题', 'en': 'Theme' },
+        'language': { 'zh-CN': '语言', 'en': 'Language' },
+        'dark': { 'zh-CN': '深色', 'en': 'Dark' },
+        'light': { 'zh-CN': '浅色', 'en': 'Light' },
+        'auto': { 'zh-CN': '自动', 'en': 'Auto' },
+        'send-shortcut': { 'zh-CN': '发送快捷键', 'en': 'Send Shortcut' },
+        'font-size': { 'zh-CN': '字体大小', 'en': 'Font Size' },
+        'small': { 'zh-CN': '小', 'en': 'Small' },
+        'medium': { 'zh-CN': '中', 'en': 'Medium' },
+        'large': { 'zh-CN': '大', 'en': 'Large' },
+        'model-settings': { 'zh-CN': '模型设置', 'en': 'Models' },
+        'resource-mgmt': { 'zh-CN': '资源管理', 'en': 'Resources' },
+        'subagents': { 'zh-CN': 'SubAgent', 'en': 'SubAgent' },
+        'chat': { 'zh-CN': '对话', 'en': 'Chat' },
+        'plan': { 'zh-CN': '计划', 'en': 'Plan' },
+        'task': { 'zh-CN': '任务', 'en': 'Task' },
+        'welcome-title': { 'zh-CN': '有什么可以帮您的？', 'en': 'How can I help you?' },
+        'welcome-subtitle': { 'zh-CN': '选择一个AI助手开始对话', 'en': 'Select an AI assistant to start' },
+        'quick-write': { 'zh-CN': '写文章', 'en': 'Write' },
+        'quick-analysis': { 'zh-CN': '数据分析', 'en': 'Analysis' },
+        'quick-plan': { 'zh-CN': '制定计划', 'en': 'Plan' },
+        'quick-code': { 'zh-CN': '写代码', 'en': 'Code' },
+        'input-placeholder': { 'zh-CN': '输入消息...', 'en': 'Type a message...' },
+        'select-agent': { 'zh-CN': '选择AI助手', 'en': 'Select Assistant' },
+        'select-model': { 'zh-CN': '选择模型', 'en': 'Select Model' },
+        'close': { 'zh-CN': '关闭', 'en': 'Close' },
+        'add-agent': { 'zh-CN': '添加助手', 'en': 'Add Assistant' },
+        'add-model': { 'zh-CN': '添加模型', 'en': 'Add Model' },
+        'general': { 'zh-CN': '通用', 'en': 'General' },
+        'general-desc': { 'zh-CN': '主题、语言、快捷键', 'en': 'Theme, Language, Shortcut' },
+        'models': { 'zh-CN': '模型', 'en': 'Models' },
+        'models-desc': { 'zh-CN': 'AI模型配置', 'en': 'AI Model Config' },
+        'resources': { 'zh-CN': '资源', 'en': 'Resources' },
+        'resources-desc': { 'zh-CN': 'RAG、技能、MCP', 'en': 'RAG, Skills, MCP' },
+        'agents': { 'zh-CN': '助手', 'en': 'Assistants' },
+        'agents-desc': { 'zh-CN': 'SubAgent管理', 'en': 'SubAgent Management' }
+    };
+
+    function updateUIForLanguage(lang) {
+        const L = lang === 'zh-CN' ? 'zh-CN' : 'en';
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.dataset.i18n;
+            if (I18N[key] && I18N[key][L]) el.textContent = I18N[key][L];
+        });
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+            const key = el.dataset.i18nPlaceholder;
+            if (I18N[key] && I18N[key][L]) el.placeholder = I18N[key][L];
+        });
+        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+            const key = el.dataset.i18nTitle;
+            if (I18N[key] && I18N[key][L]) el.title = I18N[key][L];
+        });
+        document.querySelectorAll('[data-i18n-opt]').forEach(el => {
+            const key = el.dataset.i18nOpt;
+            if (I18N[key] && I18N[key][L]) el.textContent = I18N[key][L];
+        });
+    }
+
     function applyLanguage(lang) {
         // 统一 zh 为 zh-CN，与 HTML select 的 value 一致
         const normalized = (lang === 'zh' || lang === 'zh-CN') ? 'zh-CN' : (lang === 'en' ? 'en' : 'zh-CN');
@@ -3304,12 +3367,14 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
             document.documentElement.lang = normalized === 'zh-CN' ? 'zh-CN' : 'en';
         }
         debouncedSave();
-        
-        // 更新语言选择器（必须使用 select 中存在的 value）
         const langSelect = document.getElementById('setting-language');
-        if (langSelect) {
-            langSelect.value = normalized;
-        }
+        if (langSelect) langSelect.value = normalized;
+        updateUIForLanguage(normalized);
+    }
+
+    function t(key) {
+        const L = (AppState.settings?.language === 'en') ? 'en' : 'zh-CN';
+        return (I18N[key] && I18N[key][L]) ? I18N[key][L] : (I18N[key]?.['zh-CN'] || key);
     }
 
     function applyFontSize(size) {
@@ -3400,6 +3465,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
         importData,
         applyTheme,
         applyLanguage,
+        t,
         applyFontSize,
         applyShortcut,
         switchSubAgent,

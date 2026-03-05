@@ -429,7 +429,8 @@
         });
         document.getElementById('setting-language')?.addEventListener('change', (e) => {
             window.AIAgentApp?.applyLanguage?.(e.target.value);
-            window.AIAgentUI?.showToast?.('语言已更新', 'success');
+            const msg = (window.AppState?.settings?.language === 'en') ? 'Language updated' : '语言已更新';
+            window.AIAgentUI?.showToast?.(msg, 'success');
         });
         document.getElementById('setting-shortcut')?.addEventListener('change', (e) => {
             window.AppState.settings = window.AppState.settings || {};
@@ -527,14 +528,18 @@
         // 打开专门的subagent-modal
         window.AIAgentUI?.openModal?.('subagent-modal');
         
-        // 绑定点击事件
+        // 绑定点击事件：切换 SubAgent 时创建新会话
         document.querySelectorAll('#subagent-list .subagent-item').forEach(item => {
             item.addEventListener('click', () => {
                 const agentId = item.dataset.id;
                 const result = window.AIAgentApp?.switchSubAgent?.(agentId);
                 if (result) {
                     window.AIAgentUI?.closeModal?.('subagent-modal');
-                    window.AIAgentUI?.showToast?.('已切换到: ' + (subAgents[agentId]?.name || '通用助手'), 'success');
+                    createNewChat({ silent: true });
+                    const name = subAgents[agentId]?.name || '通用助手';
+                    const msg = (window.AppState?.settings?.language === 'en')
+                        ? `Switched to ${name}, new chat started` : `已切换到: ${name}，已开启新会话`;
+                    window.AIAgentUI?.showToast?.(msg, 'success');
                     updateAgentName();
                 }
             });
@@ -836,7 +841,8 @@
     }
 
     // ==================== 新建对话 ====================
-    function createNewChat() {
+    function createNewChat(opts) {
+        const silent = opts?.silent === true;
         const chatId = 'chat_' + Date.now();
         const newChat = {
             id: chatId,
@@ -856,7 +862,10 @@
 
         closeSidebar();
         window.AIAgentApp?.saveState?.();
-        window.AIAgentUI?.showToast?.('新建对话成功', 'success');
+        if (!silent) {
+            const msg = (window.AppState?.settings?.language === 'en') ? 'New chat created' : '新建对话成功';
+            window.AIAgentUI?.showToast?.(msg, 'success');
+        }
     }
 
     // ==================== 加载对话 ====================
@@ -1746,15 +1755,17 @@
     function selectSubAgent(agentId) {
         const result = window.AIAgentApp?.switchSubAgent?.(agentId);
         if (!result) {
-            window.AIAgentUI?.showToast?.('切换助手失败', 'error');
+            window.AIAgentUI?.showToast?.((window.AppState?.settings?.language === 'en') ? 'Failed to switch agent' : '切换助手失败', 'error');
             return;
         }
         const agent = window.AppState.subAgents?.[agentId];
-        
+        createNewChat({ silent: true });
         window.AIAgentUI?.renderSubAgentList?.();
         updateAgentName();
-        
-        window.AIAgentUI?.showToast?.(`已切换到 ${agent?.name || '通用助手'}`, 'success');
+        const name = agent?.name || '通用助手';
+        const msg = (window.AppState?.settings?.language === 'en')
+            ? `Switched to ${name}, new chat started` : `已切换到 ${name}，已开启新会话`;
+        window.AIAgentUI?.showToast?.(msg, 'success');
     }
 
     // ==================== 设置 ====================
