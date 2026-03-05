@@ -2187,7 +2187,9 @@ ${prompt}
 1. 直接给出优化后的提示词，用 \`\`\` 代码块包裹
 2. 简要说明设计思路与关键改动点
 3. 提供变体或可选方案（如需要）
-4. 标注适用场景与注意事项`,
+4. 标注适用场景与注意事项
+
+【Workflow 链中补充模式】当你在主 Agent 与下级 Agent 之间时，你的输出为对下级 Agent 的补充提示词。下级 Agent 将保留其完整系统提示词与能力，你的输出与之叠加使用。仅可增强、澄清、专业化任务描述，不可删减、弱化或丢失关键信息。`,
             capabilities: ['提示词设计', '提示词优化', 'Few-shot 示例', '思维链设计', '角色设定', '输出格式规范', '多模型适配', '系统提示词', '模板化', '需求澄清'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_writer', 'skill_analyst', 'skill_brainstorm'],

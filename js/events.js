@@ -1014,7 +1014,7 @@
                         ...orderedDelegates.map(id => ({
                             agentId: id,
                             label: '',
-                            instruction: id === 'prompt_expert' ? '提炼、优化上一步的指令与描述，消除歧义，使后续助手可精准执行' : ''
+                            instruction: id === 'prompt_expert' ? '对主 Agent 初步分析后的任务进行专业化、深度分析，形成对下级 Agent 的补充提示词。要求：1) 仅增强、澄清、专业化，不可删减、弱化或丢失关键信息；2) 输出为补充提示词，下级 Agent 将保留其完整系统提示词，你的输出与之叠加使用；3) 消除歧义、指令清晰，使后续助手可精准执行' : ''
                         })),
                         { agentId: mainId, label: mainName, instruction: lastInstruction }
                     ];

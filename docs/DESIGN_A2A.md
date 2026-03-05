@@ -355,6 +355,7 @@
 | **prompt_expert 固定第二位** | 当 delegateTo 含 prompt_expert 时，其必须排在主 Agent(分析)之后、其他子 Agent 之前，顺序不可颠倒 |
 | **schedule 仅编排其他助手** | 主 Agent 输出的 schedule 仅编排 plan/task/... 等助手，prompt_expert 无需且不应出现在 schedule 中 |
 | **UI 步骤体现主 Agent 编排** | 动态调度后，UI 显示的步骤顺序必须为主 Agent 的最优编排，而非 delegateTo 关联顺序 |
+| **补充提示词，不替换** | 提示词专家的输出为对下级 Agent 的补充提示词，与下级 Agent 的完整系统提示词叠加使用，不可削弱、丢失或弱化信息 |
 
 ---
 
@@ -438,7 +439,7 @@
 主 Agent(分析) → 提示词专家(优化指令) → [其他 delegate，按 schedule 编排] → 主 Agent(整合)
 ```
 
-**硬性约束**：prompt_expert 固定第二位，无论 delegateTo 原始顺序如何；schedule 仅编排其他助手。
+**硬性约束**：prompt_expert 固定第二位，无论 delegateTo 原始顺序如何；schedule 仅编排其他助手。提示词专家输出为补充提示词，与下级 Agent 系统提示词叠加，不可削弱或丢失信息。
 
 **Workflow 链中 prompt_expert 的 instruction**：
 - 提炼、优化上一步的指令与描述，消除歧义，使后续助手可精准执行

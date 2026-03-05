@@ -3221,14 +3221,20 @@ ${rows}
                             }
                             messages = [{ role: 'user', content: instructionPrefix + `【用户任务】\n${task}\n\n【各步骤输出汇总】\n\n${contextContent}\n\n请基于以上各步骤的完整输出，整合并完成最终结论与交付物。` }];
                         } else {
-                            const prevLabel = (steps[i - 1].instruction || steps[i - 1].label) || window.AppState.subAgents?.[steps[i - 1].agentId]?.name || steps[i - 1].agentId;
+                            const prevStep = steps[i - 1];
+                            const prevAgentId = prevStep?.agentId || '';
+                            const prevLabel = (prevStep?.instruction || prevStep?.label) || window.AppState.subAgents?.[prevAgentId]?.name || prevAgentId;
                             const prevContent = (typeof lastContent === 'string' && lastContent.length > MAX_PREV_CONTENT)
                                 ? lastContent.substring(0, MAX_PREV_CONTENT) + `\n\n...[内容已截断，共 ${lastContent.length} 字符]`
                                 : (lastContent || '');
+                            const isFromPromptExpert = prevAgentId === 'prompt_expert';
+                            const supplementNote = isFromPromptExpert
+                                ? '【说明】以上为提示词专家对任务的专业化提炼与补充提示词，与你的系统能力叠加使用，请完整结合执行，不可弱化或忽略任何关键信息。\n\n'
+                                : '';
                             messages = [
                                 { role: 'user', content: task },
                                 { role: 'assistant', content: prevContent },
-                                { role: 'user', content: instructionPrefix + `【上一步（${prevLabel}）的输出】\n\n${prevContent}\n\n请基于以上内容，结合本步骤要求，继续执行，为下一步提供输入` }
+                                { role: 'user', content: supplementNote + instructionPrefix + `【上一步（${prevLabel}）的输出】\n\n${prevContent}\n\n请基于以上内容，结合本步骤要求，继续执行，为下一步提供输入` }
                             ];
                         }
                     }

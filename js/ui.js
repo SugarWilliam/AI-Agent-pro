@@ -2043,7 +2043,8 @@
     /** 导出 project-dashboard 为完整 HTML 文件（参考 533/costco 模板，避免乱码、信息不全） */
     function exportProjectDashboardHtml(block) {
         const dashId = block?.getAttribute('data-dashboard-id');
-        let jsonContent = dashId ? (window._tempDashboardContent?.[dashId] || '') : (block?.querySelector('.diagram-code-panel code')?.textContent || '');
+        let jsonContent = dashId ? (window._tempDashboardContent?.[dashId] || '') : '';
+        if (!jsonContent && block) jsonContent = block?.querySelector('.diagram-code-panel code')?.textContent?.trim() || '';
         if (!jsonContent) {
             showToast?.('仪表盘数据为空', 'error');
             return;
@@ -2154,7 +2155,8 @@ ${alertHtml}
 
     function openProjectDashboardHtml(block) {
         const dashId = block?.getAttribute('data-dashboard-id');
-        let jsonContent = dashId ? (window._tempDashboardContent?.[dashId] || '') : (block?.querySelector('.diagram-code-panel code')?.textContent || '');
+        let jsonContent = dashId ? (window._tempDashboardContent?.[dashId] || '') : '';
+        if (!jsonContent && block) jsonContent = block?.querySelector('.diagram-code-panel code')?.textContent?.trim() || '';
         if (!jsonContent) {
             showToast?.('仪表盘数据为空', 'error');
             return;
@@ -2202,7 +2204,21 @@ ${alertHtml}
             let rlHtml = rlArr.length ? rlArr.map(r => { const o = typeof r === 'object' ? r : {}; return `<div class="p-3 rounded-lg bg-slate-800/50"><span class="text-slate-400">${escapeHtml(String(o.name || o.资源 || ''))}</span><p class="font-medium">${escapeHtml(String(o.load || o.负荷 || '—'))}</p></div>`; }).join('') : '<div class="p-3 rounded-lg bg-slate-800/50"><span class="text-slate-400">硬件</span><p class="font-medium">—</p></div><div class="p-3 rounded-lg bg-slate-800/50"><span class="text-slate-400">软件</span><p class="font-medium">—</p></div><div class="p-3 rounded-lg bg-slate-800/50"><span class="text-slate-400">测试</span><p class="font-medium">—</p></div>';
             const html = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${title} - 项目仪表盘</title><script src="https://cdn.tailwindcss.com"><\/script><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"><style>body{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;}.glass-panel{background:rgba(15,23,42,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(148,163,184,0.1);}.risk-card:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(0,0,0,0.3);}</style></head><body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-6">${alertHtml}<div class="glass-panel rounded-xl p-6 mb-4"><h1 class="text-2xl font-bold mb-4"><i class="fas fa-tachometer-alt text-cyan-400 mr-2"></i>${title}</h1><div class="grid grid-cols-1 md:grid-cols-4 gap-4"><div><span class="text-slate-400">项目</span><p class="font-medium">${project}</p></div><div><span class="text-slate-400">负责人</span><p class="font-medium">${owner}</p></div><div><span class="text-slate-400">日期</span><p class="font-medium" id="live-date">${date}</p></div><div><span class="text-slate-400">状态</span><p class="font-medium text-amber-400">${status}</p></div></div></div><div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4"><div class="glass-panel rounded-xl p-4 border-l-4 border-red-500"><div class="text-3xl font-bold text-red-400" id="p0-count">0</div><div class="text-slate-400 text-sm">P0/致命</div></div><div class="glass-panel rounded-xl p-4 border-l-4 border-amber-500"><div class="text-3xl font-bold text-amber-400" id="p1-count">0</div><div class="text-slate-400 text-sm">P1/严重</div></div><div class="glass-panel rounded-xl p-4 border-l-4 border-cyan-500"><div class="text-3xl font-bold text-cyan-400">—</div><div class="text-slate-400 text-sm">进行中任务</div></div><div class="glass-panel rounded-xl p-4 border-l-4 border-emerald-500"><div class="text-3xl font-bold text-emerald-400">—</div><div class="text-slate-400 text-sm">已完成</div></div></div><div class="glass-panel rounded-xl p-6 mb-4"><h2 class="text-lg font-semibold mb-3"><i class="fas fa-hand-pointer text-cyan-400 mr-2"></i>杠杆点</h2><ul class="space-y-2 text-slate-300">${lpHtml}</ul></div><div class="glass-panel rounded-xl p-6 mb-4"><h2 class="text-lg font-semibold mb-3"><i class="fas fa-ban text-red-400 mr-2"></i>阻塞项优先级</h2><div class="space-y-3">${blockerHtml}</div></div><div class="glass-panel rounded-xl p-6 mb-4"><h2 class="text-lg font-semibold mb-3"><i class="fas fa-check-double text-emerald-400 mr-2"></i>严重问题闭环</h2><div class="space-y-3 text-slate-300">${ccHtml}</div></div><div class="glass-panel rounded-xl p-6 mb-4"><h2 class="text-lg font-semibold mb-3"><i class="fas fa-users text-cyan-400 mr-2"></i>关键资源负荷</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4">${rlHtml}</div></div><div class="glass-panel rounded-xl p-6 mb-4"><h2 class="text-lg font-semibold mb-3"><i class="fas fa-bolt text-cyan-400 mr-2"></i>关键行动</h2><ul class="space-y-3 text-slate-300">${kaHtml}</ul></div><footer class="text-center text-slate-500 text-sm py-4">${new Date().toLocaleString('zh-CN')}、工作秘书、MECE</footer><script>document.getElementById('live-date').textContent=new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});document.getElementById('p0-count').textContent=document.querySelectorAll('[data-level="p0"]').length;document.getElementById('p1-count').textContent=document.querySelectorAll('[data-level="p1"]').length;</script></body></html>`;
             const win = window.open('', '_blank');
-            if (win) { win.document.write(html); win.document.close(); }
+            if (win) {
+                win.document.write(html);
+                win.document.close();
+            } else {
+                showToast?.('弹窗被拦截，已改为下载', 'warning');
+                const blob = new Blob(['\uFEFF' + html], { type: 'text/html;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `项目仪表盘-${Date.now()}.html`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
         } catch (e) {
             showToast?.('打开失败: ' + (e.message || '解析错误'), 'error');
         }
@@ -2269,7 +2285,21 @@ ${alertHtml}
         const html = buildRiskMatrixHtml(block);
         if (!html) { showToast?.('风险矩阵数据为空', 'error'); return; }
         const win = window.open('', '_blank');
-        if (win) { win.document.write(html); win.document.close(); }
+        if (win) {
+            win.document.write(html);
+            win.document.close();
+        } else {
+            showToast?.('弹窗被拦截，已改为下载', 'warning');
+            const blob = new Blob(['\uFEFF' + html], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `风险矩阵-${Date.now()}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
     }
 
     // ==================== 检测输出格式 ====================
@@ -2644,18 +2674,28 @@ ${alertHtml}
         const isFullDoc = /<!DOCTYPE\s+html[\s\S]*<\/html>\s*$/i.test(content.trim());
         const htmlToWrite = isFullDoc ? content : buildH5Wrapper(content, 'H5 预览');
         const previewWindow = window.open('', '_blank');
-        if (!previewWindow) {
-            showToast?.('弹窗被拦截，请允许站点弹窗后重试', 'warning');
-            return;
+        if (previewWindow) {
+            previewWindow.document.write(htmlToWrite);
+            previewWindow.document.close();
+        } else {
+            showToast?.('弹窗被拦截，已改为下载', 'warning');
+            const blob = new Blob(['\uFEFF' + htmlToWrite], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ai-agent-preview-${Date.now()}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
-        previewWindow.document.write(htmlToWrite);
-        previewWindow.document.close();
     }
 
     function downloadH5(btn) {
         const container = btn.closest('.h5-output-container');
         const h5Id = container?.getAttribute('data-h5-id');
-        let content = h5Id ? (window._tempH5Content?.[h5Id] || '') : (container?.querySelector('.h5-preview-content')?.innerHTML || '');
+        let content = h5Id ? (window._tempH5Content?.[h5Id] || '') : '';
+        if (!content && container) content = container?.querySelector('.h5-preview-content')?.innerHTML || '';
         if (!content) {
             showToast?.('下载内容为空', 'error');
             return;
@@ -2699,21 +2739,34 @@ ${alertHtml}
     }
 
     function downloadAsPDF(contentOrId) {
-        let content = contentOrId;
-        
+        let content;
+        // 消息对象：使用 formatAsHTML 生成完整 HTML
+        if (contentOrId && typeof contentOrId === 'object' && contentOrId.content != null) {
+            const htmlContent = formatAsHTML(contentOrId);
+            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `message-${contentOrId.role}-${new Date(contentOrId.timestamp).toISOString().slice(0, 19).replace(/:/g, '-')}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('HTML 已下载，打开后按 Ctrl+P 可另存为 PDF', 'success');
+            return;
+        }
         // 如果传入的是ID，从临时存储中获取内容
         if (typeof contentOrId === 'string' && contentOrId.startsWith('pdf_')) {
             content = window._tempPDFContent?.[contentOrId] || '';
             if (!content) {
-                // 如果临时存储中没有，尝试从DOM中获取
                 const container = document.querySelector(`[data-pdf-id="${contentOrId}"]`)?.closest('.pdf-output-container');
                 if (container) {
                     const pdfPage = container.querySelector('.pdf-page');
-                    if (pdfPage) {
-                        content = pdfPage.innerText || pdfPage.textContent || '';
-                    }
+                    if (pdfPage) content = pdfPage.innerText || pdfPage.textContent || '';
                 }
             }
+        } else {
+            content = contentOrId;
         }
         
         if (!content) {
@@ -2721,7 +2774,7 @@ ${alertHtml}
             return;
         }
         
-        // 由于浏览器无法直接生成PDF，我们生成一个HTML文件，用户可以使用浏览器的打印功能保存为PDF
+        // 直接下载 HTML 文件（避免 window.open 被弹窗拦截），用户可打开后用 Ctrl+P 另存为 PDF
         const htmlContent = '\uFEFF' + `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -2733,16 +2786,22 @@ ${alertHtml}
         h1 { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; }
         pre { background: #f9f9f9; padding: 15px; border: 1px solid #ddd; }
         code { font-family: 'Consolas', monospace; }
+        .print-hint { color: #666; font-size: 12px; margin-top: 20px; }
     </style>
 </head>
-<body>${escapeHtml(content)}</body>
+<body>${escapeHtml(content)}<p class="print-hint">提示：打开此文件后按 Ctrl+P 可另存为 PDF</p></body>
 </html>`;
 
         const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
         const url = URL.createObjectURL(blob);
-        const previewWindow = window.open(url, '_blank');
-
-        showToast('请在打开的页面中使用 Ctrl+P 保存为PDF', 'info');
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ai-agent-export-${Date.now()}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('HTML 已下载，打开后按 Ctrl+P 可另存为 PDF', 'success');
     }
 
     function downloadAsDOC(contentOrId) {
@@ -2794,8 +2853,6 @@ ${alertHtml}
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        showToast('Word文档已下载', 'success');
-
         showToast('Word文档已下载', 'success');
     }
 
