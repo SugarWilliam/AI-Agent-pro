@@ -4,6 +4,21 @@
 
 ---
 
+## [8.4.0] - 2026-03-05
+
+### 设置页「清除数据」行为优化
+
+**仅清除用户自定义与历史数据**
+- 清除数据仅清除会话、计划、任务、自定义模型、自定义 SubAgent、自定义 Workflow、RAG 向量等用户数据
+- 保留 API 密钥、同步配置、Jina AI 配置、主题/语言等设置
+- 恢复到初始化状态，而非清空整个 localStorage
+
+**实现**
+- app.js：新增 `resetToInitialState()`， selective 清除并保留配置
+- events.js：`clearAllData()` 调用 `resetToInitialState()`，更新确认文案
+
+---
+
 ## [8.3.3] - 2026-03-05
 
 ### Workflow 执行顺序修复（设计约束落地）
@@ -244,6 +259,7 @@
 
 ---
 
+[8.4.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.4.0
 [8.3.3]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.3
 [8.3.2]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.2
 [8.3.1]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.1

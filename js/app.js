@@ -1,13 +1,25 @@
 /**
- * AI Agent Pro v8.3.3 - 应用状态管理
+ * AI Agent Pro v8.4.0 - 应用状态管理
  * 多模态AI Agent - 支持输入输出多模态
  */
 
 (function() {
     'use strict';
 
-    const VERSION = '8.3.3';
+    const VERSION = '8.4.0';
     const STORAGE_KEY = 'ai_agent_state_v6';
+
+    /** 检测 localStorage 是否可用（部分环境如 file://、隐私模式、iframe 可能不可用） */
+    function isLocalStorageAvailable() {
+        try {
+            const test = '__storage_test__';
+            localStorage.setItem(test, test);
+            localStorage.removeItem(test);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
 
     /** Agent 与渲染器对接：图表格式规范（Agent 必须按此输出，渲染器按此解析） */
     const DIAGRAM_FORMAT_SPEC = {
@@ -1653,7 +1665,7 @@ ${prompt}
             systemPrompt: `你是一位高效AI助手，采用【简易输出范式】。
 
 【输出原则】
-1. 直接输出结论或结果，不写分析过程
+1. 尽量快速输出，直接给出结论或结果，不写分析过程
 2. 给出深刻洞察和关键要点，避免冗余信息
 3. 语言精炼，条理清晰，一针见血
 4. 不展开背景铺垫、不重复用户已知内容
@@ -1664,7 +1676,7 @@ ${prompt}
 - 重复用户问题或已知信息
 - 无实质内容的客套话
 
-请直接、高效地回应用户需求。`,
+请直接、高效、快速地回应用户需求。`,
             capabilities: ['直接结论', '深刻洞察', '精炼回答', '信息查询', '要点提炼'],
             modelPreference: ['auto', 'deepseek-chat', 'glm-4-flash'],
             skills: ['skill_writer', 'skill_translator', 'skill_summarizer'],
@@ -1672,7 +1684,7 @@ ${prompt}
             mcp: ['mcp_web_search'],
             rag: ['rag_general', 'rag_logic', 'rag_neuroscience'],
             color: '#3b82f6',
-            delegateTo: ['prompt_expert']
+            delegateTo: []
         },
         creative: {
             id: 'creative',
@@ -2383,6 +2395,11 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                 loadState(),
                 sleep(5000).then(() => window.Logger?.warn?.('loadState 超时，使用默认状态'))
             ]);
+            // loadState 完成后应用已加载的配置（theme/language 等）
+            applyTheme(AppState.settings.theme);
+            applyLanguage(AppState.settings.language);
+            applyFontSize(AppState.settings.fontSize);
+            applyShortcut(AppState.settings.sendShortcut);
             
             updateSplashProgress(80, '正在加载SubAgent配置...');
             await sleep(200);
@@ -2464,14 +2481,15 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
 
     function initModels() {
         AppState.models = JSON.parse(JSON.stringify(BUILTIN_MODELS));
-        const saved = localStorage.getItem(CUSTOM_MODELS_KEY);
-        if (saved) {
-            try {
+        if (!isLocalStorageAvailable()) return;
+        try {
+            const saved = localStorage.getItem(CUSTOM_MODELS_KEY);
+            if (saved) {
                 const customModels = JSON.parse(saved);
                 Object.assign(AppState.models, customModels);
-            } catch (e) {
-                window.Logger?.error('加载自定义模型失败:', e);
             }
+        } catch (e) {
+            window.Logger?.warn?.('加载自定义模型失败:', e?.message);
         }
     }
 
@@ -2484,36 +2502,43 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
 
     function initSubAgents() {
         AppState.subAgents = JSON.parse(JSON.stringify(BUILTIN_SUB_AGENTS));
-        const saved = localStorage.getItem(CUSTOM_SUBAGENTS_KEY);
-        if (saved) {
-            try {
+        if (!isLocalStorageAvailable()) return;
+        try {
+            const saved = localStorage.getItem(CUSTOM_SUBAGENTS_KEY);
+            if (saved) {
                 AppState.customSubAgents = JSON.parse(saved);
                 Object.assign(AppState.subAgents, AppState.customSubAgents);
-            } catch (e) {
-                window.Logger?.error('加载自定义Sub Agent失败:', e);
             }
+        } catch (e) {
+            window.Logger?.warn?.('加载自定义Sub Agent失败:', e?.message);
         }
     }
 
     async function loadState() {
         try {
+            if (!isLocalStorageAvailable()) {
+                window.Logger?.warn?.('localStorage 不可用，配置和会话将无法持久化');
+            }
             await (window.StorageService?.init?.() ?? Promise.resolve());
             let state = null;
-            // 优先从 localStorage 读取（兼容 file:// 及部分浏览器 IndexedDB 异常）
-            const savedLocal = localStorage.getItem(STORAGE_KEY);
-            if (savedLocal) {
-                try {
+            // 优先从 localStorage 同步读取（兼容 file:// 及部分浏览器 IndexedDB 异常）
+            try {
+                const savedLocal = localStorage.getItem(STORAGE_KEY);
+                if (savedLocal) {
                     state = JSON.parse(savedLocal);
-                } catch (e) {
-                    window.Logger?.warn?.('localStorage 解析失败:', e?.message);
+                    window.Logger?.debug?.('从 localStorage 加载状态成功');
                 }
+            } catch (e) {
+                window.Logger?.warn?.('localStorage 读取/解析失败:', e?.message);
             }
             if (!state && window.StorageService?.get) {
                 state = await window.StorageService.get(STORAGE_KEY);
+                if (state) window.Logger?.debug?.('从 IndexedDB 加载状态成功');
             }
-            if (state && !savedLocal) {
-                // 若仅 IndexedDB 有数据，回写 localStorage 做双写备份
-                try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
+            if (state && isLocalStorageAvailable()) {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+                } catch (_) {}
             }
             if (state) {
                 if (state.chats && Array.isArray(state.chats)) {
@@ -2525,7 +2550,9 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                 if (state.todos) AppState.todos = state.todos;
                 if (state.currentChatId) AppState.currentChatId = state.currentChatId;
                 if (state.currentMode) {
-                    AppState.currentMode = state.currentMode === 'writing' ? 'creative' : state.currentMode;
+                    const m = state.currentMode === 'writing' ? 'creative' : state.currentMode;
+                    // 已移除 task/creative/plan 模式，兼容旧数据
+                    AppState.currentMode = (m === 'task' || m === 'creative' || m === 'plan') ? 'chat' : m;
                 }
                 if (state.currentModel) AppState.currentModel = state.currentModel;
                 if (state.currentSubAgent) AppState.currentSubAgent = state.currentSubAgent;
@@ -2571,6 +2598,10 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                     });
                 }
             }
+            // 加载完成后立即保存一次，确保双写一致
+            if (isLocalStorageAvailable()) {
+                immediateSave();
+            }
         } catch (error) {
             window.Logger?.error('加载状态失败:', error);
         }
@@ -2606,7 +2637,9 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                 savedAt: Date.now(),
                 version: AppState.version
             };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            if (isLocalStorageAvailable()) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            }
             if (window.StorageService?.set) {
                 window.StorageService.set(STORAGE_KEY, state).catch(err => window.Logger?.warn?.('Storage save failed:', err?.message));
             }
@@ -2619,6 +2652,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                 window.Logger?.warn('localStorage 已满，将尝试保存精简数据');
             }
             // 如果存储失败，尝试清理旧数据
+            if (!isLocalStorageAvailable()) return;
             try {
                 const saved = localStorage.getItem(STORAGE_KEY);
                 if (saved) {
@@ -2641,6 +2675,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
     
     // 保存SubAgent配置（包括资源关联）
     function saveSubAgentConfigs() {
+        if (!isLocalStorageAvailable()) return;
         try {
             // 保存自定义subagent
             localStorage.setItem(CUSTOM_SUBAGENTS_KEY, JSON.stringify(AppState.customSubAgents));
@@ -2720,6 +2755,61 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
             return true;
         } catch (error) {
             window.Logger?.error('清除SubAgent配置失败:', error);
+            return false;
+        }
+    }
+
+    /** 重置到初始化状态：仅清除用户自定义数据和历史数据，保留 API 密钥、同步配置、Jina AI 配置 */
+    async function resetToInitialState() {
+        try {
+            if (!isLocalStorageAvailable()) return false;
+            // 1. 保留 settings、syncConfig、jinaAI（用户 API 密钥与系统配置）
+            const preserved = {
+                settings: { ...AppState.settings },
+                syncConfig: { ...AppState.syncConfig },
+                jinaAI: { ...AppState.jinaAI }
+            };
+            // 2. 移除用户数据相关的 localStorage 键
+            localStorage.removeItem(CUSTOM_MODELS_KEY);
+            localStorage.removeItem(CUSTOM_SUBAGENTS_KEY);
+            localStorage.removeItem(RAG_VECTORS_KEY);
+            localStorage.removeItem(SUBAGENT_CONFIGS_KEY);
+            if (window.StorageService?.remove) {
+                await Promise.all([
+                    window.StorageService.remove(RAG_VECTORS_KEY).catch(() => {}),
+                    window.StorageService.remove(CUSTOM_MODELS_KEY).catch(() => {}),
+                    window.StorageService.remove(CUSTOM_SUBAGENTS_KEY).catch(() => {})
+                ]);
+            }
+            // 3. 重置历史与用户自定义数据
+            AppState.chats = [];
+            AppState.plans = [];
+            AppState.tasks = [];
+            AppState.todos = [];
+            AppState.currentChatId = null;
+            AppState.currentMode = 'chat';
+            AppState.currentModel = 'auto';
+            AppState.currentSubAgent = 'general';
+            AppState.currentOutputFormat = 'markdown';
+            AppState.messages = [];
+            AppState.attachments = [];
+            AppState.customWorkflows = [];
+            AppState.ragVectors = {};
+            // 4. 恢复内置模型、资源、SubAgent
+            initModels();
+            initResources();
+            initSubAgents();
+            loadSubAgentConfigs();
+            // 5. 恢复保留的配置
+            AppState.settings = preserved.settings;
+            AppState.syncConfig = preserved.syncConfig;
+            AppState.jinaAI = preserved.jinaAI;
+            // 6. 持久化
+            immediateSave();
+            saveRagVectors();
+            return true;
+        } catch (e) {
+            window.Logger?.error('重置到初始化状态失败:', e);
             return false;
         }
     }
@@ -3262,20 +3352,11 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
 
     // ==================== 初始化执行 ====================
     // 延迟初始化，确保DOM已加载
+    // 注意：applyTheme/applyLanguage 等必须在 init() 内 loadState 完成后调用，否则会使用默认值覆盖已加载配置
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            init();
-            applyTheme(AppState.settings.theme);
-            applyLanguage(AppState.settings.language);
-            applyFontSize(AppState.settings.fontSize);
-            applyShortcut(AppState.settings.sendShortcut);
-        });
+        document.addEventListener('DOMContentLoaded', () => init());
     } else {
         init();
-        applyTheme(AppState.settings.theme);
-        applyLanguage(AppState.settings.language);
-        applyFontSize(AppState.settings.fontSize);
-        applyShortcut(AppState.settings.sendShortcut);
     }
 
     // ==================== 暴露到全局 ====================
@@ -3324,6 +3405,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
         switchSubAgent,
         saveSubAgentConfigs,
         loadSubAgentConfigs,
+        resetToInitialState,
         setJinaAIKey,
         getJinaAIKey,
         hasJinaAIKey,

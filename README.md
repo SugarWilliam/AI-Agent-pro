@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-8.3.3-blue.svg)
+![Version](https://img.shields.io/badge/version-8.4.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Web-lightgrey.svg)
 
@@ -369,6 +369,10 @@ http://localhost:8000/test/comprehensive-test.html
 ---
 
 ## 📝 更新日志
+
+### v8.4.0 (2026-03-05)
+
+- **设置页「清除数据」优化**：仅清除用户自定义数据与历史数据，保留 API 密钥、同步配置、Jina AI 配置；恢复到初始化状态
 
 ### v8.3.3 (2026-03-05)
 

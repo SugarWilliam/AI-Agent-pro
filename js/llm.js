@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.3.3 - LLM服务
+ * AI Agent Pro v8.4.0 - LLM服务
  * 多模态输入输出支持
  */
 
@@ -3109,14 +3109,15 @@ ${rows}
         },
 
         // ==================== 简化版sendMessage（兼容旧接口）====================
-        async sendMessage(messages, modelId, enableWebSearch = false, onStream = null, isWorkflow = false) {
+        async sendMessage(messages, modelId, enableWebSearch = false, onStream = null, isWorkflow = false, agentOptions = {}) {
             return await this.invokeIntelligentAgent(messages, {
                 modelId: modelId || 'auto',
                 enableWebSearch,
                 onStream,
                 outputFormat: 'markdown',
                 taskType: 'general',
-                isWorkflow
+                isWorkflow,
+                ...agentOptions
             });
         },
 

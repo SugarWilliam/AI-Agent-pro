@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.3.3 - 事件处理模块
+ * AI Agent Pro v8.4.0 - 事件处理模块
  * 未来科技感交互设计
  */
 
@@ -111,18 +111,14 @@
         const modeBadge = document.getElementById('current-mode-badge');
         if (modeBadge) {
             const modeNames = {
-                chat: '对话',
-                task: '任务',
-                plan: '计划',
-                creative: '创作',
-                workflow: 'Workflow',
-                writing: '创作'
+                chat: 'Chat',
+                workflow: 'Workflow'
             };
-            modeBadge.textContent = modeNames[window.AppState.currentMode] || '对话';
+            modeBadge.textContent = modeNames[window.AppState.currentMode] || 'Chat';
         }
         document.querySelectorAll('.mode-option').forEach(btn => {
             const mode = window.AppState?.currentMode || 'chat';
-            btn.classList.toggle('active', btn.dataset.mode === mode || (mode === 'writing' && btn.dataset.mode === 'creative'));
+            btn.classList.toggle('active', btn.dataset.mode === mode);
         });
     }
 
@@ -576,10 +572,7 @@
         window.AIAgentApp?.saveState?.();
         
         const modeActions = {
-            chat: () => window.AIAgentUI?.showToast?.('切换到对话模式', 'success'),
-            task: () => openTaskModal(),
-            plan: () => openPlanModal(),
-            creative: () => window.AIAgentUI?.showToast?.('切换到创作模式', 'success'),
+            chat: () => window.AIAgentUI?.showToast?.('切换到 Chat 模式', 'success'),
             workflow: () => openWorkflowModal()
         };
         
@@ -2748,11 +2741,15 @@ tags: code, review, quality
         e.target.value = '';
     }
 
-    function clearAllData() {
-        if (confirm('确定要清除所有数据吗？此操作不可恢复！')) {
-            localStorage.clear();
-            window.AIAgentUI?.showToast?.('数据已清除，页面将刷新', 'success');
-            setTimeout(() => location.reload(), 1500);
+    async function clearAllData() {
+        if (confirm('确定要清除所有会话、计划和自定义数据吗？API 密钥和配置将保留。')) {
+            const ok = await (window.AIAgentApp?.resetToInitialState?.() ?? Promise.resolve(false));
+            if (ok) {
+                window.AIAgentUI?.showToast?.('已恢复到初始化状态，页面将刷新', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                window.AIAgentUI?.showToast?.('清除失败，请重试', 'error');
+            }
         }
     }
 

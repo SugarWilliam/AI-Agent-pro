@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.3.3 - UI渲染模块
+ * AI Agent Pro v8.4.0 - UI渲染模块
  * 未来科技感UI
  */
 
@@ -475,7 +475,7 @@
         // 【关键】先提取图表类代码块（mermaid/chart/decision-matrix 等），必须在通用代码块之前
         // 否则会被通用正则当作普通代码块处理，导致图表无法渲染
         const diagramBlocks = [];
-        const diagramRegex = /(```|``)(mermaid|chart|decision-matrix|probability|decision-chain|project-dashboard|problem-evolution|milestones|dependency-graph|risk-matrix|roadmap|task-classification-table|resource-constraints)\s*\n([\s\S]*?)\1/g;
+        const diagramRegex = /(```|``)(mermaid|chart|decision-matrix|probability|decision-chain|project-dashboard|problem-evolution|milestones|dependency-graph|risk-matrix|roadmap|task-classification-table|resource-constraints|plan-steps)\s*\n([\s\S]*?)\1/g;
         text = text.replace(diagramRegex, (match, _ticks, dtype, code) => {
             diagramBlocks.push({ type: dtype, raw: match, code: code.trim() });
             return `\x00DIAGRAM${diagramBlocks.length - 1}\x00`;
@@ -630,6 +630,7 @@
             if (d.type === 'roadmap') return renderRoadmap('```roadmap\n' + d.code + '\n```') || d.raw;
             if (d.type === 'task-classification-table') return renderTaskClassificationTable('```task-classification-table\n' + d.code + '\n```') || d.raw;
             if (d.type === 'resource-constraints') return renderResourceConstraints('```resource-constraints\n' + d.code + '\n```') || d.raw;
+            if (d.type === 'plan-steps') return renderPlanSteps('```plan-steps\n' + d.code + '\n```') || d.raw;
             return d.raw;
         });
 
@@ -1771,6 +1772,50 @@
         }
     }
 
+    /** plan-steps：照抄 search-todo 样式，已完成=实心绿勾、进行中=蓝色转圈、未开始=空心圆 */
+    function renderPlanSteps(content) {
+        const match = content.match(/```plan-steps\n([\s\S]*?)```/);
+        if (!match) return null;
+        try {
+            const raw = match[1].trim();
+            const lines = raw.split(/\r?\n/).filter(l => l.trim());
+            const items = [];
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (/^[✅✓✔]/.test(line)) {
+                    items.push({ type: 'step', status: 'done', text: line.replace(/^[✅✓✔]\s*/, '').trim() });
+                } else if (/^[⏳◐🔄]/.test(line)) {
+                    items.push({ type: 'step', status: 'in_progress', text: line.replace(/^[⏳◐🔄]\s*/, '').trim() });
+                } else if (/^[○〇○]/.test(line)) {
+                    items.push({ type: 'step', status: 'pending', text: line.replace(/^[○〇○]\s*/, '').trim() });
+                } else if (/^-{2,}$/.test(line)) {
+                    items.push({ type: 'connector' });
+                }
+            }
+            if (items.length === 0) return null;
+            let html = '<div class="plan-steps-block">';
+            items.forEach((item, idx) => {
+                if (item.type === 'step') {
+                    let icon = '<i class="far fa-circle plan-step-icon"></i>';
+                    if (item.status === 'done') {
+                        icon = '<i class="fas fa-check-circle plan-step-icon plan-step-done"></i>';
+                    } else if (item.status === 'in_progress') {
+                        icon = '<i class="fas fa-spinner fa-spin plan-step-icon plan-step-spin"></i>';
+                    }
+                    const title = item.status === 'done' ? '已完成' : item.status === 'in_progress' ? '进行中' : '未开始';
+                    html += `<div class="plan-step-item plan-step-${item.status}" title="${title}">${icon}<span class="plan-step-text">${escapeHtml(item.text)}</span></div>`;
+                } else if (item.type === 'connector' && idx < items.length - 1) {
+                    html += '<div class="plan-step-connector"></div>';
+                }
+            });
+            html += '</div>';
+            return html;
+        } catch (e) {
+            window.Logger?.error('Plan steps render error:', e);
+            return null;
+        }
+    }
+
     function renderResourceConstraints(content) {
         const match = content.match(/```resource-constraints\n([\s\S]*?)```/);
         if (!match) return null;
@@ -2338,7 +2383,7 @@ ${alertHtml}
 
         // 【关键】含图表/仪表板块时强制使用 markdown，否则会被当作 code 格式整段转义，导致 HTML 与图表无法渲染
         const diagramMarkers = ['```project-dashboard', '```mermaid', '```chart', '```decision-matrix',
-            '```decision-chain', '```probability', '```problem-evolution', '```milestones', '```dependency-graph', '```risk-matrix'];
+            '```decision-chain', '```probability', '```problem-evolution', '```milestones', '```dependency-graph', '```risk-matrix', '```plan-steps'];
         if (diagramMarkers.some(m => content.includes(m))) {
             return 'markdown';
         }

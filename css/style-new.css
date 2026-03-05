@@ -4077,6 +4077,66 @@ body {
     border-radius: 0;
 }
 
+/* Plan 模式步骤块：照抄 search-todo，已完成=实心绿勾、进行中=蓝色转圈、未开始=空心圆，纵向竖线连接 */
+.plan-steps-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    margin: 12px 0;
+    padding: 10px 14px;
+    padding-left: 24px;
+    background: rgba(0, 212, 255, 0.08);
+    border-left: 3px solid var(--primary);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    position: relative;
+}
+.plan-steps-block::before {
+    content: '';
+    position: absolute;
+    left: 30px;
+    top: 22px;
+    bottom: 22px;
+    width: 2px;
+    background: var(--border);
+}
+.plan-step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+    color: var(--text-secondary);
+}
+.plan-step-item.plan-step-in_progress {
+    color: var(--primary);
+}
+.plan-step-item.plan-step-done {
+    color: var(--success, #22c55e);
+}
+.plan-step-icon {
+    flex-shrink: 0;
+    width: 14px;
+    font-size: 12px;
+    text-align: center;
+    margin-top: 2px;
+}
+.plan-step-done {
+    color: var(--success, #22c55e);
+}
+.plan-step-spin {
+    color: var(--primary);
+}
+.plan-step-text {
+    color: inherit;
+    font-size: 12px;
+    line-height: 1.5;
+}
+.plan-step-connector {
+    height: 6px;
+}
+
 .diagram-toolbar {
     display: flex;
     flex-wrap: wrap;
