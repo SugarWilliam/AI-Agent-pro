@@ -413,6 +413,16 @@
                     }
                     return;
                 }
+                // 处理交付物代码块下载按钮（md/txt/html）
+                const deliverableDownloadBtn = e.target.closest('.deliverable-download-btn');
+                if (deliverableDownloadBtn) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (window.AIAgentUI?.downloadDeliverableCode) {
+                        window.AIAgentUI.downloadDeliverableCode(deliverableDownloadBtn);
+                    }
+                    return;
+                }
             });
         }
 

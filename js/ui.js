@@ -516,7 +516,12 @@
                     } catch (_) { /* 解析失败则按代码块显示 */ }
                 }
             }
-            codeBlocks.push(`<pre class="code-block"><code class="language-${lang || 'text'}">${escapeHtml(trimmed)}</code></pre>`);
+            const deliverableExt = { md: 'md', markdown: 'md', txt: 'txt', html: 'html' }[String(lang || '').toLowerCase()];
+            const codeHtml = `<pre class="code-block"><code class="language-${lang || 'text'}">${escapeHtml(trimmed)}</code></pre>`;
+            const blockHtml = deliverableExt
+                ? `<div class="deliverable-code-wrapper"><div class="deliverable-code-toolbar"><span class="deliverable-code-label">${deliverableExt === 'md' ? 'Markdown' : deliverableExt === 'txt' ? '纯文本' : 'HTML'}</span><button class="deliverable-download-btn" data-ext="${deliverableExt}" title="下载为 .${deliverableExt}"><i class="fas fa-download"></i> 下载</button></div>${codeHtml}</div>`
+                : codeHtml;
+            codeBlocks.push(blockHtml);
             return `\x00CODEBLOCK${codeBlocks.length - 1}\x00`;
         });
 
@@ -2660,6 +2665,30 @@ ${alertHtml}
                 showToast('复制失败', 'error');
             });
         }
+    }
+
+    /** 下载交付物代码块（md/txt/html） */
+    function downloadDeliverableCode(btn) {
+        const wrapper = btn.closest('.deliverable-code-wrapper');
+        if (!wrapper) return;
+        const codeEl = wrapper.querySelector('.code-block code');
+        const content = codeEl?.textContent?.trim() || '';
+        const ext = btn.dataset.ext || 'md';
+        if (!content) {
+            showToast?.('内容为空', 'error');
+            return;
+        }
+        const mimeMap = { md: 'text/markdown;charset=utf-8', txt: 'text/plain;charset=utf-8', html: 'text/html;charset=utf-8' };
+        const blob = new Blob(['\uFEFF' + content], { type: mimeMap[ext] || 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `交付物-${Date.now()}.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast(`已下载为 .${ext}`, 'success');
     }
 
     // ==================== 多模态输出操作 ====================
@@ -5115,6 +5144,13 @@ ${ex.content}`).join('\n\n')}
         if (modal) {
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
+            // 打开设置时同步语言选择器，确保与 AppState 一致
+            if (modalId === 'settings-modal') {
+                const lang = window.AppState?.settings?.language;
+                const normalized = (lang === 'zh' || lang === 'zh-CN') ? 'zh-CN' : (lang === 'en' ? 'en' : 'zh-CN');
+                const langSelect = document.getElementById('setting-language');
+                if (langSelect) langSelect.value = normalized;
+            }
         }
     }
 
@@ -5352,6 +5388,7 @@ ${ex.content}`).join('\n\n')}
         copyCode,
         previewH5,
         downloadH5,
+        downloadDeliverableCode,
         downloadAsPDF,
         downloadAsDOC,
         downloadAsCSV,

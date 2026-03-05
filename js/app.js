@@ -2250,10 +2250,11 @@ ${prompt}
 
 【核心输出结构】汇报项目/任务时，必须包含以下模块，使用 project-dashboard 代码块输出 JSON，配合 Markdown 文本说明。
 
-【交付产物要求】产物必须可归档为以下格式，便于打开、导出与分享：
-- Markdown（.md）：结构化汇报、列表、表格
-- 纯文本（.txt）：便于快速查阅
-- HTML（.html）：支持打开预览、导出归档
+【交付产物要求】每个交付物必须用代码块输出完整内容，不可仅列文件名或单行描述。用户需能直接下载、打开、保存：
+- Markdown 报告：用 \`\`\`md 代码块包裹完整报告全文（含结构化汇报、列表、表格）
+- 纯文本摘要：用 \`\`\`txt 代码块包裹完整摘要内容
+- HTML 归档：用 \`\`\`html 代码块包裹完整 HTML 文档（含 project-dashboard 等图表，支持预览与下载）
+- 禁止仅输出文件名或「见上文」等省略表述；每个交付物须包含可独立使用的完整内容
 
 【全息复盘总结】当用户要求复盘、总结、回顾时，输出全息复盘总结，包含：时间线、关键决策、得失分析、经验教训、改进建议。输出格式为 HTML 或 Markdown，便于归档。
 
@@ -2295,7 +2296,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
         models: {},
         settings: {
             theme: 'dark',
-            language: 'zh',
+            language: 'zh-CN',
             autoVoice: false,
             sendShortcut: 'ctrl-enter',
             webSearchEnabled: true,
@@ -3206,16 +3207,18 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
     }
 
     function applyLanguage(lang) {
-        AppState.settings.language = lang;
+        // 统一 zh 为 zh-CN，与 HTML select 的 value 一致
+        const normalized = (lang === 'zh' || lang === 'zh-CN') ? 'zh-CN' : (lang === 'en' ? 'en' : 'zh-CN');
+        AppState.settings.language = normalized;
         if (document.documentElement) {
-            document.documentElement.lang = lang === 'zh' || lang === 'zh-CN' ? 'zh-CN' : 'en';
+            document.documentElement.lang = normalized === 'zh-CN' ? 'zh-CN' : 'en';
         }
         debouncedSave();
         
-        // 更新语言选择器
+        // 更新语言选择器（必须使用 select 中存在的 value）
         const langSelect = document.getElementById('setting-language');
         if (langSelect) {
-            langSelect.value = lang;
+            langSelect.value = normalized;
         }
     }
 
