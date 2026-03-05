@@ -135,7 +135,7 @@
     <div class="container">
         <div class="header">
             <h1>AI Agent Pro</h1>
-            <p>部署文档 v8.3.1</p>
+            <p>部署文档 v8.3.2</p>
         </div>
 
         <div class="section">
@@ -207,25 +207,25 @@ unzip ai-agent-pro-source.zip -d ai-agent-pro
                 <div class="step-content">
                     <h4>启动本地服务器（推荐）</h4>
                     <div class="code-block">
-<span class="command"># 使用项目自带脚本（端口 8080）</span>
+<span class="command"># 使用项目自带脚本（端口 8000）</span>
 cd AI-Agent-pro
 chmod +x start-server.sh
 ./start-server.sh
 
 <span class="comment"># 或使用 Python 3</span>
-python3 -m http.server 8080 --bind 0.0.0.0
+python3 -m http.server 8000 --bind 0.0.0.0
 
 <span class="comment"># 或使用 Node.js</span>
 npx serve .
                     </div>
-                    <p>本机访问 <code>http://localhost:8080</code>，局域网访问 <code>http://本机IP:8080</code></p>
+                    <p>本机访问 <code>http://localhost:8000</code>，局域网访问 <code>http://本机IP:8000</code></p>
                 </div>
             </div>
             <div class="step">
                 <div class="step-number">3</div>
                 <div class="step-content">
                     <h4>访问应用</h4>
-                    <p>打开浏览器访问 <code>http://localhost:8080</code></p>
+                    <p>打开浏览器访问 <code>http://localhost:8000</code></p>
                 </div>
             </div>
 
@@ -313,7 +313,7 @@ EXPOSE 80
 docker build -t ai-agent-pro .
 
 <span class="command"># 运行容器</span>
-docker run -d -p 8080:80 --name ai-agent-pro ai-agent-pro
+docker run -d -p 8000:80 --name ai-agent-pro ai-agent-pro
                     </div>
                 </div>
             </div>

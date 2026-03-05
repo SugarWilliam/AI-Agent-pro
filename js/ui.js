@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.3.1 - UI渲染模块
+ * AI Agent Pro v8.3.2 - UI渲染模块
  * 未来科技感UI
  */
 
@@ -189,13 +189,16 @@
             contentHtml = displayContent ? escapeHtml(displayContent).replace(/\n/g, '<br>') : '';
         }
 
-        // 左下角操作按钮（复制、下载）- 使用data属性而不是onclick
+        // 左下角操作按钮（打开、导出、复制）- 使用data属性而不是onclick
         const leftActions = `
+            <button class="msg-action-btn" data-action="open" data-message-id="${msg.id}" title="打开">
+                <i class="fas fa-external-link-alt"></i>
+            </button>
+            <button class="msg-action-btn" data-action="download" data-message-id="${msg.id}" title="导出">
+                <i class="fas fa-download"></i>
+            </button>
             <button class="msg-action-btn" data-action="copy" data-message-id="${msg.id}" title="复制">
                 <i class="fas fa-copy"></i>
-            </button>
-            <button class="msg-action-btn" data-action="download" data-message-id="${msg.id}" title="下载">
-                <i class="fas fa-download"></i>
             </button>
         `;
         
@@ -415,11 +418,14 @@
             
             // 添加操作按钮 - 使用data属性而不是onclick
             const leftActions = `
+                <button class="msg-action-btn" data-action="open" data-message-id="${msgId}" title="打开">
+                    <i class="fas fa-external-link-alt"></i>
+                </button>
+                <button class="msg-action-btn" data-action="download" data-message-id="${msgId}" title="导出">
+                    <i class="fas fa-download"></i>
+                </button>
                 <button class="msg-action-btn" data-action="copy" data-message-id="${msgId}" title="复制">
                     <i class="fas fa-copy"></i>
-                </button>
-                <button class="msg-action-btn" data-action="download" data-message-id="${msgId}" title="下载">
-                    <i class="fas fa-download"></i>
                 </button>
             `;
             
@@ -469,7 +475,7 @@
         // 【关键】先提取图表类代码块（mermaid/chart/decision-matrix 等），必须在通用代码块之前
         // 否则会被通用正则当作普通代码块处理，导致图表无法渲染
         const diagramBlocks = [];
-        const diagramRegex = /(```|``)(mermaid|chart|decision-matrix|probability|decision-chain|project-dashboard|problem-evolution|milestones|dependency-graph|risk-matrix)\s*\n([\s\S]*?)\1/g;
+        const diagramRegex = /(```|``)(mermaid|chart|decision-matrix|probability|decision-chain|project-dashboard|problem-evolution|milestones|dependency-graph|risk-matrix|roadmap|task-classification-table|resource-constraints)\s*\n([\s\S]*?)\1/g;
         text = text.replace(diagramRegex, (match, _ticks, dtype, code) => {
             diagramBlocks.push({ type: dtype, raw: match, code: code.trim() });
             return `\x00DIAGRAM${diagramBlocks.length - 1}\x00`;
@@ -616,6 +622,9 @@
             if (d.type === 'milestones') return renderMilestones('```milestones\n' + d.code + '\n```') || d.raw;
             if (d.type === 'dependency-graph') return renderDependencyGraph('```dependency-graph\n' + d.code + '\n```') || d.raw;
             if (d.type === 'risk-matrix') return renderRiskMatrix('```risk-matrix\n' + d.code + '\n```') || d.raw;
+            if (d.type === 'roadmap') return renderRoadmap('```roadmap\n' + d.code + '\n```') || d.raw;
+            if (d.type === 'task-classification-table') return renderTaskClassificationTable('```task-classification-table\n' + d.code + '\n```') || d.raw;
+            if (d.type === 'resource-constraints') return renderResourceConstraints('```resource-constraints\n' + d.code + '\n```') || d.raw;
             return d.raw;
         });
 
@@ -1142,8 +1151,13 @@
             if (data['project-dashboard']) data = data['project-dashboard'];
             else if (data.projectDashboard) data = data.projectDashboard;
             const title = data.title || data.标题 || data.project || '项目管理仪表板';
-            let html = '<div class="diagram-block" data-diagram-type="project-dashboard"><div class="diagram-toolbar">' +
+            const dashId = 'dash_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            if (!window._tempDashboardContent) window._tempDashboardContent = {};
+            window._tempDashboardContent[dashId] = jsonContent;
+            let html = '<div class="diagram-block" data-diagram-type="project-dashboard" data-dashboard-id="' + dashId + '"><div class="diagram-toolbar">' +
                 '<button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>' +
+                '<button class="diagram-btn" data-action="open-html" title="打开"><i class="fas fa-external-link-alt"></i> 打开</button>' +
+                '<button class="diagram-btn" data-action="export-html" title="导出HTML"><i class="fas fa-file-code"></i> 导出HTML</button>' +
                 '<button class="diagram-btn" data-action="download" title="下载为PNG"><i class="fas fa-download"></i> 下载</button>' +
                 '<button class="diagram-btn" data-action="preview" title="预览"><i class="fas fa-search-plus"></i> 预览</button>' +
                 '<button class="diagram-btn" data-action="code" title="查看/隐藏代码"><i class="fas fa-code"></i> 代码</button>' +
@@ -1642,6 +1656,8 @@
             if (high.length === 0 && medium.length === 0 && low.length === 0) return null;
             let html = '<div class="diagram-block" data-diagram-type="risk-matrix"><div class="diagram-toolbar">' +
                 '<button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>' +
+                '<button class="diagram-btn" data-action="open-html" title="打开"><i class="fas fa-external-link-alt"></i> 打开</button>' +
+                '<button class="diagram-btn" data-action="export-html" title="导出HTML"><i class="fas fa-file-code"></i> 导出HTML</button>' +
                 '<button class="diagram-btn" data-action="download" title="下载为PNG"><i class="fas fa-download"></i> 下载</button>' +
                 '<button class="diagram-btn" data-action="preview" title="预览"><i class="fas fa-search-plus"></i> 预览</button>' +
                 '<button class="diagram-btn" data-action="code" title="查看/隐藏代码"><i class="fas fa-code"></i> 代码</button>' +
@@ -1668,6 +1684,111 @@
             return html;
         } catch (e) {
             window.Logger?.error('Risk matrix render error:', e);
+            return null;
+        }
+    }
+
+    function renderRoadmap(content) {
+        const match = content.match(/```roadmap\n([\s\S]*?)```/);
+        if (!match) return null;
+        try {
+            const data = JSON.parse(sanitizeJsonForParse(match[1]));
+            const codeEscaped = escapeHtml(match[1]);
+            const title = data.title || data.标题 || '项目路线图';
+            const phases = data.phases || data.阶段 || data.phasesList || [];
+            const milestones = data.milestones || data.里程碑 || [];
+            let html = '<div class="diagram-block" data-diagram-type="roadmap"><div class="diagram-toolbar">' +
+                '<button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>' +
+                '<button class="diagram-btn" data-action="download" title="下载"><i class="fas fa-download"></i> 下载</button>' +
+                '<button class="diagram-btn" data-action="code" title="代码"><i class="fas fa-code"></i> 代码</button>' +
+                '</div><div class="roadmap-container">';
+            html += `<h4><i class="fas fa-route"></i> ${escapeHtml(title)}</h4>`;
+            if (phases.length > 0) {
+                html += '<div class="roadmap-phases">';
+                phases.forEach((p, i) => {
+                    const name = p.name || p.阶段 || p.phase || '';
+                    const start = p.start || p.开始 || '';
+                    const end = p.end || p.结束 || '';
+                    const ms = p.milestones || p.里程碑 || [];
+                    html += `<div class="roadmap-phase"><div class="roadmap-phase-header"><span class="phase-name">${escapeHtml(name)}</span><span class="phase-dates">${escapeHtml(start)} ~ ${escapeHtml(end)}</span></div>`;
+                    if (ms.length) html += '<ul class="phase-milestones">' + ms.map(m => `<li>${escapeHtml(typeof m === 'string' ? m : (m.name || m))}</li>`).join('') + '</ul>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            if (milestones.length > 0) {
+                html += '<div class="roadmap-milestones"><h5><i class="fas fa-flag-checkered"></i> 里程碑</h5><div class="milestones-timeline">';
+                milestones.forEach(m => {
+                    const item = typeof m === 'string' ? { name: m } : (m || {});
+                    const name = item.name || item.title || item.名称 || '';
+                    const date = item.date || item.日期 || item.targetDate || '';
+                    const desc = item.description || item.描述 || '';
+                    html += `<div class="milestone-item"><div class="milestone-marker"></div><div class="milestone-content"><span class="milestone-name">${escapeHtml(name)}</span><span class="milestone-date">${escapeHtml(date)}</span>${desc ? `<p class="milestone-desc">${escapeHtml(desc)}</p>` : ''}</div></div>`;
+                });
+                html += '</div></div>';
+            }
+            html += '</div><pre class="diagram-code-panel" style="display:none"><code>' + codeEscaped + '</code></pre></div>';
+            return html;
+        } catch (e) {
+            window.Logger?.error('Roadmap render error:', e);
+            return null;
+        }
+    }
+
+    function renderTaskClassificationTable(content) {
+        const match = content.match(/```task-classification-table\n([\s\S]*?)```/);
+        if (!match) return null;
+        try {
+            const raw = match[1].trim();
+            const codeEscaped = escapeHtml(match[1]);
+            const lines = raw.split('\n').filter(l => l.trim());
+            let tableHtml = '';
+            if (lines.length >= 2 && /^\s*\|.*\|\s*$/.test(lines[0])) {
+                tableHtml = renderMarkdownTable(raw);
+            } else {
+                tableHtml = '<table class="markdown-table"><tbody>' + lines.map((line, i) => {
+                    const cells = line.split('|').map(c => c.trim()).filter(c => c && !/^-+$/.test(c));
+                    if (cells.length === 0) return '';
+                    const tag = (i === 0 || /^-+$/.test(lines[i - 1])) ? 'th' : 'td';
+                    return '<tr>' + cells.map(c => `<${tag}>${escapeHtml(c)}</${tag}>`).join('') + '</tr>';
+                }).filter(Boolean).join('') + '</tbody></table>';
+            }
+            let html = '<div class="diagram-block" data-diagram-type="task-classification-table"><div class="diagram-toolbar">' +
+                '<button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>' +
+                '<button class="diagram-btn" data-action="code" title="代码"><i class="fas fa-code"></i> 代码</button>' +
+                '</div><div class="task-classification-container">';
+            html += '<h4><i class="fas fa-table"></i> 任务分类表</h4><div class="task-classification-table-wrapper">' + (tableHtml || escapeHtml(raw)) + '</div>';
+            html += '</div><pre class="diagram-code-panel" style="display:none"><code>' + codeEscaped + '</code></pre></div>';
+            return html;
+        } catch (e) {
+            window.Logger?.error('Task classification table render error:', e);
+            return null;
+        }
+    }
+
+    function renderResourceConstraints(content) {
+        const match = content.match(/```resource-constraints\n([\s\S]*?)```/);
+        if (!match) return null;
+        try {
+            const data = JSON.parse(sanitizeJsonForParse(match[1]));
+            const codeEscaped = escapeHtml(match[1]);
+            const constraints = data.constraints || data.资源约束 || data.items || [];
+            let html = '<div class="diagram-block" data-diagram-type="resource-constraints"><div class="diagram-toolbar">' +
+                '<button class="diagram-btn" data-action="fullscreen" title="全屏"><i class="fas fa-expand"></i> 全屏</button>' +
+                '<button class="diagram-btn" data-action="code" title="代码"><i class="fas fa-code"></i> 代码</button>' +
+                '</div><div class="resource-constraints-container">';
+            html += '<h4><i class="fas fa-exclamation-circle"></i> 资源约束</h4><ul class="resource-constraints-list">';
+            (Array.isArray(constraints) ? constraints : []).forEach(c => {
+                const item = typeof c === 'string' ? { description: c } : (c || {});
+                const type = item.type || item.类型 || '约束';
+                const desc = item.description || item.描述 || item.desc || '';
+                const impact = item.impact || item.影响 || '';
+                html += `<li><span class="constraint-type">${escapeHtml(type)}</span> ${escapeHtml(desc)}${impact ? ` <span class="constraint-impact">(${escapeHtml(impact)})</span>` : ''}</li>`;
+            });
+            html += '</ul></div><pre class="diagram-code-panel" style="display:none"><code>' + codeEscaped + '</code></pre></div>';
+            return html;
+        } catch (e) {
+            window.Logger?.error('Resource constraints render error:', e);
             return null;
         }
     }
@@ -1827,6 +1948,20 @@
                         });
                     }
                     break;
+                case 'open-html':
+                    if (block.dataset.diagramType === 'project-dashboard') {
+                        openProjectDashboardHtml(block);
+                    } else if (block.dataset.diagramType === 'risk-matrix') {
+                        openRiskMatrixHtml(block);
+                    }
+                    break;
+                case 'export-html':
+                    if (block.dataset.diagramType === 'project-dashboard') {
+                        exportProjectDashboardHtml(block);
+                    } else if (block.dataset.diagramType === 'risk-matrix') {
+                        exportRiskMatrixHtml(block);
+                    }
+                    break;
                 case 'preview':
                     openDiagramPreview(block);
                     break;
@@ -1859,7 +1994,7 @@
         overlay.className = 'diagram-fullscreen-overlay';
         overlay.innerHTML = `<div class="diagram-fullscreen-content"><button class="diagram-close-btn"><i class="fas fa-times"></i></button><div class="diagram-fullscreen-body"></div></div>`;
         const body = overlay.querySelector('.diagram-fullscreen-body');
-        const viz = block.querySelector('.mermaid-container, .chart-container, .decision-matrix-container, .probability-container, .decision-chain-container, .project-dashboard-container, .problem-evolution-container, .milestones-container, .dependency-graph-container, .risk-matrix-container');
+        const viz = block.querySelector('.mermaid-container, .chart-container, .decision-matrix-container, .probability-container, .decision-chain-container, .project-dashboard-container, .problem-evolution-container, .milestones-container, .dependency-graph-container, .risk-matrix-container, .roadmap-container, .task-classification-container, .resource-constraints-container');
         if (viz) {
             const canvas = viz.querySelector('canvas');
             if (canvas) {
@@ -1903,6 +2038,238 @@
         a.download = 'chart-' + Date.now() + '.png';
         a.href = canvas.toDataURL('image/png');
         a.click();
+    }
+
+    /** 导出 project-dashboard 为完整 HTML 文件（参考 533/costco 模板，避免乱码、信息不全） */
+    function exportProjectDashboardHtml(block) {
+        const dashId = block?.getAttribute('data-dashboard-id');
+        let jsonContent = dashId ? (window._tempDashboardContent?.[dashId] || '') : (block?.querySelector('.diagram-code-panel code')?.textContent || '');
+        if (!jsonContent) {
+            showToast?.('仪表盘数据为空', 'error');
+            return;
+        }
+        try {
+            let data = parseProjectDashboardJson(jsonContent);
+            if (data['project-dashboard']) data = data['project-dashboard'];
+            else if (data.projectDashboard) data = data.projectDashboard;
+            const title = escapeHtml(String(data.title || data.标题 || data.project || '项目仪表盘'));
+            const project = escapeHtml(String(data.project || data.项目 || '—'));
+            const owner = escapeHtml(String(data.owner || data.负责人 || '—'));
+            const date = escapeHtml(String(data.date || data.日期 || new Date().toLocaleDateString('zh-CN')));
+            const status = escapeHtml(String(data.status || data.状态 || '—'));
+
+            const alertBanner = data.alert_banner || data.alertBanner;
+            let alertHtml = '';
+            if (alertBanner && typeof alertBanner === 'object' && (alertBanner.level || alertBanner.message)) {
+                alertHtml = `<div class="glass-panel rounded-xl p-4 mb-4 border-l-4 border-amber-500"><div class="flex items-center gap-2"><i class="fas fa-exclamation-triangle text-amber-400 text-xl"></i><span class="font-semibold text-amber-200">${escapeHtml(String(alertBanner.level || ''))}</span><span class="text-slate-300 ml-2">${escapeHtml(String(alertBanner.message || ''))}</span></div></div>`;
+            } else if (typeof alertBanner === 'string' && alertBanner) {
+                alertHtml = `<div class="glass-panel rounded-xl p-4 mb-4 border-l-4 border-amber-500"><div class="flex items-center gap-2"><i class="fas fa-exclamation-triangle text-amber-400 text-xl"></i><span class="text-slate-300">${escapeHtml(alertBanner)}</span></div></div>`;
+            }
+
+            const leveragePoints = data.leverage_points || data.leveragePoints || data.杠杆点 || [];
+            const lpArr = Array.isArray(leveragePoints) ? leveragePoints : [];
+            let lpHtml = lpArr.map(l => `<li><i class="fas fa-check-circle text-emerald-500 mr-2"></i>${escapeHtml(String(typeof l === 'string' ? l : (l.text || l.desc || l.name || '—')))}</li>`).join('');
+            if (!lpHtml) lpHtml = '<li><i class="fas fa-check-circle text-emerald-500 mr-2"></i>—</li>';
+
+            const blockerPriority = data.blocker_priority || data.blockerPriority || data.阻塞项优先级 || [];
+            let blockerHtml = '';
+            (Array.isArray(blockerPriority) ? blockerPriority : []).forEach(b => {
+                const items = (b.items || b.blockers || []).length ? (b.items || b.blockers) : [b.item || b.name || b.blocker || b];
+                const level = String(b.level || b.priority || '');
+                const isP0 = level.indexOf('P0') >= 0 || level.indexOf('致命') >= 0;
+                items.forEach(it => {
+                    const txt = typeof it === 'string' ? it : (it.text || it.name || it);
+                    if (txt) blockerHtml += `<div class="risk-card rounded-lg p-4 ${isP0 ? 'bg-red-500/10 border border-red-500/30' : 'bg-amber-500/10 border border-amber-500/30'} transition-all" data-level="${isP0 ? 'p0' : 'p1'}"><div class="flex justify-between"><span>${escapeHtml(String(txt))}</span><span class="${isP0 ? 'text-red-400' : 'text-amber-400'}">${escapeHtml(level) || (isP0 ? 'P0/致命' : 'P1/严重')}</span></div></div>`;
+                });
+            });
+            if (!blockerHtml) blockerHtml = '<p class="text-slate-400">暂无</p>';
+
+            const criticalClosure = data.critical_closure || data.criticalClosure || data.严重问题闭环 || [];
+            const ccArr = Array.isArray(criticalClosure) ? criticalClosure : (criticalClosure.items || []);
+            let ccHtml = ccArr.length ? ccArr.map(c => `<div class="flex flex-col md:flex-row md:items-center gap-2 p-3 bg-slate-800/50 rounded-lg"><span class="font-medium">${escapeHtml(String(c.problem || c.name || c.问题 || ''))}</span><span class="text-amber-400">${escapeHtml(String(c.status || c.状态 || ''))}</span><span class="text-slate-400 text-sm">${escapeHtml(String(c.next_action || c.nextAction || c.下一步 || ''))}</span></div>`).join('') : '<p class="text-slate-400">暂无</p>';
+
+            const keyActions = data.key_actions || data.keyActions || data.关键行动 || [];
+            const kaArr = Array.isArray(keyActions) ? keyActions : [];
+            let kaHtml = kaArr.length ? kaArr.map(a => { const o = typeof a === 'object' ? a : {}; return `<li><span class="text-cyan-400">@${escapeHtml(String(o.owner || o.负责人 || '责任人'))}</span> ${escapeHtml(String(o.action || o.行动 || ''))}</li>`; }).join('') : '<li class="text-slate-400">暂无</li>';
+
+            const resourceLoad = data.resource_load || data.resourceLoad || data.资源负荷 || [];
+            const rlArr = Array.isArray(resourceLoad) ? resourceLoad : [];
+            let rlHtml = rlArr.length ? rlArr.map(r => { const o = typeof r === 'object' ? r : {}; return `<div class="p-3 rounded-lg bg-slate-800/50"><span class="text-slate-400">${escapeHtml(String(o.name || o.资源 || ''))}</span><p class="font-medium">${escapeHtml(String(o.load || o.负荷 || '—'))}</p></div>`; }).join('') : '<div class="p-3 rounded-lg bg-slate-800/50"><span class="text-slate-400">硬件</span><p class="font-medium">—</p></div><div class="p-3 rounded-lg bg-slate-800/50"><span class="text-slate-400">软件</span><p class="font-medium">—</p></div><div class="p-3 rounded-lg bg-slate-800/50"><span class="text-slate-400">测试</span><p class="font-medium">—</p></div>';
+
+            const html = '\uFEFF' + `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${title} - 项目仪表盘</title>
+    <script src="https://cdn.tailwindcss.com"><\/script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;}
+        .glass-panel{background:rgba(15,23,42,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(148,163,184,0.1);}
+        .risk-card:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(0,0,0,0.3);}
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-6">
+${alertHtml}
+<div class="glass-panel rounded-xl p-6 mb-4">
+    <h1 class="text-2xl font-bold mb-4"><i class="fas fa-tachometer-alt text-cyan-400 mr-2"></i>${title}</h1>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div><span class="text-slate-400">项目</span><p class="font-medium">${project}</p></div>
+        <div><span class="text-slate-400">负责人</span><p class="font-medium">${owner}</p></div>
+        <div><span class="text-slate-400">日期</span><p class="font-medium" id="live-date">${date}</p></div>
+        <div><span class="text-slate-400">状态</span><p class="font-medium text-amber-400">${status}</p></div>
+    </div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+    <div class="glass-panel rounded-xl p-4 border-l-4 border-red-500"><div class="text-3xl font-bold text-red-400" id="p0-count">0</div><div class="text-slate-400 text-sm">P0/致命</div></div>
+    <div class="glass-panel rounded-xl p-4 border-l-4 border-amber-500"><div class="text-3xl font-bold text-amber-400" id="p1-count">0</div><div class="text-slate-400 text-sm">P1/严重</div></div>
+    <div class="glass-panel rounded-xl p-4 border-l-4 border-cyan-500"><div class="text-3xl font-bold text-cyan-400">—</div><div class="text-slate-400 text-sm">进行中任务</div></div>
+    <div class="glass-panel rounded-xl p-4 border-l-4 border-emerald-500"><div class="text-3xl font-bold text-emerald-400">—</div><div class="text-slate-400 text-sm">已完成</div></div>
+</div>
+<div class="glass-panel rounded-xl p-6 mb-4"><h2 class="text-lg font-semibold mb-3"><i class="fas fa-hand-pointer text-cyan-400 mr-2"></i>杠杆点</h2><ul class="space-y-2 text-slate-300">${lpHtml}</ul></div>
+<div class="glass-panel rounded-xl p-6 mb-4"><h2 class="text-lg font-semibold mb-3"><i class="fas fa-ban text-red-400 mr-2"></i>阻塞项优先级</h2><div class="space-y-3">${blockerHtml}</div></div>
+<div class="glass-panel rounded-xl p-6 mb-4"><h2 class="text-lg font-semibold mb-3"><i class="fas fa-check-double text-emerald-400 mr-2"></i>严重问题闭环</h2><div class="space-y-3 text-slate-300">${ccHtml}</div></div>
+<div class="glass-panel rounded-xl p-6 mb-4"><h2 class="text-lg font-semibold mb-3"><i class="fas fa-users text-cyan-400 mr-2"></i>关键资源负荷</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4">${rlHtml}</div></div>
+<div class="glass-panel rounded-xl p-6 mb-4"><h2 class="text-lg font-semibold mb-3"><i class="fas fa-bolt text-cyan-400 mr-2"></i>关键行动</h2><ul class="space-y-3 text-slate-300">${kaHtml}</ul></div>
+<footer class="text-center text-slate-500 text-sm py-4">${new Date().toLocaleString('zh-CN')}、工作秘书、MECE,可链接/下载</footer>
+<script>document.getElementById('live-date').textContent=new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});document.getElementById('p0-count').textContent=document.querySelectorAll('[data-level="p0"]').length;document.getElementById('p1-count').textContent=document.querySelectorAll('[data-level="p1"]').length;</script>
+</body>
+</html>`;
+
+            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `项目仪表盘-${Date.now()}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('HTML 已下载', 'success');
+        } catch (e) {
+            showToast?.('导出失败: ' + (e.message || '解析错误'), 'error');
+        }
+    }
+
+    function openProjectDashboardHtml(block) {
+        const dashId = block?.getAttribute('data-dashboard-id');
+        let jsonContent = dashId ? (window._tempDashboardContent?.[dashId] || '') : (block?.querySelector('.diagram-code-panel code')?.textContent || '');
+        if (!jsonContent) {
+            showToast?.('仪表盘数据为空', 'error');
+            return;
+        }
+        try {
+            let data = parseProjectDashboardJson(jsonContent);
+            if (data['project-dashboard']) data = data['project-dashboard'];
+            else if (data.projectDashboard) data = data.projectDashboard;
+            const title = escapeHtml(String(data.title || data.标题 || data.project || '项目仪表盘'));
+            const project = escapeHtml(String(data.project || data.项目 || '—'));
+            const owner = escapeHtml(String(data.owner || data.负责人 || '—'));
+            const date = escapeHtml(String(data.date || data.日期 || new Date().toLocaleDateString('zh-CN')));
+            const status = escapeHtml(String(data.status || data.状态 || '—'));
+            const alertBanner = data.alert_banner || data.alertBanner;
+            let alertHtml = '';
+            if (alertBanner && typeof alertBanner === 'object' && (alertBanner.level || alertBanner.message)) {
+                alertHtml = `<div class="glass-panel rounded-xl p-4 mb-4 border-l-4 border-amber-500"><div class="flex items-center gap-2"><i class="fas fa-exclamation-triangle text-amber-400 text-xl"></i><span class="font-semibold text-amber-200">${escapeHtml(String(alertBanner.level || ''))}</span><span class="text-slate-300 ml-2">${escapeHtml(String(alertBanner.message || ''))}</span></div></div>`;
+            } else if (typeof alertBanner === 'string' && alertBanner) {
+                alertHtml = `<div class="glass-panel rounded-xl p-4 mb-4 border-l-4 border-amber-500"><div class="flex items-center gap-2"><i class="fas fa-exclamation-triangle text-amber-400 text-xl"></i><span class="text-slate-300">${escapeHtml(alertBanner)}</span></div></div>`;
+            }
+            const leveragePoints = data.leverage_points || data.leveragePoints || data.杠杆点 || [];
+            const lpArr = Array.isArray(leveragePoints) ? leveragePoints : [];
+            let lpHtml = lpArr.map(l => `<li><i class="fas fa-check-circle text-emerald-500 mr-2"></i>${escapeHtml(String(typeof l === 'string' ? l : (l.text || l.desc || l.name || '—')))}</li>`).join('');
+            if (!lpHtml) lpHtml = '<li><i class="fas fa-check-circle text-emerald-500 mr-2"></i>—</li>';
+            const blockerPriority = data.blocker_priority || data.blockerPriority || data.阻塞项优先级 || [];
+            let blockerHtml = '';
+            (Array.isArray(blockerPriority) ? blockerPriority : []).forEach(b => {
+                const items = (b.items || b.blockers || []).length ? (b.items || b.blockers) : [b.item || b.name || b.blocker || b];
+                const level = String(b.level || b.priority || '');
+                const isP0 = level.indexOf('P0') >= 0 || level.indexOf('致命') >= 0;
+                items.forEach(it => {
+                    const txt = typeof it === 'string' ? it : (it.text || it.name || it);
+                    if (txt) blockerHtml += `<div class="risk-card rounded-lg p-4 ${isP0 ? 'bg-red-500/10 border border-red-500/30' : 'bg-amber-500/10 border border-amber-500/30'} transition-all" data-level="${isP0 ? 'p0' : 'p1'}"><div class="flex justify-between"><span>${escapeHtml(String(txt))}</span><span class="${isP0 ? 'text-red-400' : 'text-amber-400'}">${escapeHtml(level) || (isP0 ? 'P0/致命' : 'P1/严重')}</span></div></div>`;
+                });
+            });
+            if (!blockerHtml) blockerHtml = '<p class="text-slate-400">暂无</p>';
+            const criticalClosure = data.critical_closure || data.criticalClosure || data.严重问题闭环 || [];
+            const ccArr = Array.isArray(criticalClosure) ? criticalClosure : (criticalClosure.items || []);
+            let ccHtml = ccArr.length ? ccArr.map(c => `<div class="flex flex-col md:flex-row md:items-center gap-2 p-3 bg-slate-800/50 rounded-lg"><span class="font-medium">${escapeHtml(String(c.problem || c.name || c.问题 || ''))}</span><span class="text-amber-400">${escapeHtml(String(c.status || c.状态 || ''))}</span><span class="text-slate-400 text-sm">${escapeHtml(String(c.next_action || c.nextAction || c.下一步 || ''))}</span></div>`).join('') : '<p class="text-slate-400">暂无</p>';
+            const keyActions = data.key_actions || data.keyActions || data.关键行动 || [];
+            const kaArr = Array.isArray(keyActions) ? keyActions : [];
+            let kaHtml = kaArr.length ? kaArr.map(a => { const o = typeof a === 'object' ? a : {}; return `<li><span class="text-cyan-400">@${escapeHtml(String(o.owner || o.负责人 || '责任人'))}</span> ${escapeHtml(String(o.action || o.行动 || ''))}</li>`; }).join('') : '<li class="text-slate-400">暂无</li>';
+            const resourceLoad = data.resource_load || data.resourceLoad || data.资源负荷 || [];
+            const rlArr = Array.isArray(resourceLoad) ? resourceLoad : [];
+            let rlHtml = rlArr.length ? rlArr.map(r => { const o = typeof r === 'object' ? r : {}; return `<div class="p-3 rounded-lg bg-slate-800/50"><span class="text-slate-400">${escapeHtml(String(o.name || o.资源 || ''))}</span><p class="font-medium">${escapeHtml(String(o.load || o.负荷 || '—'))}</p></div>`; }).join('') : '<div class="p-3 rounded-lg bg-slate-800/50"><span class="text-slate-400">硬件</span><p class="font-medium">—</p></div><div class="p-3 rounded-lg bg-slate-800/50"><span class="text-slate-400">软件</span><p class="font-medium">—</p></div><div class="p-3 rounded-lg bg-slate-800/50"><span class="text-slate-400">测试</span><p class="font-medium">—</p></div>';
+            const html = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${title} - 项目仪表盘</title><script src="https://cdn.tailwindcss.com"><\/script><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"><style>body{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;}.glass-panel{background:rgba(15,23,42,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(148,163,184,0.1);}.risk-card:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(0,0,0,0.3);}</style></head><body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-6">${alertHtml}<div class="glass-panel rounded-xl p-6 mb-4"><h1 class="text-2xl font-bold mb-4"><i class="fas fa-tachometer-alt text-cyan-400 mr-2"></i>${title}</h1><div class="grid grid-cols-1 md:grid-cols-4 gap-4"><div><span class="text-slate-400">项目</span><p class="font-medium">${project}</p></div><div><span class="text-slate-400">负责人</span><p class="font-medium">${owner}</p></div><div><span class="text-slate-400">日期</span><p class="font-medium" id="live-date">${date}</p></div><div><span class="text-slate-400">状态</span><p class="font-medium text-amber-400">${status}</p></div></div></div><div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4"><div class="glass-panel rounded-xl p-4 border-l-4 border-red-500"><div class="text-3xl font-bold text-red-400" id="p0-count">0</div><div class="text-slate-400 text-sm">P0/致命</div></div><div class="glass-panel rounded-xl p-4 border-l-4 border-amber-500"><div class="text-3xl font-bold text-amber-400" id="p1-count">0</div><div class="text-slate-400 text-sm">P1/严重</div></div><div class="glass-panel rounded-xl p-4 border-l-4 border-cyan-500"><div class="text-3xl font-bold text-cyan-400">—</div><div class="text-slate-400 text-sm">进行中任务</div></div><div class="glass-panel rounded-xl p-4 border-l-4 border-emerald-500"><div class="text-3xl font-bold text-emerald-400">—</div><div class="text-slate-400 text-sm">已完成</div></div></div><div class="glass-panel rounded-xl p-6 mb-4"><h2 class="text-lg font-semibold mb-3"><i class="fas fa-hand-pointer text-cyan-400 mr-2"></i>杠杆点</h2><ul class="space-y-2 text-slate-300">${lpHtml}</ul></div><div class="glass-panel rounded-xl p-6 mb-4"><h2 class="text-lg font-semibold mb-3"><i class="fas fa-ban text-red-400 mr-2"></i>阻塞项优先级</h2><div class="space-y-3">${blockerHtml}</div></div><div class="glass-panel rounded-xl p-6 mb-4"><h2 class="text-lg font-semibold mb-3"><i class="fas fa-check-double text-emerald-400 mr-2"></i>严重问题闭环</h2><div class="space-y-3 text-slate-300">${ccHtml}</div></div><div class="glass-panel rounded-xl p-6 mb-4"><h2 class="text-lg font-semibold mb-3"><i class="fas fa-users text-cyan-400 mr-2"></i>关键资源负荷</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4">${rlHtml}</div></div><div class="glass-panel rounded-xl p-6 mb-4"><h2 class="text-lg font-semibold mb-3"><i class="fas fa-bolt text-cyan-400 mr-2"></i>关键行动</h2><ul class="space-y-3 text-slate-300">${kaHtml}</ul></div><footer class="text-center text-slate-500 text-sm py-4">${new Date().toLocaleString('zh-CN')}、工作秘书、MECE</footer><script>document.getElementById('live-date').textContent=new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});document.getElementById('p0-count').textContent=document.querySelectorAll('[data-level="p0"]').length;document.getElementById('p1-count').textContent=document.querySelectorAll('[data-level="p1"]').length;</script></body></html>`;
+            const win = window.open('', '_blank');
+            if (win) { win.document.write(html); win.document.close(); }
+        } catch (e) {
+            showToast?.('打开失败: ' + (e.message || '解析错误'), 'error');
+        }
+    }
+
+    /** 风险矩阵：导出/打开 HTML */
+    function buildRiskMatrixHtml(block) {
+        const codeEl = block?.querySelector('.diagram-code-panel code');
+        const raw = codeEl?.textContent?.trim() || '';
+        if (!raw) return null;
+        let high = [], medium = [], low = [];
+        try {
+            if (raw.startsWith('{')) {
+                const data = JSON.parse(sanitizeJsonForParse(raw));
+                high = data.high || data.high_risk || data.高风险 || [];
+                medium = data.medium || data.medium_risk || data.中风险 || [];
+                low = data.low || data.low_risk || data.低风险 || [];
+            } else {
+                const lines = raw.split(/\r?\n/);
+                let current = null;
+                for (let i = 0; i < lines.length; i++) {
+                    const t = lines[i].trim();
+                    if (/^(#+\s*|\*{0,2})?(高风险|High\s*Risk|high)(\s*[（(].*)?[：:]?\s*$/i.test(t)) { current = 'high'; continue; }
+                    if (/^(#+\s*|\*{0,2})?(中风险|Medium\s*Risk|medium)(\s*[（(].*)?[：:]?\s*$/i.test(t)) { current = 'medium'; continue; }
+                    if (/^(#+\s*|\*{0,2})?(低风险|Low\s*Risk|low)(\s*[（(].*)?[：:]?\s*$/i.test(t)) { current = 'low'; continue; }
+                    const m = lines[i].match(/^\s*[-*]?\s*\d+\.?\s*(.+)$/) || lines[i].match(/^\s*[-*]\s+(.+)$/);
+                    if (m && current) {
+                        const item = m[1].trim();
+                        if (item && !/^(高风险|中风险|低风险|High|Medium|Low)/i.test(item)) {
+                            if (current === 'high') high.push(item);
+                            else if (current === 'medium') medium.push(item);
+                            else low.push(item);
+                        }
+                    }
+                }
+            }
+            high = Array.isArray(high) ? high : [];
+            medium = Array.isArray(medium) ? medium : [];
+            low = Array.isArray(low) ? low : [];
+        } catch (e) { return null; }
+        const toLi = (arr) => arr.map(x => `<li>${escapeHtml(String(typeof x === 'string' ? x : (x.text || x.desc || x.name || JSON.stringify(x))))}</li>`).join('');
+        const highUl = high.length ? `<div class="risk-matrix-col risk-high"><div class="risk-matrix-header"><i class="fas fa-circle"></i> 高风险</div><ul>${toLi(high)}</ul></div>` : '<div class="risk-matrix-col risk-high"><div class="risk-matrix-header"><i class="fas fa-circle"></i> 高风险</div><ul><li class="text-slate-400">暂无</li></ul></div>';
+        const medUl = medium.length ? `<div class="risk-matrix-col risk-medium"><div class="risk-matrix-header"><i class="fas fa-circle"></i> 中风险</div><ul>${toLi(medium)}</ul></div>` : '<div class="risk-matrix-col risk-medium"><div class="risk-matrix-header"><i class="fas fa-circle"></i> 中风险</div><ul><li class="text-slate-400">暂无</li></ul></div>';
+        const lowUl = low.length ? `<div class="risk-matrix-col risk-low"><div class="risk-matrix-header"><i class="fas fa-circle"></i> 低风险</div><ul>${toLi(low)}</ul></div>` : '<div class="risk-matrix-col risk-low"><div class="risk-matrix-header"><i class="fas fa-circle"></i> 低风险</div><ul><li class="text-slate-400">暂无</li></ul></div>';
+        return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>风险矩阵</title><script src="https://cdn.tailwindcss.com"><\/script><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"><style>body{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;}.glass-panel{background:rgba(15,23,42,0.6);backdrop-filter:blur(12px);}.risk-matrix-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;}.risk-high .risk-matrix-header{color:#f87171;}.risk-medium .risk-matrix-header{color:#fbbf24;}.risk-low .risk-matrix-header{color:#34d399;}</style></head><body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-6"><div class="glass-panel rounded-xl p-6"><h2 class="text-xl font-bold mb-4"><i class="fas fa-exclamation-triangle text-amber-400 mr-2"></i>风险矩阵</h2><div class="risk-matrix-grid">${highUl}${medUl}${lowUl}</div></div><footer class="text-center text-slate-500 text-sm py-4">${new Date().toLocaleString('zh-CN')}</footer></body></html>`;
+    }
+
+    function exportRiskMatrixHtml(block) {
+        const html = buildRiskMatrixHtml(block);
+        if (!html) { showToast?.('风险矩阵数据为空', 'error'); return; }
+        const blob = new Blob(['\uFEFF' + html], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `风险矩阵-${Date.now()}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('HTML 已下载', 'success');
+    }
+
+    function openRiskMatrixHtml(block) {
+        const html = buildRiskMatrixHtml(block);
+        if (!html) { showToast?.('风险矩阵数据为空', 'error'); return; }
+        const win = window.open('', '_blank');
+        if (win) { win.document.write(html); win.document.close(); }
     }
 
     // ==================== 检测输出格式 ====================
@@ -2121,17 +2488,24 @@
 
     // 渲染H5内容
     function renderH5Content(content) {
-        // 提取HTML内容
         let htmlContent = content;
+        const isFullHtml = /<!DOCTYPE\s+html[\s\S]*<\/html>\s*$/i.test(content.trim());
         if (content.includes('<!DOCTYPE html>') || content.includes('<html')) {
-            // 已经是HTML，直接展示预览
             htmlContent = content;
         } else {
-            // 将Markdown转换为简单的HTML预览
             htmlContent = renderMarkdown(content);
         }
 
-        return `<div class="h5-output-container">
+        // 完整 HTML 文档存入临时存储，供下载/预览使用（避免 innerHTML 解析后丢失结构或乱码）
+        let dataH5Id = '';
+        if (isFullHtml) {
+            const h5Id = 'h5_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            if (!window._tempH5Content) window._tempH5Content = {};
+            window._tempH5Content[h5Id] = htmlContent;
+            dataH5Id = ` data-h5-id="${h5Id}"`;
+        }
+
+        return `<div class="h5-output-container"${dataH5Id}>
             <div class="h5-output-header">
                 <span class="h5-output-label"><i class="fas fa-mobile-alt"></i> H5 网页</span>
                 <div class="h5-output-actions">
@@ -2261,44 +2635,55 @@
     // ==================== 多模态输出操作 ====================
     function previewH5(btn) {
         const container = btn.closest('.h5-output-container');
-        const content = container.querySelector('.h5-preview-content').innerHTML;
-
+        const h5Id = container?.getAttribute('data-h5-id');
+        let content = h5Id ? (window._tempH5Content?.[h5Id] || '') : (container?.querySelector('.h5-preview-content')?.innerHTML || '');
+        if (!content) {
+            showToast?.('预览内容为空', 'error');
+            return;
+        }
+        const isFullDoc = /<!DOCTYPE\s+html[\s\S]*<\/html>\s*$/i.test(content.trim());
+        const htmlToWrite = isFullDoc ? content : buildH5Wrapper(content, 'H5 预览');
         const previewWindow = window.open('', '_blank');
-        previewWindow.document.write(`
-            <!DOCTYPE html>
-            <html lang="zh-CN">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>H5 预览</title>
-                <style>
-                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
-                    img { max-width: 100%; height: auto; }
-                    pre { background: #f4f4f4; padding: 15px; border-radius: 8px; overflow-x: auto; }
-                    code { font-family: 'Consolas', 'Monaco', monospace; }
-                    table { border-collapse: collapse; width: 100%; margin: 15px 0; }
-                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                    th { background: #f5f5f5; }
-                </style>
-            </head>
-            <body>${content}</body>
-            </html>
-        `);
+        if (!previewWindow) {
+            showToast?.('弹窗被拦截，请允许站点弹窗后重试', 'warning');
+            return;
+        }
+        previewWindow.document.write(htmlToWrite);
         previewWindow.document.close();
     }
 
     function downloadH5(btn) {
         const container = btn.closest('.h5-output-container');
-        const content = container.querySelector('.h5-preview-content').innerHTML;
+        const h5Id = container?.getAttribute('data-h5-id');
+        let content = h5Id ? (window._tempH5Content?.[h5Id] || '') : (container?.querySelector('.h5-preview-content')?.innerHTML || '');
+        if (!content) {
+            showToast?.('下载内容为空', 'error');
+            return;
+        }
+        const isFullDoc = /<!DOCTYPE\s+html[\s\S]*<\/html>\s*$/i.test(content.trim());
+        const htmlContent = isFullDoc ? content : buildH5Wrapper(content, 'AI Agent Pro 导出');
+        const blob = new Blob(['\uFEFF' + htmlContent], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ai-agent-export-${Date.now()}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('HTML文件已下载', 'success');
+    }
 
-        const htmlContent = `<!DOCTYPE html>
+    /** 构建 H5 包装页（含 UTF-8 声明、中文字体，避免乱码） */
+    function buildH5Wrapper(bodyContent, title) {
+        return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Agent Pro 导出</title>
+    <title>${escapeHtml(title)}</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+        body { font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif; padding: 20px; max-width: 900px; margin: 0 auto; line-height: 1.6; }
         img { max-width: 100%; height: auto; }
         pre { background: #f4f4f4; padding: 15px; border-radius: 8px; overflow-x: auto; }
         code { font-family: 'Consolas', 'Monaco', monospace; background: #f4f4f4; padding: 2px 6px; border-radius: 4px; }
@@ -2309,20 +2694,8 @@
         blockquote { border-left: 4px solid #ddd; margin: 0; padding-left: 16px; color: #666; }
     </style>
 </head>
-<body>${content}</body>
+<body>${bodyContent}</body>
 </html>`;
-
-        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `ai-agent-export-${Date.now()}.html`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        showToast('HTML文件已下载', 'success');
     }
 
     function downloadAsPDF(contentOrId) {
@@ -2349,7 +2722,7 @@
         }
         
         // 由于浏览器无法直接生成PDF，我们生成一个HTML文件，用户可以使用浏览器的打印功能保存为PDF
-        const htmlContent = `<!DOCTYPE html>
+        const htmlContent = '\uFEFF' + `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -2540,18 +2913,39 @@
         }
     }
 
-    function downloadMessage(messageId) {
-        if (!messageId) {
-            showToast('消息ID无效', 'error');
+    function openMessage(messageId) {
+        const msg = findMessageById(messageId);
+        if (!msg) {
+            showToast('消息不存在或无法加载', 'error');
             return;
         }
-        let msg = (window.AppState.messages || []).find(m => m.id === messageId);
-        if (!msg && (window.AppState.chats || []).length > 0) {
+        const htmlContent = formatAsHTML(msg);
+        const win = window.open('', '_blank');
+        if (!win) {
+            showToast('弹窗被拦截，请允许站点弹窗后重试', 'warning');
+            return;
+        }
+        win.document.write(htmlContent);
+        win.document.close();
+    }
+
+    function findMessageById(messageId) {
+        let msg = (window.AppState?.messages || []).find(m => m.id === messageId);
+        if (!msg && (window.AppState?.chats || []).length > 0) {
             for (const chat of window.AppState.chats) {
                 msg = (chat.messages || []).find(m => m.id === messageId);
                 if (msg) break;
             }
         }
+        return msg;
+    }
+
+    function downloadMessage(messageId) {
+        if (!messageId) {
+            showToast('消息ID无效', 'error');
+            return;
+        }
+        const msg = findMessageById(messageId);
         if (!msg) {
             showToast('消息不存在或无法加载', 'error');
             return;
@@ -2569,7 +2963,7 @@
         dialog.innerHTML = `
             <div class="modal-content" style="max-width: 400px;">
                 <div class="modal-header">
-                    <h3><i class="fas fa-download"></i> 下载消息</h3>
+                    <h3><i class="fas fa-download"></i> 导出消息</h3>
                     <button class="modal-close" onclick="AIAgentUI.closeModal('download-format-dialog')">
                         <i class="fas fa-times"></i>
                     </button>
@@ -2586,7 +2980,7 @@
                         </button>
                         <button class="download-format-btn" data-format="html">
                             <i class="fas fa-file-code"></i>
-                            <span>HTML (H5)</span>
+                            <span>HTML</span>
                             <small>.html</small>
                         </button>
                         <button class="download-format-btn" data-format="txt">
@@ -2701,14 +3095,14 @@
             <hr>
         ` : '';
         
-        return `<!DOCTYPE html>
+        return '\uFEFF' + `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Agent Pro - 消息记录</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; background: #f5f5f5; }
+        body { font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif; max-width: 900px; margin: 40px auto; padding: 20px; background: #f5f5f5; }
         .container { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .header { border-bottom: 1px solid #eee; padding-bottom: 16px; margin-bottom: 24px; }
         .header h1 { margin: 0; font-size: 1.5rem; }
@@ -2730,7 +3124,7 @@
         </div>
         ${thinkingSection}
         <div class="message-content">
-            ${renderMarkdown(msg.content)}
+            ${renderContentByFormat(renderMarkdown(msg.content), msg.outputFormat || detectOutputFormat(msg.content))}
         </div>
     </div>
 </body>
@@ -4384,6 +4778,16 @@ ${ex.content}`).join('\n\n')}
                             <option value="analysis">数据分析</option>
                         </select>
                     </div>
+                    <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="form-group">
+                            <label>截止时间</label>
+                            <input type="text" id="plan-deadline" placeholder="如：2025-03-15 或 下周">
+                        </div>
+                        <div class="form-group">
+                            <label>人力资源</label>
+                            <input type="text" id="plan-human-resources" placeholder="如：2人、1人兼职">
+                        </div>
+                    </div>
                     <div class="form-group">
                         <label>资源配置</label>
                         <div class="resource-toggles">
@@ -4432,7 +4836,9 @@ ${ex.content}`).join('\n\n')}
                 enableSkills: dialog.querySelector('#plan-enable-skills').checked,
                 enableRules: dialog.querySelector('#plan-enable-rules').checked,
                 enableMCP: dialog.querySelector('#plan-enable-mcp').checked,
-                enableRAG: dialog.querySelector('#plan-enable-rag').checked
+                enableRAG: dialog.querySelector('#plan-enable-rag').checked,
+                deadline: dialog.querySelector('#plan-deadline')?.value?.trim() || null,
+                humanResources: dialog.querySelector('#plan-human-resources')?.value?.trim() || null
             };
 
             closeModal('create-plan-dialog');
@@ -4441,23 +4847,28 @@ ${ex.content}`).join('\n\n')}
             try {
                 const plan = await window.PlanManager.createPlan(title, description, options);
                 
-                // 调用AI生成TODO
                 const analysisPrompt = window.PlanManager.buildAnalysisPrompt(title, description, 
-                    window.AIAgentApp.getSubAgentResources(window.AIAgentApp.getCurrentSubAgent().id));
+                    window.AIAgentApp.getSubAgentResources(window.AIAgentApp.getCurrentSubAgent().id),
+                    { deadline: options.deadline, humanResources: options.humanResources, subAgents: window.AIAgentApp.getSubAgentList() });
                 
                 const result = await window.LLMService.invokeIntelligentAgent(
                     [{ role: 'user', content: analysisPrompt }],
                     { modelId: 'auto', outputFormat: 'markdown' }
                 );
 
-                const todos = window.PlanManager.parseTodoList(result.content);
-                if (todos.length > 0) {
-                    plan.todos = todos;
-                    window.PlanManager.updatePlan(plan.id, { todos });
+                const parsed = window.PlanManager.parsePlanFullOutput(result.content, plan);
+                if (parsed.todos.length > 0) {
+                    plan.todos = parsed.todos;
                 }
+                if (parsed.roadmap) plan.roadmap = parsed.roadmap;
+                if (parsed.milestones?.length) plan.milestones = parsed.milestones;
+                if (parsed.riskMatrix) plan.riskMatrix = parsed.riskMatrix;
+                if (parsed.resourceConstraints?.length) plan.resourceConstraints = parsed.resourceConstraints;
+                if (parsed.dependencyGraph) plan.dependencyGraph = parsed.dependencyGraph;
+                window.PlanManager.updatePlan(plan.id, plan);
 
                 renderPlanManager();
-                showToast(`计划创建成功，包含 ${todos.length} 个任务`, 'success');
+                showToast(`计划创建成功，包含 ${plan.todos.length} 个任务`, 'success');
                 showPlanDetail(plan.id);
             } catch (error) {
                 window.ErrorHandler?.handle(error, {
@@ -4495,6 +4906,11 @@ ${ex.content}`).join('\n\n')}
                         <span>${progress}% 完成</span>
                     </div>
                     <div class="plan-detail-desc">${escapeHtml(plan.description || '')}</div>
+                    ${(plan.deadline || plan.humanResources) ? `<div class="plan-detail-meta"><span>${plan.deadline ? '截止: ' + escapeHtml(plan.deadline) : ''}</span>${plan.humanResources ? '<span>人力: ' + escapeHtml(plan.humanResources) + '</span>' : ''}</div>` : ''}
+                    ${plan.roadmap ? `<div class="plan-roadmap-section"><h4><i class="fas fa-route"></i> 路线图</h4><div class="plan-roadmap-preview">${(plan.roadmap.phases || []).map(p => `<div class="phase-item"><strong>${escapeHtml(p.name || p.阶段 || '')}</strong> ${escapeHtml((p.start || '') + ' ~ ' + (p.end || ''))}</div>`).join('') || escapeHtml(plan.roadmap.title || '')}</div></div>` : ''}
+                    ${(plan.milestones || []).length ? `<div class="plan-milestones-section"><h4><i class="fas fa-flag-checkered"></i> 里程碑</h4><ul class="plan-milestones-list">${plan.milestones.map(m => `<li><span class="ms-name">${escapeHtml(typeof m === 'string' ? m : (m.name || m.title || ''))}</span>${typeof m === 'object' && m.date ? `<span class="ms-date">${escapeHtml(m.date)}</span>` : ''}</li>`).join('')}</ul></div>` : ''}
+                    ${plan.riskMatrix && (plan.riskMatrix.high?.length || plan.riskMatrix.medium?.length || plan.riskMatrix.low?.length) ? `<div class="plan-risk-section"><h4><i class="fas fa-exclamation-triangle"></i> 风险矩阵</h4><div class="plan-risk-preview"><span class="risk-high">高: ${(plan.riskMatrix.high || []).length}项</span><span class="risk-medium">中: ${(plan.riskMatrix.medium || []).length}项</span><span class="risk-low">低: ${(plan.riskMatrix.low || []).length}项</span></div></div>` : ''}
+                    ${(plan.resourceConstraints || []).length ? `<div class="plan-constraints-section"><h4><i class="fas fa-exclamation-circle"></i> 资源约束</h4><ul>${plan.resourceConstraints.map(c => `<li>${escapeHtml(typeof c === 'string' ? c : (c.type || '') + ': ' + (c.description || c.desc || ''))}</li>`).join('')}</ul></div>` : ''}
                     <div class="plan-todo-list">
                         <h4>任务列表 (${plan.todos?.length || 0})</h4>
                         ${(plan.todos || []).map((todo, index) => `
@@ -4504,8 +4920,10 @@ ${ex.content}`).join('\n\n')}
                                     <div class="todo-title">${escapeHtml(todo.title)}</div>
                                     <div class="todo-desc">${escapeHtml(todo.description || '')}</div>
                                     <div class="todo-meta">
-                                        <span class="todo-priority ${todo.priority}">${todo.priority}</span>
-                                        ${todo.estimatedTime ? `<span><i class="fas fa-clock"></i> ${todo.estimatedTime}</span>` : ''}
+                                        <span class="todo-priority ${todo.priority || 'P1'}">${todo.priority || 'P1'}</span>
+                                        ${todo.category ? `<span class="todo-category">${escapeHtml(todo.category)}</span>` : ''}
+                                        ${todo.subAgentId ? `<span class="todo-agent" title="绑定助手">${escapeHtml(todo.subAgentId)}</span>` : ''}
+                                        ${todo.estimatedTime ? `<span><i class="fas fa-clock"></i> ${todo.estimatedTime}min</span>` : ''}
                                     </div>
                                 </div>
                                 <div class="todo-actions">
@@ -4524,6 +4942,8 @@ ${ex.content}`).join('\n\n')}
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <button class="btn-secondary" onclick="AIAgentUI.exportPlanAs('${plan.id}', 'md')" title="导出为Markdown"><i class="fas fa-file-alt"></i> MD</button>
+                    <button class="btn-secondary" onclick="AIAgentUI.exportPlanAs('${plan.id}', 'html')" title="导出为HTML"><i class="fas fa-file-code"></i> HTML</button>
                     <button class="btn-secondary" onclick="AIAgentUI.closeModal('plan-detail-dialog')">关闭</button>
                     ${plan.status === 'active' ? `
                     <button class="btn-primary" onclick="AIAgentUI.continuePlan('${plan.id}')">
@@ -4579,6 +4999,57 @@ ${ex.content}`).join('\n\n')}
         // 执行下一个待办
         const nextTodo = pendingTodos[0];
         await executeTodo(planId, nextTodo.id);
+    }
+
+    function exportPlanAs(planId, format) {
+        const plan = window.PlanManager?.getPlan?.(planId);
+        if (!plan) { showToast('计划不存在', 'error'); return; }
+        const safe = (s) => (s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        if (format === 'md') {
+            let md = `# ${plan.title}\n\n${plan.description || ''}\n\n`;
+            if (plan.deadline) md += `**截止时间**: ${plan.deadline}\n`;
+            if (plan.humanResources) md += `**人力资源**: ${plan.humanResources}\n\n`;
+            if (plan.roadmap?.phases?.length) {
+                md += `## 路线图\n\n`;
+                plan.roadmap.phases.forEach(p => { md += `- **${p.name || ''}**: ${p.start || ''} ~ ${p.end || ''}\n`; });
+                md += '\n';
+            }
+            if (plan.milestones?.length) {
+                md += `## 里程碑\n\n`;
+                plan.milestones.forEach(m => { const n = typeof m === 'string' ? m : (m.name || m.title || ''); const d = typeof m === 'object' ? m.date : ''; md += `- ${n}${d ? ' (' + d + ')' : ''}\n`; });
+                md += '\n';
+            }
+            if (plan.riskMatrix && (plan.riskMatrix.high?.length || plan.riskMatrix.medium?.length || plan.riskMatrix.low?.length)) {
+                md += `## 风险矩阵\n\n`;
+                if (plan.riskMatrix.high?.length) md += `### 高风险\n${plan.riskMatrix.high.map(i => `- ${i}`).join('\n')}\n\n`;
+                if (plan.riskMatrix.medium?.length) md += `### 中风险\n${plan.riskMatrix.medium.map(i => `- ${i}`).join('\n')}\n\n`;
+                if (plan.riskMatrix.low?.length) md += `### 低风险\n${plan.riskMatrix.low.map(i => `- ${i}`).join('\n')}\n\n`;
+            }
+            if (plan.resourceConstraints?.length) {
+                md += `## 资源约束\n\n`;
+                plan.resourceConstraints.forEach(c => { md += `- ${typeof c === 'string' ? c : (c.type || '') + ': ' + (c.description || c.desc || '')}\n`; });
+                md += '\n';
+            }
+            md += `## 任务列表\n\n| # | 任务 | 分类 | 优先级 | 依赖 | 状态 |\n|---|------|------|--------|------|------|\n`;
+            (plan.todos || []).forEach((t, i) => { md += `| ${i + 1} | ${t.title} | ${t.category || '-'} | ${t.priority || '-'} | ${(t.dependencies || []).join(', ') || '-'} | ${t.status || 'pending'} |\n`; });
+            const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `计划-${plan.title}-${Date.now()}.md`; a.click(); URL.revokeObjectURL(a.href);
+        } else if (format === 'html') {
+            let html = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>${safe(plan.title)}</title><style>body{font-family:sans-serif;max-width:800px;margin:2rem auto;padding:1rem;} table{border-collapse:collapse;width:100%;} th,td{border:1px solid #333;padding:8px;} .risk-high{color:#f87171;} .risk-medium{color:#fbbf24;} .risk-low{color:#34d399;}</style></head><body><h1>${safe(plan.title)}</h1><p>${safe(plan.description)}</p>`;
+            if (plan.deadline) html += `<p><strong>截止时间</strong>: ${safe(plan.deadline)}</p>`;
+            if (plan.humanResources) html += `<p><strong>人力资源</strong>: ${safe(plan.humanResources)}</p>`;
+            if (plan.roadmap?.phases?.length) { html += '<h2>路线图</h2><ul>'; plan.roadmap.phases.forEach(p => { html += `<li><strong>${safe(p.name)}</strong>: ${safe(p.start)} ~ ${safe(p.end)}</li>`; }); html += '</ul>'; }
+            if (plan.milestones?.length) { html += '<h2>里程碑</h2><ul>'; plan.milestones.forEach(m => { const n = typeof m === 'string' ? m : (m.name || m.title || ''); html += `<li>${safe(n)}</li>`; }); html += '</ul>'; }
+            if (plan.riskMatrix?.high?.length || plan.riskMatrix?.medium?.length || plan.riskMatrix?.low?.length) {
+                html += '<h2>风险矩阵</h2><p class="risk-high">高风险: ' + (plan.riskMatrix.high || []).join('; ') + '</p><p class="risk-medium">中风险: ' + (plan.riskMatrix.medium || []).join('; ') + '</p><p class="risk-low">低风险: ' + (plan.riskMatrix.low || []).join('; ') + '</p>';
+            }
+            html += '<h2>任务列表</h2><table><thead><tr><th>#</th><th>任务</th><th>分类</th><th>优先级</th><th>依赖</th><th>状态</th></tr></thead><tbody>';
+            (plan.todos || []).forEach((t, i) => { html += `<tr><td>${i + 1}</td><td>${safe(t.title)}</td><td>${safe(t.category)}</td><td>${safe(t.priority)}</td><td>${(t.dependencies || []).join(', ')}</td><td>${safe(t.status)}</td></tr>`; });
+            html += '</tbody></table></body></html>';
+            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `计划-${plan.title}-${Date.now()}.html`; a.click(); URL.revokeObjectURL(a.href);
+        }
+        showToast(`已导出为${format.toUpperCase()}`, 'success');
     }
 
     // ==================== 模态框管理 ====================
@@ -4796,6 +5267,7 @@ ${ex.content}`).join('\n\n')}
         renderPlanCard,
         showCreatePlanDialog,
         showPlanDetail,
+        exportPlanAs,
         executeTodo,
         activatePlan,
         continuePlan,
@@ -4804,6 +5276,7 @@ ${ex.content}`).join('\n\n')}
         closeAllModals,
         closeImagePreview,
         copyMessage,
+        openMessage,
         downloadMessage,
         speakMessage,
         regenerateMessage,

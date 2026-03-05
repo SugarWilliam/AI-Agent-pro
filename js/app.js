@@ -1,12 +1,12 @@
 /**
- * AI Agent Pro v8.3.1 - 应用状态管理
+ * AI Agent Pro v8.3.2 - 应用状态管理
  * 多模态AI Agent - 支持输入输出多模态
  */
 
 (function() {
     'use strict';
 
-    const VERSION = '8.3.1';
+    const VERSION = '8.3.2';
     const STORAGE_KEY = 'ai_agent_state_v6';
 
     /** Agent 与渲染器对接：图表格式规范（Agent 必须按此输出，渲染器按此解析） */
@@ -41,6 +41,9 @@
 字段名用英文下划线，JSON 用英文双引号。`,
         mermaid: `节点标签内换行必须用 <br/>，禁止真实换行。例：A[第一行<br/>第二行] 或 B{平台<br/>组件}。`,
         riskMatrix: `使用 \`\`\`risk-matrix 代码块。支持 JSON：{high:[], medium:[], low:[]} 或 文本：高风险/中风险/低风险 标题后跟列表项。`,
+        roadmap: `使用 \`\`\`roadmap 代码块。JSON：{title, phases:[{name,start,end,milestones:[]}], milestones:[{name,date,description}]}`,
+        taskClassificationTable: `使用 \`\`\`task-classification-table 代码块。Markdown 表格：| 任务ID | 任务标题 | 分类 | 优先级 | 难度 | 预计工时 | 绑定SubAgent | 依赖 |`,
+        resourceConstraints: `使用 \`\`\`resource-constraints 代码块。JSON：{constraints:[{type,description,impact}]}`,
         jsonRule: `JSON 一律使用英文双引号 "，禁止弯引号 ""。`
     };
     const CUSTOM_MODELS_KEY = 'ai_agent_custom_models_v6';
@@ -1668,7 +1671,8 @@ ${prompt}
             rules: ['rule_format', 'rule_tone', 'rule_safety', 'rule_multimodal'],
             mcp: ['mcp_web_search'],
             rag: ['rag_general', 'rag_logic', 'rag_neuroscience'],
-            color: '#3b82f6'
+            color: '#3b82f6',
+            delegateTo: ['prompt_expert']
         },
         creative: {
             id: 'creative',
@@ -1721,7 +1725,8 @@ ${prompt}
             rules: ['rule_format', 'rule_tone', 'rule_examples', 'rule_multimodal'],
             mcp: ['mcp_web_search'],
             rag: ['rag_literature', 'rag_logic', 'rag_neuroscience'],
-            color: '#8b5cf6'
+            color: '#8b5cf6',
+            delegateTo: ['prompt_expert']
         },
         code: {
             id: 'code',
@@ -1774,109 +1779,89 @@ ${prompt}
             rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure'],
             mcp: ['mcp_web_search', 'mcp_filesystem'],
             rag: ['rag_linux', 'rag_ai', 'rag_logic', 'rag_neuroscience'],
-            color: '#10b981'
+            color: '#10b981',
+            delegateTo: ['prompt_expert']
         },
         task: {
             id: 'task',
             name: '任务助手',
-            description: '任务管理、待办事项、进度跟踪',
+            description: '任务管理、MECE分解、分类分级、依赖分析、表格输出',
             icon: 'fa-tasks',
-            systemPrompt: `你是一位任务管理专家，擅长帮助用户管理任务、制定计划、跟踪进度。
+            systemPrompt: `你是一位任务管理专家，擅长 MECE 分解、分类分级、依赖分析和表格化输出。
 
-【核心能力框架】
+【核心能力】
 
-一、逻辑思维（基于逻辑学知识库）
-1. 任务分解逻辑：
-   - MECE原则（相互独立，完全穷尽）
-   - 依赖关系分析
-   - 前置条件识别
-2. 优先级逻辑：
-   - 紧急重要矩阵
-   - 价值与成本权衡
-   - 风险与收益分析
+一、MECE 原则（Mutually Exclusive, Collectively Exhaustive）
+- 相互独立：任务之间无重叠、无交叉
+- 完全穷尽：覆盖目标全部范围，无遗漏
+- 原子化：每个任务为可独立执行的原子单元（单一职责、可验收）
 
-二、认知优化（基于脑科学知识库）
-1. 注意力管理：
-   - 单任务专注
-   - 避免上下文切换
-   - 番茄工作法
-2. 记忆辅助：
-   - 清单化
-   - 可视化进度
-   - 定期回顾
+二、分类与分级
+- 分类：按业务域/模块分类（如：需求、设计、开发、测试、部署）
+- 优先级：P0(紧急重要)、P1(重要不紧急)、P2(紧急不重要)、P3(可延后)
+- 难度：easy/medium/hard（影响时间估算）
 
-三、任务管理能力
-1. 复杂任务分解
-2. 优先级设置
-3. 时间安排
-4. 进度跟踪
-5. 执行建议
+三、依赖关系
+- 识别任务间 FS(完成-开始)、SS(开始-开始)、FF(完成-完成)、SF(开始-完成) 依赖
+- 输出 dependency-graph 代码块：{nodes:[{id,label}], edges:[{from,to,label}]}
 
-四、输出规范
-1. 清晰的任务结构
-2. 可执行的步骤
-3. 合理的优先级
-4. 可视化的进度追踪`,
-            capabilities: ['任务管理', '待办事项', '进度跟踪', '优先级排序', 'MECE分解', '时间管理'],
+四、输出规范（必须使用）
+- 任务分类表：使用 \`\`\`task-classification-table 代码块，输出 Markdown 表格
+  格式：| 任务ID | 任务标题 | 分类 | 优先级 | 难度 | 预计工时 | 依赖 |
+- 依赖关系图：使用 \`\`\`dependency-graph 代码块
+- 任务列表：使用 \`\`\`json 代码块输出结构化 TODO 数组`,
+            capabilities: ['任务管理', 'MECE分解', '分类分级', '优先级排序', '原子化', '依赖分析', '表格输出'],
             modelPreference: ['deepseek-chat', 'glm-4-flash'],
-            skills: ['skill_planner', 'skill_writer'],
+            skills: ['skill_mece', 'skill_planner', 'skill_dependency', 'skill_writer'],
             rules: ['rule_format', 'rule_structure'],
             mcp: ['mcp_web_search'],
             rag: ['rag_logic', 'rag_neuroscience'],
-            color: '#f59e0b'
+            color: '#f59e0b',
+            delegateTo: ['prompt_expert']
         },
         plan: {
             id: 'plan',
             name: '计划大师',
-            description: '项目规划、时间管理、目标设定',
+            description: 'Roadmap、里程碑、风险矩阵、资源约束、任务-SubAgent强绑定、智能规划',
             icon: 'fa-calendar-alt',
-            systemPrompt: `你是一位计划制定专家，擅长项目规划、时间管理和目标设定。
+            systemPrompt: `你是一位计划制定专家，擅长 Roadmap、里程碑、风险矩阵、资源约束识别和智能规划。
 
-【核心能力框架】
+【核心能力】
 
-一、逻辑思维（基于逻辑学知识库）
-1. 目标分解逻辑：
-   - 金字塔原理（目标→策略→行动）
-   - 因果关系链
-   - 必要与充分条件
-2. 计划验证：
-   - 可行性分析
-   - 资源约束检查
-   - 风险评估逻辑
+一、Roadmap 与里程碑
+- 输出 \`\`\`roadmap 代码块：{title, phases:[{name,start,end,milestones:[]}], milestones:[{name,date,description}]}
+- 支持 HTML 和 Markdown 格式导出
 
-二、认知优化（基于脑科学知识库）
-1. SMART目标设定：
-   - Specific（具体）
-   - Measurable（可衡量）
-   - Achievable（可实现）
-   - Relevant（相关）
-   - Time-bound（有时限）
-2. 执行心理：
-   - 启动效应
-   - 习惯养成
-   - 正向反馈
+二、依赖关系与风险矩阵
+- 依赖关系：\`\`\`dependency-graph 代码块 {nodes, edges}
+- 风险矩阵：\`\`\`risk-matrix 代码块 {high:[], medium:[], low:[]}
 
-三、计划能力
-1. 项目规划
-2. 时间管理
-3. 目标设定
-4. 里程碑安排
-5. TODO生成与跟踪
-6. 执行策略制定
+三、资源约束识别
+- 识别人力、时间、工具等约束
+- 输出 \`\`\`resource-constraints 代码块：{constraints:[{type,description,impact}]}
 
-四、输出规范
-1. 详细可行的计划
-2. SMART目标
-3. 清晰的里程碑
-4. 可执行的行动步骤
-5. 可视化的进度追踪`,
-            capabilities: ['项目规划', '时间管理', '目标设定', '里程碑安排', 'TODO生成', '金字塔原理', 'SMART目标'],
+四、时间点智能识别
+- 将自然语言时间（如"下周"、"Q2"、"月底"）转为具体日期或相对天数
+
+五、任务-SubAgent 强绑定
+- 为每个任务指定最合适的 SubAgent（subAgentId）
+- 可用 SubAgent：task、plan、general、coder、analyst 等，根据任务类型匹配
+
+六、智能规划
+- 根据 **任务难度**、**人力资源**、**任务数量**、**deadline** 进行时间和计划智能规划
+- 输出 \`\`\`task-classification-table 表格，含：任务ID、标题、分类、优先级、难度、工时、绑定SubAgent、依赖
+
+七、输出规范（必须使用）
+- roadmap、milestones、dependency-graph、risk-matrix、resource-constraints、task-classification-table
+- TODO 列表：\`\`\`json 代码块，每项含 subAgentId、dependencies、targetDate`,
+            capabilities: ['Roadmap', '里程碑', '依赖关系', '风险矩阵', '资源约束', '任务-SubAgent绑定', '智能规划', '时间识别'],
             modelPreference: ['deepseek-chat', 'glm-4-plus'],
-            skills: ['skill_planner', 'skill_writer'],
+            skills: ['skill_mece', 'skill_planner', 'skill_gantt', 'skill_dependency', 'skill_risk_identification', 'skill_writer'],
             rules: ['rule_format', 'rule_structure'],
             mcp: ['mcp_web_search'],
             rag: ['rag_logic', 'rag_neuroscience'],
-            color: '#ec4899'
+            color: '#ec4899',
+            delegateTo: ['prompt_expert']
         },
         super_decision: {
             id: 'super_decision',
@@ -2125,7 +2110,8 @@ ${prompt}
             rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
             rag: ['rag_finance', 'rag_social', 'rag_first_principles', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_logic', 'rag_temporal_logic', 'rag_common_sense', 'rag_history', 'rag_industry_reports', 'rag_government_reports'],
-            color: '#8b5cf6'
+            color: '#8b5cf6',
+            delegateTo: ['prompt_expert']
         },
         cognitive: {
             id: 'cognitive',
@@ -2167,14 +2153,55 @@ ${prompt}
             rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
             rag: ['rag_psychology', 'rag_neuroscience', 'rag_first_principles', 'rag_iceberg_model', 'rag_social'],
-            color: '#14b8a6'
+            color: '#14b8a6',
+            delegateTo: ['prompt_expert']
+        },
+        prompt_expert: {
+            id: 'prompt_expert',
+            name: '提示词专家',
+            description: '提示词设计、优化与工程化，帮助用户写出高质量、可复用的 AI 提示词',
+            icon: 'fa-magic',
+            systemPrompt: `你是一位提示词工程专家，擅长设计、优化和工程化 AI 提示词（Prompt）。
+
+【核心能力】
+
+一、提示词设计
+1. 需求澄清：帮助用户明确目标、受众、约束和期望输出格式
+2. 结构设计：角色设定、任务描述、上下文注入、输出规范、示例（Few-shot）
+3. 模式选择：零样本、少样本、思维链（CoT）、自洽性、分步推理等
+4. 边界控制：明确禁止项、敏感词过滤、输出长度与格式
+
+二、提示词优化
+1. 歧义消除：识别并修正模糊、多义、冲突的表述
+2. 信息密度：精简冗余、补充关键信息、平衡详略
+3. 指令清晰：动词明确、顺序合理、层级分明
+4. 抗干扰：增强鲁棒性，减少模型幻觉与跑题
+
+三、工程化实践
+1. 模板化：可复用模板、变量占位、条件分支
+2. 版本管理：迭代记录、A/B 对比、效果评估
+3. 多模型适配：针对不同模型（GPT、Claude、GLM、DeepSeek 等）的调优建议
+4. 系统提示词：为 Agent、工作流设计系统级提示词
+
+四、输出规范
+1. 直接给出优化后的提示词，用 \`\`\` 代码块包裹
+2. 简要说明设计思路与关键改动点
+3. 提供变体或可选方案（如需要）
+4. 标注适用场景与注意事项`,
+            capabilities: ['提示词设计', '提示词优化', 'Few-shot 示例', '思维链设计', '角色设定', '输出格式规范', '多模型适配', '系统提示词', '模板化', '需求澄清'],
+            modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
+            skills: ['skill_writer', 'skill_analyst', 'skill_brainstorm'],
+            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure'],
+            mcp: ['mcp_web_search'],
+            rag: ['rag_ai', 'rag_logic', 'rag_psychology', 'rag_neuroscience'],
+            color: '#f59e0b'
         },
         work_secretary: {
             id: 'work_secretary',
             name: '工作秘书',
             description: '研发项目管理协调、可根据任务组织调度其他Agent；利用海量知识提供合理化思路和切实可行的方案（技术、策略、方法、决策）。默认具备超级决策能力',
             icon: 'fa-briefcase',
-            delegateTo: [],
+            delegateTo: ['prompt_expert'],
             serviceTarget: '',
             ignoreInfoDesc: '',
             systemPrompt: `你是{{serviceTarget}}的工作秘书，负责你的{{serviceTarget}}所有工作，包括但不限于 1. 研发项目管理和协调 （实时汇报项目全景状态、问题闭环情况、各任务线的推进情况、阻塞项、问题时间线和演化路径等）并利用海量知识提供合理化思路和切实可行的方案。2. 团队情况（人、事、物、时、风险）管理、建设、建议。3. {{serviceTarget}}各项任务的监控和识别，分类。你是最顶级秘书，4. 回答问题思路超级清晰，洞察深刻，语气合适。
@@ -2219,7 +2246,14 @@ ${prompt}
 4. 整合多维度：技术+策略+方法+决策，避免空泛建议
 5. 风险前置：识别并标注关键风险
 
-【核心输出结构】汇报项目/任务时，必须包含以下模块，使用 project-dashboard 代码块输出。
+【核心输出结构】汇报项目/任务时，必须包含以下模块，使用 project-dashboard 代码块输出 JSON，配合 Markdown 文本说明。
+
+【交付产物要求】产物必须可归档为以下格式，便于打开、导出与分享：
+- Markdown（.md）：结构化汇报、列表、表格
+- 纯文本（.txt）：便于快速查阅
+- HTML（.html）：支持打开预览、导出归档
+
+【全息复盘总结】当用户要求复盘、总结、回顾时，输出全息复盘总结，包含：时间线、关键决策、得失分析、经验教训、改进建议。输出格式为 HTML 或 Markdown，便于归档。
 
 【project-dashboard 格式规范】必须严格按此结构输出，否则渲染失败：
 ${DIAGRAM_FORMAT_SPEC.projectDashboard}
@@ -2229,7 +2263,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
 2. 关键资源负荷：resource_load（数组 [{name,load}]）
 3. 依赖情况：dependencies、blocking_deps、critical_path
 4. 认知偏差：cognitive_biases`,
-            capabilities: ['研发项目管理协调', '根据任务组织调度Agent', '超级决策能力', '海量知识整合', '合理化思路', '切实可行方案', '技术策略方法决策', '问题闭环/扩散/变迁/泛化识别', 'PMP', 'WBS', '根因分析', '风险识别', '研发技术'],
+            capabilities: ['研发项目管理协调', '根据任务组织调度Agent', '超级决策能力', '海量知识整合', '合理化思路', '切实可行方案', '技术策略方法决策', '问题闭环/扩散/变迁/泛化识别', '全息复盘总结(HTML/Markdown归档)', '产物归档(Markdown/TXT/HTML)', 'PMP', 'WBS', '根因分析', '风险识别', '研发技术'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_pmp', 'skill_wbs', 'skill_root_cause', 'skill_risk_identification', 'skill_gantt', 'skill_dependency', 'skill_temporal_relation', 'skill_planner', 'skill_mece', 'skill_mermaid_visualization', 'skill_bug_analysis', 'skill_testing_strategy', 'skill_problem_evolution', 'skill_decision_expert', 'skill_cognitive_psychology', 'skill_swot', 'skill_first_principles', 'skill_iceberg_model', 'skill_pyramid', 'skill_smart'],
             rules: ['rule_format', 'rule_structure', 'rule_accuracy', 'rule_examples'],
@@ -2364,6 +2398,10 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
             if (window.RAGManager && typeof window.RAGManager.init === 'function') {
                 window.RAGManager.init();
                 window.Logger?.info('RAGManager初始化完成');
+            }
+            // 初始化PlanManager（加载计划）
+            if (window.PlanManager && typeof window.PlanManager.init === 'function') {
+                window.PlanManager.init();
             }
             
             updateSplashProgress(95, '正在初始化界面...');
@@ -2921,6 +2959,11 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
     }
 
     // 获取Sub Agent引用的资源
+    function getSubAgentList() {
+        const agents = AppState.subAgents || {};
+        return Object.values(agents).map(a => ({ id: a.id, name: a.name || a.id }));
+    }
+
     function getSubAgentResources(subAgentId) {
         const subAgent = AppState.subAgents?.[subAgentId];
         const empty = { skills: [], rules: [], mcp: [], rag: [] };
@@ -3254,6 +3297,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
         getAPIKey,
         hasValidAPIKey,
         getCurrentSubAgent,
+        getSubAgentList,
         getCurrentModel,
         autoSelectModel,
         autoSelectOutputFormat,

@@ -4664,6 +4664,55 @@ body {
     accent-color: var(--primary);
 }
 
+/* 计划详情：元信息、路线图、里程碑、风险、约束 */
+.plan-detail-meta {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+.plan-roadmap-section, .plan-milestones-section, .plan-risk-section, .plan-constraints-section {
+    margin-bottom: 16px;
+}
+.plan-roadmap-section h4, .plan-milestones-section h4, .plan-risk-section h4, .plan-constraints-section h4 {
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+}
+.plan-roadmap-preview .phase-item {
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+.plan-milestones-list {
+    list-style: none;
+    padding-left: 0;
+}
+.plan-milestones-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 13px;
+}
+.plan-risk-preview {
+    display: flex;
+    gap: 1rem;
+    font-size: 13px;
+}
+.plan-risk-preview .risk-high { color: var(--error); }
+.plan-risk-preview .risk-medium { color: var(--warning); }
+.plan-risk-preview .risk-low { color: var(--success); }
+.plan-constraints-section ul {
+    padding-left: 1.2rem;
+    font-size: 13px;
+}
+.todo-category, .todo-agent {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-left: 6px;
+}
+
 /* ==================== 移动端适配 (合并所有移动设备) ==================== */
 @media (max-width: 768px) {
     :root {

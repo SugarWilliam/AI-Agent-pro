@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.3.1 - 事件处理模块
+ * AI Agent Pro v8.3.2 - 事件处理模块
  * 未来科技感交互设计
  */
 
@@ -321,6 +321,11 @@
                         case 'copy':
                             if (window.AIAgentUI?.copyMessage) {
                                 window.AIAgentUI.copyMessage(messageId);
+                            }
+                            break;
+                        case 'open':
+                            if (window.AIAgentUI?.openMessage) {
+                                window.AIAgentUI.openMessage(messageId);
                             }
                             break;
                         case 'download':
@@ -994,10 +999,21 @@
             if (mainId && (agent.delegateTo || []).length > 0) {
                 validDelegates = (agent.delegateTo || []).filter(id => subAgents[id] && id !== mainId);
                 if (validDelegates.length > 0) {
+                    const hasPromptExpert = validDelegates.includes('prompt_expert');
+                    const firstInstruction = hasPromptExpert
+                        ? '分析任务、提炼关键需求与约束；后续将由提示词专家优化指令，再调度其他助手。根据问题决定调度顺序并监控执行'
+                        : '分析任务、根据问题决定调度后续助手并监控执行';
+                    const lastInstruction = hasPromptExpert
+                        ? '整合各助手输出（含提示词专家的精准描述），完成最终结论与交付物'
+                        : '整合各助手输出，完成最终结论与交付物';
                     workflowChainSteps = [
-                        { agentId: mainId, label: mainName, instruction: '分析任务、根据问题决定调度后续助手并监控执行' },
-                        ...validDelegates.map(id => ({ agentId: id, label: '', instruction: '' })),
-                        { agentId: mainId, label: mainName, instruction: '整合各助手输出，完成最终结论与交付物' }
+                        { agentId: mainId, label: mainName, instruction: firstInstruction },
+                        ...validDelegates.map(id => ({
+                            agentId: id,
+                            label: '',
+                            instruction: id === 'prompt_expert' ? '提炼、优化上一步的指令与描述，消除歧义，使后续助手可精准执行' : ''
+                        })),
+                        { agentId: mainId, label: mainName, instruction: lastInstruction }
                     ];
                     autoWorkflow = true;
                 }
@@ -2543,8 +2559,8 @@ tags: code, review, quality
 
         const filename = `对话_${Date.now()}.html`;
         
-        let html = `<!DOCTYPE html>
-<html>
+        let html = '\uFEFF' + `<!DOCTYPE html>
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <title>对话记录</title>
@@ -2575,7 +2591,7 @@ tags: code, review, quality
 </body>
 </html>`;
 
-        const blob = new Blob([html], { type: 'text/html' });
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -2934,6 +2950,16 @@ tags: code, review, quality
                         <label>任务描述</label>
                         <textarea id="plan-from-msg-desc" rows="4">${escapeHtml(message)}</textarea>
                     </div>
+                    <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="form-group">
+                            <label>截止时间</label>
+                            <input type="text" id="plan-from-msg-deadline" placeholder="如：2025-03-15 或 下周">
+                        </div>
+                        <div class="form-group">
+                            <label>人力资源</label>
+                            <input type="text" id="plan-from-msg-hr" placeholder="如：2人、1人兼职">
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn-secondary" onclick="AIAgentUI.closeModal('create-plan-from-msg-dialog')">取消</button>
@@ -2957,30 +2983,38 @@ tags: code, review, quality
             window.AIAgentUI?.showToast?.('正在生成计划...', 'info');
 
             try {
+                const deadline = dialog.querySelector('#plan-from-msg-deadline')?.value?.trim() || null;
+                const humanResources = dialog.querySelector('#plan-from-msg-hr')?.value?.trim() || null;
+
                 const plan = await window.PlanManager.createPlan(title, description, {
                     taskType: 'general',
                     enableSkills: true,
                     enableRules: true,
                     enableMCP: true,
-                    enableRAG: true
+                    enableRAG: true,
+                    deadline,
+                    humanResources
                 });
 
-                // 调用AI生成TODO
                 const analysisPrompt = window.PlanManager.buildAnalysisPrompt(title, description,
-                    window.AIAgentApp.getSubAgentResources(window.AIAgentApp.getCurrentSubAgent().id));
+                    window.AIAgentApp.getSubAgentResources(window.AIAgentApp.getCurrentSubAgent().id),
+                    { deadline, humanResources, subAgents: window.AIAgentApp.getSubAgentList() });
 
                 const result = await window.LLMService.invokeIntelligentAgent(
                     [{ role: 'user', content: analysisPrompt }],
                     { modelId: 'auto', outputFormat: 'markdown' }
                 );
 
-                const todos = window.PlanManager.parseTodoList(result.content);
-                if (todos.length > 0) {
-                    plan.todos = todos;
-                    window.PlanManager.updatePlan(plan.id, { todos });
-                }
+                const parsed = window.PlanManager.parsePlanFullOutput(result.content, plan);
+                if (parsed.todos.length > 0) plan.todos = parsed.todos;
+                if (parsed.roadmap) plan.roadmap = parsed.roadmap;
+                if (parsed.milestones?.length) plan.milestones = parsed.milestones;
+                if (parsed.riskMatrix) plan.riskMatrix = parsed.riskMatrix;
+                if (parsed.resourceConstraints?.length) plan.resourceConstraints = parsed.resourceConstraints;
+                if (parsed.dependencyGraph) plan.dependencyGraph = parsed.dependencyGraph;
+                window.PlanManager.updatePlan(plan.id, plan);
 
-                window.AIAgentUI?.showToast?.(`计划创建成功，包含 ${todos.length} 个任务`, 'success');
+                window.AIAgentUI?.showToast?.(`计划创建成功，包含 ${plan.todos.length} 个任务`, 'success');
                 window.AIAgentUI?.showPlanDetail?.(plan.id);
             } catch (error) {
                 window.ErrorHandler?.handle(error, {

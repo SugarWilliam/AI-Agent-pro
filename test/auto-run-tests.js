@@ -7,7 +7,7 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
 
-const TEST_URL = 'http://localhost:8080/test/comprehensive-test.html';
+const TEST_URL = 'http://localhost:8000/test/comprehensive-test.html';
 const OUTPUT_DIR = path.join(__dirname, 'test-results');
 const TIMEOUT = 300000; // 5分钟超时
 

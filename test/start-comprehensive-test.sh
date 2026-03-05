@@ -4,7 +4,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-PORT=8080
+PORT=8000
 
 echo "=========================================="
 echo "AI Agent Pro 全面测试套件 - 自动化执行"

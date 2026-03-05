@@ -1,6 +1,6 @@
 # AI Agent Pro 部署文档
 
-**版本**: v8.3.1  
+**版本**: v8.3.2  
 **日期**: 2026-03-04
 
 > GitHub Pages 部署步骤见 [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)。
@@ -91,15 +91,15 @@ chmod +x start-server.sh
 ./start-server.sh
 ```
 
-**默认端口**: 8080  
-**访问地址**: http://localhost:8080  
-**局域网**: http://本机IP:8080
+**默认端口**: 8000  
+**访问地址**: http://localhost:8000  
+**局域网**: http://本机IP:8000
 
 ### 3.2 方式二：使用 Python
 
 ```bash
 cd AI-Agent-pro
-python3 -m http.server 8080 --bind 0.0.0.0
+python3 -m http.server 8000 --bind 0.0.0.0
 ```
 
 或使用备用脚本（含 Cache-Control 优化）：
@@ -107,29 +107,29 @@ python3 -m http.server 8080 --bind 0.0.0.0
 python3 simple-server.py
 ```
 
-**访问地址**: http://localhost:8080
+**访问地址**: http://localhost:8000
 
 ### 3.3 方式三：使用 Node.js
 
 ```bash
 npm install -g http-server
 cd AI-Agent-pro
-http-server -p 8080
+http-server -p 8000
 
 # 或使用 npx（无需安装）
-npx http-server -p 8080
+npx http-server -p 8000
 ```
 
-**访问地址**: http://localhost:8080
+**访问地址**: http://localhost:8000
 
 ### 3.4 方式四：使用 PHP
 
 ```bash
 cd AI-Agent-pro
-php -S 0.0.0.0:8080
+php -S 0.0.0.0:8000
 ```
 
-**访问地址**: http://localhost:8080
+**访问地址**: http://localhost:8000
 
 ### 3.5 安装为应用（PWA）
 
@@ -330,10 +330,10 @@ CMD ["nginx", "-g", "daemon off;"]
 docker build -t ai-agent-pro .
 
 # 运行容器
-docker run -d -p 8080:80 --name ai-agent-pro ai-agent-pro
+docker run -d -p 8000:80 --name ai-agent-pro ai-agent-pro
 ```
 
-**访问地址**: http://localhost:8080
+**访问地址**: http://localhost:8000
 
 ---
 
@@ -592,13 +592,13 @@ git pull origin main
 
 ```bash
 # Python服务器
-python3 -m http.server 8080
+python3 -m http.server 8000
 
 # Node.js服务器
-npx http-server -p 8080
+npx http-server -p 8000
 
 # PHP服务器
-php -S localhost:8080
+php -S localhost:8000
 
 # Nginx重启
 sudo systemctl restart nginx
@@ -609,6 +609,6 @@ sudo nginx -t
 
 ---
 
-**文档版本**: v8.3.1  
+**文档版本**: v8.3.2  
 **最后更新**: 2026-03-03  
 **维护者**: AI Agent Pro Team

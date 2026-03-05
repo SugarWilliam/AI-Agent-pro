@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-8.3.1-blue.svg)
+![Version](https://img.shields.io/badge/version-8.3.2-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Web-lightgrey.svg)
 
@@ -39,8 +39,9 @@
 - **Claude 3**: Anthropic模型
 - **Auto模式**: 根据任务自动选择最佳模型
 
-### 🧠 智能SubAgent系统
-- **20+内置助手**: 通用助手、代码助手、写作助手、数据分析助手、学习导师、翻译专家、超级决策等
+### 🧠 智能SubAgent系统与 SubAgent 集群
+- **20+内置助手**: 通用助手、代码助手、写作助手、数据分析助手、学习导师、翻译专家、超级决策、提示词专家等
+- **SubAgent 集群**: 多 SubAgent 通过 delegateTo 关联形成执行链，主 Agent 分析任务并调度；各 SubAgent 默认绑定提示词专家，提升精准描述与精准调动能力
 - **可配置资源**: 为每个助手关联Skills、Rules、MCP、RAG资源
 - **自定义助手**: 支持创建和配置自定义SubAgent
 
@@ -51,9 +52,9 @@
 - **20+内置知识库**: 金融、哲学、文学、技术、社科等专业领域
 
 ### 🎯 任务与计划管理
-- **任务管理**: 创建、跟踪、完成待办任务
-- **计划制定**: AI辅助生成项目计划和TODO列表
-- **进度跟踪**: 可视化进度和完成状态
+- **任务管理**: 创建、跟踪、完成待办任务；MECE 分类、原子化、依赖分析、表格输出
+- **计划制定**: AI辅助生成项目计划和TODO列表；roadmap、里程碑、风险矩阵、资源约束、任务-SubAgent 强绑定
+- **进度跟踪**: 可视化进度和完成状态；支持 HTML/MD 导出
 
 ### 🎨 多模态输入输出
 - **输入支持**: 文本、图片、文档、URL
@@ -90,19 +91,19 @@ chmod +x start-server.sh
 
 ```bash
 cd AI-Agent-pro
-python3 -m http.server 8080
+python3 -m http.server 8000
 ```
 
 #### 方式三：使用Node.js
 
 ```bash
 cd AI-Agent-pro
-npx http-server -p 8080
+npx http-server -p 8000
 ```
 
 ### 访问应用
 
-打开浏览器访问: **http://localhost:8080**
+打开浏览器访问: **http://localhost:8000**
 
 ---
 
@@ -287,7 +288,7 @@ vercel
 ./start-server.sh
 
 # 访问测试页面
-http://localhost:8080/test/comprehensive-test.html
+http://localhost:8000/test/comprehensive-test.html
 ```
 
 ### 测试覆盖
@@ -368,6 +369,12 @@ http://localhost:8080/test/comprehensive-test.html
 ---
 
 ## 📝 更新日志
+
+### v8.3.2 (2026-03-04)
+
+- **任务与计划强化**：MECE、roadmap、里程碑、风险矩阵、资源约束、任务-SubAgent 强绑定、HTML/MD 导出
+- **SubAgent 集群**：各 SubAgent 默认绑定提示词专家，精准描述与精准调动
+- **文档**：MODIFICATIONS_2026-03、DESIGN_A2A 第 11 节、DESIGN 2.3
 
 ### v8.3.1 (2026-03-04)
 

@@ -51,6 +51,9 @@
 | probability | {labels, data} | 标签/数据 |
 | milestones | {title, milestones} | 多种别名 |
 | dependency-graph | {nodes, edges} | 节点/边、从/到 |
+| roadmap | {title, phases, milestones} | 路线图、阶段、里程碑 |
+| task-classification-table | Markdown 表格 | 任务分类分级表 |
+| resource-constraints | {constraints:[{type,description,impact}]} | 资源约束 |
 
 ## 六、通用规则
 - JSON 一律使用英文双引号 `"`，禁止弯引号

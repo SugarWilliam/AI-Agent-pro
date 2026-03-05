@@ -4,6 +4,34 @@
 
 ---
 
+## [8.3.2] - 2026-03-04
+
+### 任务与计划强化
+
+**计划模块**
+- MECE 原则、分类分级、原子化、依赖关系、SubAgent 强绑定
+- roadmap、里程碑、风险矩阵、资源约束、时间点智能识别
+- 根据任务难度、人力、任务数、deadline 智能规划
+- 计划详情展示路线图、里程碑、风险、约束；支持 HTML/MD 导出
+
+**任务助手与计划大师 SubAgent**
+- 任务助手：skill_mece、skill_dependency，输出 task-classification-table、dependency-graph
+- 计划大师：skill_gantt、skill_risk_identification，输出 roadmap、milestones、risk-matrix、resource-constraints
+
+### SubAgent 集群与提示词专家默认绑定
+
+- 各 SubAgent 默认 delegateTo 含 prompt_expert
+- Workflow 链：主 Agent(分析) → 提示词专家(优化指令) → 子 Agent 链 → 主 Agent(整合)
+- 启动页、侧边栏增加「SubAgent 集群」功能特性
+
+### 文档
+
+- `docs/MODIFICATIONS_2026-03.md`：修改摘要（原因、逻辑、效果）
+- `docs/DESIGN_A2A.md`：第 11 节 SubAgent 集群与提示词专家默认绑定
+- `docs/DESIGN.md`：2.3 SubAgent 集群
+
+---
+
 ## [8.3.1] - 2026-03-04
 
 ### 项目整理与清理
@@ -198,6 +226,7 @@
 
 ---
 
+[8.3.2]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.2
 [8.3.1]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.1
 [8.3.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.0
 [8.2.6]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.6
