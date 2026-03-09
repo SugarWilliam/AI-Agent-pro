@@ -240,7 +240,7 @@
         // Workflow 模板和运行按钮
         document.querySelectorAll('.workflow-template').forEach(tpl => {
             tpl.addEventListener('click', () => {
-                const placeholders = { research: '例如：分析2024年AI行业发展趋势', analysis: '例如：对比分析几种技术方案的优劣', creative: '例如：为新产品构思10个创意营销方案' };
+                const placeholders = { research: '例如：分析2024年AI行业发展趋势', analysis: '例如：对比分析几种技术方案的优劣', creative: '例如：创作一部电子书并输出 epub 格式，可上架微信读书' };
                 const inp = document.getElementById('workflow-input');
                 if (inp) inp.placeholder = placeholders[tpl.dataset.workflow] || inp.placeholder;
             });
@@ -608,7 +608,7 @@
         ],
         creative: [
             { agentId: 'general', instruction: '搜集信息' },
-            { agentId: 'creative', instruction: '头脑风暴与方案筛选' }
+            { agentId: 'creative', instruction: '深度理解文章、冗余提示与重新编排、章节重复/排序处理；询问用户是否输出完整图书，选择是则完整输出电子档附件（epub/PDF/MOBI/AZW3）' }
         ]
     };
 
@@ -805,7 +805,7 @@
         const placeholders = {
             research: '例如：分析2024年AI行业发展趋势',
             analysis: '例如：对比分析几种技术方案的优劣',
-            creative: '例如：为新产品构思10个创意营销方案'
+            creative: '例如：创作一部电子书并输出 epub 格式，可上架微信读书'
         };
         const inp = document.getElementById('workflow-input');
         if (inp) inp.placeholder = placeholders[presetId] || inp.placeholder;

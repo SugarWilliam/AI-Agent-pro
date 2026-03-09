@@ -1283,6 +1283,11 @@ body {
     border-top-right-radius: var(--radius-xs);
 }
 
+/* 续写气泡：长回复自动拆分时的视觉衔接 */
+.message.message-continuation {
+    margin-top: 4px;
+}
+
 /* 消息附件：仅显示文件名，不展开内容 */
 .message-attachments {
     display: flex;
@@ -5504,7 +5509,7 @@ body {
     
     /* 资源选择区域适配 */
     .subagent-resources-section {
-        max-height: 180px;
+        max-height: min(350px, 50vh);
         padding: 8px;
     }
     
@@ -5744,13 +5749,13 @@ body {
     transform: rotate(-90deg);
 }
 
-/* 资源卡片网格 */
+/* 资源卡片网格：增大高度以列出所有资源，避免仅显示部分 */
 .resource-cards-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 10px;
     padding: 12px;
-    max-height: 240px;
+    max-height: min(420px, 50vh);
     overflow-y: auto;
 }
 
@@ -6015,7 +6020,7 @@ body {
     background: var(--bg-tertiary);
     border-radius: var(--radius-md);
     padding: 12px;
-    max-height: 300px;
+    max-height: min(450px, 55vh);
     overflow-y: auto;
 }
 

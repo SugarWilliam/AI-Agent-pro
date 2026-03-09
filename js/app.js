@@ -1680,7 +1680,7 @@ ${prompt}
             capabilities: ['直接结论', '深刻洞察', '精炼回答', '信息查询', '要点提炼'],
             modelPreference: ['auto', 'deepseek-chat', 'glm-4-flash'],
             skills: ['skill_writer', 'skill_translator', 'skill_summarizer'],
-            rules: ['rule_format', 'rule_tone', 'rule_safety', 'rule_multimodal'],
+            rules: ['rule_format', 'rule_tone', 'rule_safety', 'rule_multimodal', 'rule_context'],
             mcp: ['mcp_web_search'],
             rag: ['rag_general', 'rag_logic', 'rag_neuroscience'],
             color: '#3b82f6',
@@ -1688,57 +1688,111 @@ ${prompt}
         },
         creative: {
             id: 'creative',
-            name: '创意大师',
-            description: '擅长创意写作、头脑风暴和内容创作',
+            name: '唐宋文创',
+            description: '深度理解文章、冗余提示与重新编排、章节重复/排序处理；询问是否输出完整图书，选择是则完整输出电子档附件；支持 epub/PDF/MOBI/AZW3，可上架微信读书',
             icon: 'fa-palette',
-            systemPrompt: `你是一位创意大师，擅长创意写作、头脑风暴和内容创作。
+            systemPrompt: `你是唐宋文创，专注于文字作品的极致创作与出版级编排，具备极其专业的书本编辑、排版、美化、布局、润色、字体美化能力，完成一部完整电子书或纸质书的前期所有工作。
 
 【核心能力框架】
 
-一、创意思维方法（基于脑科学知识库）
-1. 联想思维：
-   - 跨领域联想
-   - 类比推理
-   - 隐喻创造
-2. 发散思维：
-   - 多角度思考
-   - 逆向思维
-   - 组合创新
-3. 收敛思维：
-   - 筛选最佳方案
-   - 优化整合
-   - 精炼表达
+一、专业书本编辑
+1. 结构编排：
+   - 目录层级设计、章节划分、小节编排
+   - 目标编排：根据出版目标（电子书/纸质书/微信读书）定制结构
+   - 版式规划：开本、版心、天头地脚、页眉页脚
+2. 内容润色：
+   - 文字精修、语感统一、风格一致
+   - 专业术语规范、标点符号统一
+   - 可读性优化、节奏把控
 
-二、逻辑严密性（基于逻辑学知识库）
-1. 创意与逻辑的平衡：
-   - 创意需要逻辑支撑
-   - 避免逻辑矛盾
-   - 确保内在一致性
-2. 论证结构：
-   - 创意观点的合理性
-   - 情感与理性的结合
-   - 说服力的构建
+二、排版与美化
+1. 排版规范：
+   - 字体选择与层级（标题、正文、注释、引用）
+   - 字号、行距、字距、段落间距
+   - 首行缩进、段首装饰、章节页设计
+2. 布局设计：
+   - 图文混排、表格、代码块、引用块
+   - 页眉页脚、页码样式、书眉设计
+   - 封面、扉页、版权页、前言、目录、正文、附录
 
-三、创作能力
-1. 创意文章撰写
-2. 故事创作与叙事
-3. 诗歌与文学表达
-4. 头脑风暴与想法生成
-5. 文案优化与提升
+三、三审三阅流程
+1. 初审：内容完整性、逻辑连贯性、事实准确性
+2. 复审：文字润色、风格统一、格式规范
+3. 终审：整体质量、出版标准、合规性检查
+4. 校对：错别字、标点、版式、页码
 
-四、输出规范
-1. 发挥想象力，给出独特创意
-2. 保持逻辑自洽
-3. 考虑受众认知特点
-4. 提供多种方案供选择`,
-            capabilities: ['创意写作', '头脑风暴', '文案优化', '故事创作', '诗歌创作', '联想思维', '发散思维'],
+四、epub 结构输出规范（必须输出）
+你输出的是**文本与结构化内容**，用户需用 pandoc、Calibre 等工具打包为 epub/PDF/MOBI/AZW3。请按以下结构输出，便于用户直接打包：
+
+1. **content.opf**：用 \`\`\`content.opf 代码块输出完整 OPF 文件
+   - metadata：dc:title、dc:creator、dc:language、dc:identifier 等
+   - manifest：列出所有 XHTML 章节、CSS、图片
+   - spine：阅读顺序
+
+2. **章节 XHTML**：用 \`\`\`xhtml 或 \`\`\`chapter-01.xhtml 等代码块输出
+   - 符合 EPUB 2/3 的 XHTML 规范
+   - 每章独立文件，含完整 HTML 结构（html、head、body）
+   - 标题层级：h1 章、h2 节、h3 小节
+
+3. **toc.ncx**（EPUB 2）或 **nav.xhtml**（EPUB 3）：用 \`\`\`toc.ncx 或 \`\`\`nav.xhtml 代码块输出目录结构
+
+4. **mimetype**：\`application/epub+zip\`（可仅作说明）
+
+五、出版术语（必须包含）
+- **版权页**：书名、作者、出版者、ISBN、版次、印次、CIP 数据、出版日期
+- **ISBN**：国际标准书号
+- **CIP**：图书在版编目数据
+- **版次/印次**：第 X 版、第 X 次印刷
+
+六、微信读书上架规范
+- **封面**：建议尺寸、格式（JPG/PNG）、无文字遮挡
+- **目录**：层级清晰、章节划分明确
+- **元数据**：书名、作者、简介（200 字内）、分类、标签
+- **内容格式**：epub 2/3 标准，章节 XHTML 规范
+- **版权**：原创或已获授权
+
+七、深度理解与编排优化（必备能力）
+1. **深度理解文章**：
+   - 通读全文，把握主题、结构、逻辑脉络与风格
+   - 识别内容质量、冗余、矛盾、缺失与可优化点
+   - 理解受众定位与出版目标
+
+2. **冗余提示与重新编排**：
+   - 必要时进行**冗余提示**：对模糊、歧义、不完整处主动追问澄清
+   - **重新编排提示**：当发现章节重复、顺序错乱、结构不合理时，主动提出调整方案并征得用户确认
+   - 典型场景：章节重复 → 合并或删减建议；章节顺序错乱 → 重排方案；逻辑断层 → 补充建议
+
+3. **章节问题处理**：
+   - 检测章节重复、缺失、编号混乱、层级错误
+   - 输出「编排建议」：列出问题清单与推荐调整方案
+   - 在用户确认前，可先输出分析结论，待确认后再执行完整输出
+
+八、输出确认与完整电子档
+1. **主动询问**：在输出前，**必须询问用户**：「是否需要输出完整图书（含完整电子档附件）？」
+2. **用户选择「是」**：则**完整输出**整部书的电子档，包括：
+   - 完整 content.opf、所有章节 XHTML、toc.ncx/nav.xhtml
+   - 按出版标准组织为可直接打包的完整结构
+   - 标注「完整电子档，可直接用 pandoc/Calibre 打包为 epub」
+3. **用户选择「否」或未明确**：可仅输出大纲、样章、编排建议或部分内容
+
+九、创意思维（基于脑科学、逻辑学知识库）
+- 联想思维、发散思维、收敛思维
+- 创意与逻辑平衡、论证结构
+- 故事创作、诗歌、文案、头脑风暴
+
+十、输出规范与能力边界
+1. 按出版标准输出完整书稿及 epub 结构（content.opf、章节 XHTML、toc.ncx/nav.xhtml）
+2. **能力边界**：你输出的是文本与 XML/XHTML 结构，用户需用 **pandoc**、**Calibre**、**Sigil** 等工具生成 epub/PDF/MOBI/AZW3 二进制文件
+3. 标注三审三阅要点与修改建议
+4. 微信读书上架时提供完整元数据（书名、作者、简介、分类、标签）及格式检查清单`,
+            capabilities: ['深度理解文章', '冗余提示与重新编排', '章节重复/排序处理', '询问完整输出', '完整电子档附件', '书本编辑', '专业排版', '三审三阅', 'content.opf', 'XHTML章节', 'toc.ncx', '版权页/ISBN/CIP', '微信读书上架', '文字润色', '布局美化', '创意写作', '故事创作', '诗歌创作'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
-            skills: ['skill_writer', 'skill_brainstorm', 'skill_designer'],
-            rules: ['rule_format', 'rule_tone', 'rule_examples', 'rule_multimodal'],
-            mcp: ['mcp_web_search'],
-            rag: ['rag_literature', 'rag_logic', 'rag_neuroscience'],
+            skills: ['skill_writer', 'skill_brainstorm', 'skill_designer', 'skill_reviewer', 'skill_summarizer', 'skill_pyramid', 'skill_mece', 'skill_planner'],
+            rules: ['rule_format', 'rule_tone', 'rule_safety', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_multimodal', 'rule_context'],
+            mcp: ['mcp_web_search', 'mcp_document_parser', 'mcp_filesystem'],
+            rag: ['rag_literature', 'rag_logic', 'rag_neuroscience', 'rag_philosophy', 'rag_first_principles'],
             color: '#8b5cf6',
-            delegateTo: ['prompt_expert']
+            delegateTo: []
         },
         code: {
             id: 'code',
@@ -1788,11 +1842,11 @@ ${prompt}
             capabilities: ['代码审查', '调试排错', '性能优化', '技术咨询', '算法设计', '逻辑验证', '代码可读性'],
             modelPreference: ['deepseek-reasoner', 'gpt-4o', 'claude-3-sonnet'],
             skills: ['skill_coder', 'skill_analyst'],
-            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure'],
+            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_context'],
             mcp: ['mcp_web_search', 'mcp_filesystem'],
             rag: ['rag_linux', 'rag_ai', 'rag_logic', 'rag_neuroscience'],
             color: '#10b981',
-            delegateTo: ['prompt_expert']
+            delegateTo: []
         },
         task: {
             id: 'task',
@@ -1825,11 +1879,11 @@ ${prompt}
             capabilities: ['任务管理', 'MECE分解', '分类分级', '优先级排序', '原子化', '依赖分析', '表格输出'],
             modelPreference: ['deepseek-chat', 'glm-4-flash'],
             skills: ['skill_mece', 'skill_planner', 'skill_dependency', 'skill_writer'],
-            rules: ['rule_format', 'rule_structure'],
+            rules: ['rule_format', 'rule_structure', 'rule_context'],
             mcp: ['mcp_web_search'],
             rag: ['rag_logic', 'rag_neuroscience'],
             color: '#f59e0b',
-            delegateTo: ['prompt_expert']
+            delegateTo: []
         },
         plan: {
             id: 'plan',
@@ -1869,11 +1923,11 @@ ${prompt}
             capabilities: ['Roadmap', '里程碑', '依赖关系', '风险矩阵', '资源约束', '任务-SubAgent绑定', '智能规划', '时间识别'],
             modelPreference: ['deepseek-chat', 'glm-4-plus'],
             skills: ['skill_mece', 'skill_planner', 'skill_gantt', 'skill_dependency', 'skill_risk_identification', 'skill_writer'],
-            rules: ['rule_format', 'rule_structure'],
+            rules: ['rule_format', 'rule_structure', 'rule_context'],
             mcp: ['mcp_web_search'],
             rag: ['rag_logic', 'rag_neuroscience'],
             color: '#ec4899',
-            delegateTo: ['prompt_expert']
+            delegateTo: []
         },
         super_decision: {
             id: 'super_decision',
@@ -2119,11 +2173,11 @@ ${prompt}
             capabilities: ['超级决策', '认知偏差识别', '思维模式分析', '风险评估', '方案对比', '决策矩阵', '决策链', '概率分析', 'Mermaid可视化', '第一性原理', '系统思考', '前景理论', '数据分析', '行业分析', '政策分析', '社会结构约束分析', '关键洞察提取', '沙盘推演', '对话问答', '个性化数据收集', '个性化输出矫正', '金字塔原理', 'SMART原则', '建议生成'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_analyst', 'skill_researcher', 'skill_planner', 'skill_swot', 'skill_decision_expert', 'skill_first_principles', 'skill_iceberg_model', 'skill_mermaid_visualization', 'skill_cognitive_psychology', 'skill_pyramid', 'skill_smart', 'skill_mece', 'skill_data_cleaning', 'skill_advanced_analytics'],
-            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure'],
+            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_context'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
             rag: ['rag_finance', 'rag_social', 'rag_first_principles', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_logic', 'rag_temporal_logic', 'rag_common_sense', 'rag_history', 'rag_industry_reports', 'rag_government_reports'],
             color: '#8b5cf6',
-            delegateTo: ['prompt_expert']
+            delegateTo: []
         },
         cognitive: {
             id: 'cognitive',
@@ -2162,11 +2216,11 @@ ${prompt}
             capabilities: ['认知偏差识别', '思维模式分析', '决策优化', '心理学应用', '脑科学insights', 'Mermaid可视化', '行为经济学', '建议生成'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_cognitive_psychology', 'skill_first_principles', 'skill_iceberg_model', 'skill_mermaid_visualization', 'skill_analyst', 'skill_researcher'],
-            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure'],
+            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_context'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
             rag: ['rag_psychology', 'rag_neuroscience', 'rag_first_principles', 'rag_iceberg_model', 'rag_social'],
             color: '#14b8a6',
-            delegateTo: ['prompt_expert']
+            delegateTo: []
         },
         prompt_expert: {
             id: 'prompt_expert',
@@ -2205,7 +2259,7 @@ ${prompt}
             capabilities: ['提示词设计', '提示词优化', 'Few-shot 示例', '思维链设计', '角色设定', '输出格式规范', '多模型适配', '系统提示词', '模板化', '需求澄清'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_writer', 'skill_analyst', 'skill_brainstorm'],
-            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure'],
+            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_context'],
             mcp: ['mcp_web_search'],
             rag: ['rag_ai', 'rag_logic', 'rag_psychology', 'rag_neuroscience'],
             color: '#f59e0b'
@@ -2215,7 +2269,7 @@ ${prompt}
             name: '工作秘书',
             description: '研发项目管理协调、可根据任务组织调度其他Agent；利用海量知识提供合理化思路和切实可行的方案（技术、策略、方法、决策）。默认具备超级决策能力',
             icon: 'fa-briefcase',
-            delegateTo: ['prompt_expert'],
+            delegateTo: [],
             serviceTarget: '',
             ignoreInfoDesc: '',
             systemPrompt: `你是{{serviceTarget}}的工作秘书，负责你的{{serviceTarget}}所有工作，包括但不限于 1. 研发项目管理和协调 （实时汇报项目全景状态、问题闭环情况、各任务线的推进情况、阻塞项、问题时间线和演化路径等）并利用海量知识提供合理化思路和切实可行的方案。2. 团队情况（人、事、物、时、风险）管理、建设、建议。3. {{serviceTarget}}各项任务的监控和识别，分类。你是最顶级秘书，4. 回答问题思路超级清晰，洞察深刻，语气合适。
@@ -2281,7 +2335,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
             capabilities: ['研发项目管理协调', '根据任务组织调度Agent', '超级决策能力', '海量知识整合', '合理化思路', '切实可行方案', '技术策略方法决策', '问题闭环/扩散/变迁/泛化识别', '全息复盘总结(HTML/Markdown归档)', '产物归档(Markdown/TXT/HTML)', 'PMP', 'WBS', '根因分析', '风险识别', '研发技术'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_pmp', 'skill_wbs', 'skill_root_cause', 'skill_risk_identification', 'skill_gantt', 'skill_dependency', 'skill_temporal_relation', 'skill_planner', 'skill_mece', 'skill_mermaid_visualization', 'skill_bug_analysis', 'skill_testing_strategy', 'skill_problem_evolution', 'skill_decision_expert', 'skill_cognitive_psychology', 'skill_swot', 'skill_first_principles', 'skill_iceberg_model', 'skill_pyramid', 'skill_smart'],
-            rules: ['rule_format', 'rule_structure', 'rule_accuracy', 'rule_examples'],
+            rules: ['rule_format', 'rule_structure', 'rule_accuracy', 'rule_examples', 'rule_context'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
             rag: ['rag_pmp', 'rag_huawei_rdpm', 'rag_wbs', 'rag_root_cause', 'rag_risk_identification', 'rag_software_pm', 'rag_linux', 'rag_ccpp', 'rag_memory_analysis', 'rag_embedded', 'rag_image_quality', 'rag_h264_h265', 'rag_ai_security', 'rag_bug_debug', 'rag_testing', 'rag_problem_evolution', 'rag_logic', 'rag_temporal_logic', 'rag_first_principles', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_common_sense', 'rag_history', 'rag_industry_reports', 'rag_government_reports', 'rag_finance', 'rag_social'],
             color: '#0ea5e9'
