@@ -7,7 +7,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const TEST_URL = 'http://localhost:8080/test/comprehensive-test.html';
+const TEST_URL = 'http://localhost:8000/test/comprehensive-test.html';
 const OUTPUT_DIR = path.join(__dirname, 'test-results');
 
 function checkServer() {
@@ -45,7 +45,7 @@ async function main() {
         console.log(`   测试页面: ${TEST_URL}`);
     } else {
         console.log('❌ 服务器未运行或无法访问');
-        console.log('   请先启动服务器: python3 -m http.server 8080');
+        console.log('   请先启动服务器: python3 -m http.server 8000');
         process.exit(1);
     }
 

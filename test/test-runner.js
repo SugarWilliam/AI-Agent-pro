@@ -9,7 +9,7 @@ const fs = require('fs');
 
 // 测试配置
 const config = {
-    baseUrl: process.env.BASE_URL || 'http://localhost:8080',
+    baseUrl: process.env.BASE_URL || 'http://localhost:8000',
     headless: process.env.HEADLESS !== 'false',
     timeout: 30000,
     slowMo: process.env.SLOW_MO ? parseInt(process.env.SLOW_MO) : 0,

@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.3.1 - LLM服务
+ * AI Agent Pro v8.4.0 - LLM服务
  * 多模态输入输出支持
  */
 
@@ -409,7 +409,7 @@
             
             const patterns = {
                 code: ['代码', '编程', 'bug', 'debug', '函数', 'class', 'python', 'javascript', 'java'],
-                creative: ['创意', '写作', '故事', '诗歌', '文案', '创作'],
+                creative: ['创意', '写作', '故事', '诗歌', '文案', '创作', '电子书', 'epub', '排版', '编辑', '微信读书', '唐宋文创'],
                 analysis: ['分析', '决策', '对比', '评估', '建议'],
                 planning: ['计划', '规划', 'todo', '任务', '时间表'],
                 research: ['研究', '调研', '资料', '文献'],
@@ -520,6 +520,10 @@
             if (!cards || cards.length === 0) return '';
             const capStr = c => ((c.capabilities || []).slice(0, 6).join('、') || '-').substring(0, 100);
             const rows = cards.map(c => `| ${c.id} | ${c.name} | ${c.description} | ${capStr(c)} |`).join('\n');
+            const hasPromptExpert = cards.some(c => c.id === 'prompt_expert');
+            const promptExpertNote = hasPromptExpert
+                ? '\n- 提示词专家(prompt_expert)固定为第二步，用于优化指令，无需在 schedule 中列出；schedule 仅编排其他助手的顺序与指令\n'
+                : '';
             return `【可选调度助手】根据任务分析，选择需要的助手及执行顺序。下表列出各助手的能力，请根据任务匹配最合适的助手：
 
 | id | name | description | capabilities |
@@ -535,7 +539,7 @@ ${rows}
 - agentId 必须为上表中的 id
 - 可只选部分助手（如只需 plan 和 task 则只列二者）
 - instruction 为该步骤的具体指令
-- 若不输出此块，将按默认顺序执行全部\n\n`;
+- 若不输出此块，将按默认顺序执行全部${promptExpertNote}\n\n`;
         },
 
         /**
@@ -588,10 +592,6 @@ ${rows}
             if (subAgent.id === 'work_secretary' && sysPrompt.includes('{{serviceTarget}}')) {
                 const target = subAgent.serviceTarget?.trim() || '用户';
                 sysPrompt = sysPrompt.replace(/\{\{serviceTarget\}\}/g, target);
-            }
-            if (subAgent.id === 'work_secretary' && outputFormat === 'h5') {
-                sysPrompt = sysPrompt.replace(/【备选】使用[\s\S]*?模块说明：/,
-                    '【禁止】不得使用 project-dashboard 或 json 格式，必须输出完整 H5 驾驶舱。\n\n模块说明：');
             }
             prompt += sysPrompt + '\n\n';
             
@@ -646,8 +646,6 @@ ${rows}
                 prompt += `- 使用Markdown表格展示数据\n`;
             } else if (outputFormat === 'list') {
                 prompt += `- 使用有序或无序列表组织内容\n`;
-            } else if (outputFormat === 'h5') {
-                prompt += `- 【强制】必须使用 \`\`\`html 输出完整 H5 驾驶舱页面，禁止使用 \`\`\`project-dashboard 或 \`\`\`json。要求：<!DOCTYPE html>、Tailwind CDN、Font Awesome、玻璃拟态、深色主题、PC+移动端适配。\n`;
             }
             
             return prompt;
@@ -668,14 +666,27 @@ ${rows}
                 throw new Error(`模型 ${model.name} 未配置API Key，请在设置中配置`);
             }
 
-            // 构建消息列表
+            // 构建消息列表，超长时保留最近消息防止上下文截断导致 API 报错
+            const MAX_CONTEXT_CHARS = 80000;  // 对话历史总字符上限（预留 systemPrompt 与响应空间）
             const validMessages = messages.filter(msg => msg.role === 'user' || msg.role === 'assistant');
+            let toSend = validMessages.map(msg => ({ role: msg.role, content: msg.content || '' }));
+            let totalLen = systemPrompt.length + toSend.reduce((s, m) => s + (m.content?.length || 0), 0);
+            if (totalLen > MAX_CONTEXT_CHARS && toSend.length > 1) {
+                const reserve = MAX_CONTEXT_CHARS - systemPrompt.length - 2000;
+                let kept = [];
+                let len = 0;
+                for (let i = toSend.length - 1; i >= 0; i--) {
+                    const l = (toSend[i].content?.length || 0);
+                    if (len + l > reserve && kept.length > 0) break;
+                    kept.unshift(toSend[i]);
+                    len += l;
+                }
+                toSend = kept;
+                window.Logger?.info?.(`上下文截断: 保留最近 ${toSend.length}/${validMessages.length} 条消息，约 ${len} 字符`);
+            }
             const formattedMessages = [
                 { role: 'system', content: systemPrompt },
-                ...validMessages.map(msg => ({
-                    role: msg.role,
-                    content: msg.content
-                }))
+                ...toSend
             ];
 
             // 根据provider调用不同API
@@ -762,9 +773,7 @@ ${rows}
                                     }
                                 }
                             } catch (e) {
-                                if (data.trim().length > 0 && !data.includes('[DONE]')) {
-                                    window.Logger?.warn?.('流式 JSON 片段解析跳过:', data.substring(0, 80) + (data.length > 80 ? '...' : ''));
-                                }
+                                window.Logger?.error('解析流数据失败:', e);
                             }
                         }
                     }
@@ -1212,8 +1221,7 @@ ${rows}
                             const controller = new AbortController();
                             const timeoutId = setTimeout(() => controller.abort(), jinaTimeoutMs);
                             
-                            const jinaResponse = await (window.JinaProxy?.jinaFetch || fetch)(jinaSearchUrl, {
-                                method: 'GET',
+                            const jinaResponse = await fetch(jinaSearchUrl, {
                                 headers: searchHeaders,
                                 signal: controller.signal
                             });
@@ -1317,8 +1325,7 @@ ${rows}
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), 25000);
                         
-                        const directResponse = await (window.JinaProxy?.jinaFetch || fetch)(directSearchUrl, {
-                            method: 'GET',
+                        const directResponse = await fetch(directSearchUrl, {
                             headers: {
                                 'X-Return-Format': 'text',
                                 'Authorization': `Bearer ${jinaApiKey}`,
@@ -1592,9 +1599,8 @@ ${rows}
                 let response;
                 
                 if (source.type === 'jina' && jinaApiKey) {
-                    // 使用Jina AI解析（优先走代理避免 CORS）
-                    response = await (window.JinaProxy?.jinaFetch || fetch)(source.jinaUrl, {
-                        method: 'GET',
+                    // 使用Jina AI解析
+                    response = await fetch(source.jinaUrl, {
                         headers: {
                             'X-Return-Format': 'text',
                             'Authorization': `Bearer ${jinaApiKey}`,
@@ -2972,7 +2978,7 @@ ${rows}
 
                     let response;
                     try {
-                        response = await (window.JinaProxy?.jinaFetch || fetch)('https://r.jina.ai/', {
+                        response = await fetch('https://r.jina.ai/', {
                             method: 'POST',
                             headers: fetchHeaders,
                             body: JSON.stringify({ url: cleanUrl })
@@ -2995,8 +3001,7 @@ ${rows}
                         const encodedUrl = encodeURIComponent(cleanUrl);
                         const jinaUrl = `https://r.jina.ai/${encodedUrl}`;
                         window.Logger?.debug(`尝试 GET: ${jinaUrl}`);
-                        response = await (window.JinaProxy?.jinaFetch || fetch)(jinaUrl, {
-                            method: 'GET',
+                        response = await fetch(jinaUrl, {
                             headers: { 'X-Return-Format': 'text', 'Authorization': `Bearer ${jinaApiKey}` }
                         });
                         if (response.ok) {
@@ -3117,16 +3122,15 @@ ${rows}
         },
 
         // ==================== 简化版sendMessage（兼容旧接口）====================
-        async sendMessage(messages, modelId, enableWebSearch = false, onStream = null, isWorkflow = false) {
-            const subAgentId = window.AppState?.currentSubAgent;
-            const outputFormat = window.AppState?.subAgents?.[subAgentId]?.outputFormat ?? 'markdown';
+        async sendMessage(messages, modelId, enableWebSearch = false, onStream = null, isWorkflow = false, agentOptions = {}) {
             return await this.invokeIntelligentAgent(messages, {
                 modelId: modelId || 'auto',
                 enableWebSearch,
                 onStream,
-                outputFormat,
+                outputFormat: 'markdown',
                 taskType: 'general',
-                isWorkflow
+                isWorkflow,
+                ...agentOptions
             });
         },
 
@@ -3211,8 +3215,8 @@ ${rows}
                         agentCardsPrompt = this.formatAgentCardsForPrompt(cards);
                     }
                     if (!isFirst) {
-                        const MAX_PREV_CONTENT = 12000;
-                        const MAX_PER_STEP = 4000; // 整合步骤中每步输出最大字符
+                        const MAX_PREV_CONTENT = 32000; // 扩充：原12000，防止长上下文截断
+                        const MAX_PER_STEP = 10000;     // 扩充：原4000，每步输出最大字符
                         if (isLast && stepOutputs.filter(Boolean).length > 0) {
                             // 整合步骤：汇总所有已执行步骤的输出，供主 Agent 完整整合
                             const parts = [];
@@ -3231,14 +3235,20 @@ ${rows}
                             }
                             messages = [{ role: 'user', content: instructionPrefix + `【用户任务】\n${task}\n\n【各步骤输出汇总】\n\n${contextContent}\n\n请基于以上各步骤的完整输出，整合并完成最终结论与交付物。` }];
                         } else {
-                            const prevLabel = (steps[i - 1].instruction || steps[i - 1].label) || window.AppState.subAgents?.[steps[i - 1].agentId]?.name || steps[i - 1].agentId;
+                            const prevStep = steps[i - 1];
+                            const prevAgentId = prevStep?.agentId || '';
+                            const prevLabel = (prevStep?.instruction || prevStep?.label) || window.AppState.subAgents?.[prevAgentId]?.name || prevAgentId;
                             const prevContent = (typeof lastContent === 'string' && lastContent.length > MAX_PREV_CONTENT)
                                 ? lastContent.substring(0, MAX_PREV_CONTENT) + `\n\n...[内容已截断，共 ${lastContent.length} 字符]`
                                 : (lastContent || '');
+                            const isFromPromptExpert = prevAgentId === 'prompt_expert';
+                            const supplementNote = isFromPromptExpert
+                                ? '【说明】以上为提示词专家对任务的专业化提炼与补充提示词，与你的系统能力叠加使用，请完整结合执行，不可弱化或忽略任何关键信息。\n\n'
+                                : '';
                             messages = [
                                 { role: 'user', content: task },
                                 { role: 'assistant', content: prevContent },
-                                { role: 'user', content: instructionPrefix + `【上一步（${prevLabel}）的输出】\n\n${prevContent}\n\n请基于以上内容，结合本步骤要求，继续执行，为下一步提供输入` }
+                                { role: 'user', content: supplementNote + instructionPrefix + `【上一步（${prevLabel}）的输出】\n\n${prevContent}\n\n请基于以上内容，结合本步骤要求，继续执行，为下一步提供输入` }
                             ];
                         }
                     }
@@ -3247,12 +3257,11 @@ ${rows}
                         this._updateWorkflowStepProgress(steps, i, stepOutputs, stepUsedResources);
                         if (isLast && onStream) onStream(content);
                     };
-                    const stepOutputFormat = agent.outputFormat ?? 'markdown';
                     const result = await this.invokeIntelligentAgent(messages, {
                         modelId: modelId || 'auto',
                         enableWebSearch: isFirst,
                         onStream: streamCallback,
-                        outputFormat: stepOutputFormat,
+                        outputFormat: 'markdown',
                         taskType: 'general',
                         isWorkflow: true,
                         subAgentId: agentId,
@@ -3266,12 +3275,19 @@ ${rows}
                         allThinking += `\n\n--- ${stepLabel} 思考过程 ---\n${result.thinking}`;
                     }
                     // 动态调度：步骤 0 完成后解析 schedule，若有效则替换链中 delegate 部分
+                    // 设计约束：prompt_expert 固定第二位，schedule 仅编排其他助手（plan/task/...）的最优顺序
                     if (isFirst && enableDynamicSchedule && mainAgentId && delegateIds.length > 0 && steps.length > 2) {
                         const parsed = this.parseScheduleFromOutput(lastContent, delegateIds);
                         if (parsed && parsed.length > 0) {
                             const integrateStep = steps[steps.length - 1];
-                            steps = [steps[0], ...parsed, integrateStep];
-                            window.Logger?.info?.('✅ 动态调度生效，链已按主 Agent 输出更新:', parsed.map(p => p.agentId).join(' → '));
+                            const promptExpertStep = steps.find(s => s.agentId === 'prompt_expert');
+                            const parsedOthers = parsed.filter(p => p.agentId !== 'prompt_expert');
+                            if (promptExpertStep) {
+                                steps = [steps[0], promptExpertStep, ...parsedOthers, integrateStep];
+                            } else {
+                                steps = [steps[0], ...parsed, integrateStep];
+                            }
+                            window.Logger?.info?.('✅ 动态调度生效，链已按主 Agent 输出更新:', steps.slice(1, -1).map(s => s.agentId).join(' → '));
                         }
                     }
                 }

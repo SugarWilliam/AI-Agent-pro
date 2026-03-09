@@ -2,7 +2,7 @@
  * AI Agent Pro - Service Worker
  * 支持 PWA 安装与离线缓存
  */
-const CACHE_NAME = 'ai-agent-pro-v1';
+const CACHE_NAME = 'ai-agent-pro-v8.4.0';
 const STATIC_ASSETS = [
   './',
   './index.html',

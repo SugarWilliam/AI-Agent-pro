@@ -4,6 +4,67 @@
 
 ---
 
+## [8.4.0] - 2026-03-05
+
+### 设置页「清除数据」行为优化
+
+**仅清除用户自定义与历史数据**
+- 清除数据仅清除会话、计划、任务、自定义模型、自定义 SubAgent、自定义 Workflow、RAG 向量等用户数据
+- 保留 API 密钥、同步配置、Jina AI 配置、主题/语言等设置
+- 恢复到初始化状态，而非清空整个 localStorage
+
+**实现**
+- app.js：新增 `resetToInitialState()`， selective 清除并保留配置
+- events.js：`clearAllData()` 调用 `resetToInitialState()`，更新确认文案
+
+---
+
+## [8.3.3] - 2026-03-05
+
+### Workflow 执行顺序修复（设计约束落地）
+
+**prompt_expert 固定第二位**
+- 当 delegateTo 含 prompt_expert 时，其必须排在主 Agent(分析)之后、其他子 Agent 之前，顺序不可颠倒
+- events.js：构建链时 orderedDelegates 强制 prompt_expert 为首位 delegate
+- llm.js：动态调度时保留 prompt_expert 第二位，schedule 仅编排其他助手（plan/task/...）
+
+**UI 步骤体现主 Agent 编排**
+- 动态调度后，UI 显示的步骤顺序为主 Agent 的最优编排，而非 delegateTo 关联顺序
+
+**文档**
+- docs/DESIGN_A2A.md：新增 8.4 硬性约束、版本 v2.2
+- docs/MODIFICATIONS_2026-03.md：v1.1 约束说明
+
+---
+
+## [8.3.2] - 2026-03-04
+
+### 任务与计划强化
+
+**计划模块**
+- MECE 原则、分类分级、原子化、依赖关系、SubAgent 强绑定
+- roadmap、里程碑、风险矩阵、资源约束、时间点智能识别
+- 根据任务难度、人力、任务数、deadline 智能规划
+- 计划详情展示路线图、里程碑、风险、约束；支持 HTML/MD 导出
+
+**任务助手与计划大师 SubAgent**
+- 任务助手：skill_mece、skill_dependency，输出 task-classification-table、dependency-graph
+- 计划大师：skill_gantt、skill_risk_identification，输出 roadmap、milestones、risk-matrix、resource-constraints
+
+### SubAgent 集群与提示词专家默认绑定
+
+- 各 SubAgent 默认 delegateTo 含 prompt_expert
+- Workflow 链：主 Agent(分析) → 提示词专家(优化指令) → 子 Agent 链 → 主 Agent(整合)
+- 启动页、侧边栏增加「SubAgent 集群」功能特性
+
+### 文档
+
+- `docs/MODIFICATIONS_2026-03.md`：修改摘要（原因、逻辑、效果）
+- `docs/DESIGN_A2A.md`：第 11 节 SubAgent 集群与提示词专家默认绑定
+- `docs/DESIGN.md`：2.3 SubAgent 集群
+
+---
+
 ## [8.3.1] - 2026-03-04
 
 ### 项目整理与清理
@@ -198,6 +259,9 @@
 
 ---
 
+[8.4.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.4.0
+[8.3.3]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.3
+[8.3.2]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.2
 [8.3.1]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.1
 [8.3.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.0
 [8.2.6]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.2.6

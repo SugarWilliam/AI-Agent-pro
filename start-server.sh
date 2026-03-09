@@ -26,18 +26,12 @@ cd "$SCRIPT_DIR"
 echo "工作目录: $SCRIPT_DIR"
 echo ""
 echo "启动HTTP服务器..."
-echo "本机访问: http://localhost:8080"
-echo "局域网访问: http://$(hostname -I 2>/dev/null | awk '{print $1}'):8080"
+echo "本机访问: http://localhost:8000"
+echo "局域网访问: http://$(hostname -I 2>/dev/null | awk '{print $1}'):8000"
 echo ""
 echo "按 Ctrl+C 停止服务器"
 echo "=========================================="
 echo ""
 
-# 优先使用带 Jina 代理的服务器（解决 CORS）
-if [ -f "server.py" ]; then
-    echo "使用 server.py（含 Jina 代理，可避免 CORS 错误）"
-    exec $PYTHON_CMD server.py
-else
-    echo "未找到 server.py，使用简易 HTTP 服务器（Jina 功能可能因 CORS 受限）"
-    exec $PYTHON_CMD -m http.server 8080 --bind 0.0.0.0
-fi
+# 启动服务器（--bind 0.0.0.0 允许局域网访问）
+$PYTHON_CMD -m http.server 8000 --bind 0.0.0.0

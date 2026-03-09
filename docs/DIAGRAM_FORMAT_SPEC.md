@@ -4,7 +4,7 @@
 
 ## 一、对接原则
 
-1. **内置标准**：图表格式规范在 `js/llm.js` 的 `buildEnhancedSystemPrompt` 中注入到【输出格式要求】，**所有 Agent**（工作秘书、决策专家、创意大师、编程专家等）在输出图表时均须遵循
+1. **内置标准**：图表格式规范在 `js/llm.js` 的 `buildEnhancedSystemPrompt` 中注入到【输出格式要求】，**所有 Agent**（工作秘书、决策专家、唐宋文创、编程专家等）在输出图表时均须遵循
 2. **单一数据源**：`DIAGRAM_FORMAT_SPEC`（暴露为 `window.AIAgentApp.DIAGRAM_FORMAT_SPEC`）为格式规范，渲染器按此解析
 3. **渲染器兼容**：对常见变体（camelCase、中文字段名、对象/数组）做别名兼容
 
@@ -58,6 +58,9 @@
 | probability | {labels, data} | 标签/数据 |
 | milestones | {title, milestones} | 多种别名 |
 | dependency-graph | {nodes, edges} | 节点/边、从/到 |
+| roadmap | {title, phases, milestones} | 路线图、阶段、里程碑 |
+| task-classification-table | Markdown 表格 | 任务分类分级表 |
+| resource-constraints | {constraints:[{type,description,impact}]} | 资源约束 |
 
 ## 六、通用规则
 - JSON 一律使用英文双引号 `"`，禁止弯引号

@@ -19,6 +19,7 @@
 8. [实现与约束](#8-实现与约束)
 9. [当前限制与后续](#9-当前限制与后续)
 10. [附录](#10-附录)
+11. [SubAgent 集群与提示词专家默认绑定](#11-subagent-集群与提示词专家默认绑定)
 
 ---
 
@@ -342,10 +343,19 @@
 | 场景 | 行为 |
 |------|------|
 | delegateTo 为空 | 不进入 Workflow，单 Agent 对话 |
-| delegateTo 有值，主 Agent 输出有效 schedule | 用 schedule 替换链中 delegate 部分 |
-| delegateTo 有值，主 Agent 未输出 schedule | 用 delegateTo 顺序 |
-| delegateTo 有值，schedule 解析失败 | 用 delegateTo 顺序 |
+| delegateTo 有值，主 Agent 输出有效 schedule | 用 schedule 替换链中 delegate 部分（**prompt_expert 固定第二位**） |
+| delegateTo 有值，主 Agent 未输出 schedule | 用 delegateTo 顺序（**prompt_expert 固定第二位**） |
+| delegateTo 有值，schedule 解析失败 | 用 delegateTo 顺序（**prompt_expert 固定第二位**） |
 | [Workflow:...] 前缀 | 使用手动指定链，不经过动态调度 |
+
+### 8.4 硬性约束（v8.4.0）
+
+| 约束 | 说明 |
+|------|------|
+| **prompt_expert 固定第二位** | 当 delegateTo 含 prompt_expert 时，其必须排在主 Agent(分析)之后、其他子 Agent 之前，顺序不可颠倒 |
+| **schedule 仅编排其他助手** | 主 Agent 输出的 schedule 仅编排 plan/task/... 等助手，prompt_expert 无需且不应出现在 schedule 中 |
+| **UI 步骤体现主 Agent 编排** | 动态调度后，UI 显示的步骤顺序必须为主 Agent 的最优编排，而非 delegateTo 关联顺序 |
+| **补充提示词，不替换** | 提示词专家的输出为对下级 Agent 的补充提示词，与下级 Agent 的完整系统提示词叠加使用，不可削弱、丢失或弱化信息 |
 
 ---
 
@@ -395,7 +405,7 @@
 
 ```bash
 ./start-server.sh
-# 浏览器访问 http://localhost:8080/test/test-a2a-orchestration.html
+# 浏览器访问 http://localhost:8000/test/test-a2a-orchestration.html
 ```
 
 ### 10.3 版本变更记录
@@ -405,8 +415,62 @@
 | v1.0 | 2026-03-03 | 初版设计，实现动态调度、AgentCard、parseSchedule |
 | v1.1 | 2026-03-03 | 单元测试完成 |
 | v2.0 | 2026-03-03 | 合并完备性分析，增加需求详细解读，AgentCard 能力增强 |
+| v2.1 | 2026-03-04 | SubAgent 集群、提示词专家默认绑定、精准调动增强 |
+| v2.2 | 2026-03-05 | 硬性约束：prompt_expert 固定第二位，schedule 仅编排其他助手 |
 
 ---
 
-**文档版本**: v2.0  
+## 11. SubAgent 集群与提示词专家默认绑定
+
+### 11.1 修改原因
+
+- **精准描述**：各 SubAgent 需提升输出与指令的精准度
+- **精准调动**：多 SubAgent 关联时，主 Agent 需更精准地调动被关联 Agent
+- **指令优化**：提示词专家可提炼、优化指令，消除歧义，使后续助手可精准执行
+
+### 11.2 逻辑设计
+
+**SubAgent 集群**：多个 SubAgent 通过 delegateTo 关联形成的执行链，由主 Agent 分析任务并调度。
+
+**默认绑定**：除 prompt_expert 外，各 SubAgent 默认 `delegateTo: ['prompt_expert']`。
+
+**执行流程**（顺序不可颠倒）：
+```
+主 Agent(分析) → 提示词专家(优化指令) → [其他 delegate，按 schedule 编排] → 主 Agent(整合)
+```
+
+**硬性约束**：prompt_expert 固定第二位，无论 delegateTo 原始顺序如何；schedule 仅编排其他助手。提示词专家输出为补充提示词，与下级 Agent 系统提示词叠加，不可削弱或丢失信息。
+
+**Workflow 链中 prompt_expert 的 instruction**：
+- 提炼、优化上一步的指令与描述，消除歧义，使后续助手可精准执行
+
+### 11.3 效果
+
+| 场景 | 行为 |
+|------|------|
+| 单 Agent + delegateTo | 主 Agent → prompt_expert → 主 Agent 整合 |
+| 多 Agent 链 | 主 Agent → prompt_expert → plan/task/... → 主 Agent 整合 |
+| 指令质量 | 提示词专家优化后，后续 Agent 接收更清晰、无歧义的指令 |
+
+### 11.4 拓扑（含提示词专家）
+
+```
+用户任务
+    │
+    ▼
+主 Agent（分析：提炼关键需求，说明后续由提示词专家优化）
+    │
+    ▼
+提示词专家（优化指令，消除歧义）← 默认首节点
+    │
+    ▼
+子 Agent 1、2、... N（按 schedule 或 delegateTo 顺序）
+    │
+    ▼
+主 Agent（整合：含提示词专家的精准描述）
+```
+
+---
+
+**文档版本**: v2.2  
 **维护者**: AI Agent Pro Team

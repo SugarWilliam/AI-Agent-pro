@@ -1,13 +1,25 @@
 /**
- * AI Agent Pro v8.3.1 - 应用状态管理
+ * AI Agent Pro v8.4.0 - 应用状态管理
  * 多模态AI Agent - 支持输入输出多模态
  */
 
 (function() {
     'use strict';
 
-    const VERSION = '8.3.1';
+    const VERSION = '8.4.0';
     const STORAGE_KEY = 'ai_agent_state_v6';
+
+    /** 检测 localStorage 是否可用（部分环境如 file://、隐私模式、iframe 可能不可用） */
+    function isLocalStorageAvailable() {
+        try {
+            const test = '__storage_test__';
+            localStorage.setItem(test, test);
+            localStorage.removeItem(test);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
 
     /** Agent 与渲染器对接：图表格式规范（Agent 必须按此输出，渲染器按此解析） */
     const DIAGRAM_FORMAT_SPEC = {
@@ -17,7 +29,6 @@
   "owner": "负责人",
   "date": "日期",
   "status": "状态",
-  "alert_banner": {"level": "高风险延期", "message": "工厂版本 2025.11.24→2026.03.11；正式版本..."} 或 字符串,
   "leverage_points": ["杠杆点1", "杠杆点2"],
   "blocker_priority": [{"level": "P0/致命", "items": ["阻塞项1", "阻塞项2"]}],
   "critical_closure": [{"problem": "问题名", "status": "状态", "next_action": "下一步"}],
@@ -36,20 +47,15 @@
   "cognitive_biases": []
 }
 字段名用英文下划线，JSON 用英文双引号。`,
-        projectDashboardShort: `project-dashboard 代码块，结构：alert_banner、project、owner、stats、leverage_points、blocker_priority[{level,items}]、critical_closure[{problem,status,next_action}]、management_gaps、key_actions[{action,owner,description}]`,
-        projectDashboardH5: `【推荐】使用 \`\`\`html 输出完整 H5 驾驶舱页面。结构要求：
-- 完整 <!DOCTYPE html> 文档，含 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-- 引入 Tailwind CDN：<script src="https://cdn.tailwindcss.com"></script>
-- 引入 Font Awesome：<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-- 深色主题背景（如 #0f172a），玻璃拟态面板（glass-panel、backdrop-filter）
-- 必含模块：顶部告警栏、项目头部（project/owner/date/status）、关键指标卡片（P0/P1 数量）、三大杠杆点、阻塞项矩阵（P0/P1）、人员负载、管理缺口、孤儿问题、关键行动、认知偏差
-- 响应式：grid-cols-1 md:grid-cols-4、flex-col md:flex-row
-- 可选：实时时钟、数字动画、risk-card 悬停效果`,
+        projectDashboardShort: `project-dashboard 代码块，结构：project、owner、leverage_points、blocker_priority[{level,items}]、critical_closure[{problem,status,next_action}]、management_gaps、key_actions[{action,owner,description}]`,
         problemEvolution: `使用 \`\`\`problem-evolution 代码块。JSON 结构：
 {"problemname": "问题名", "phases":[{"phase": "阶段名", "description": "描述", "response": "响应"}], "blockers":[{"blocker": "阻塞点", "breakthrough": "突破方案"}], "currentstatus": "当前状态"}
 字段名用英文下划线，JSON 用英文双引号。`,
         mermaid: `节点标签内换行必须用 <br/>，禁止真实换行。例：A[第一行<br/>第二行] 或 B{平台<br/>组件}。`,
         riskMatrix: `使用 \`\`\`risk-matrix 代码块。支持 JSON：{high:[], medium:[], low:[]} 或 文本：高风险/中风险/低风险 标题后跟列表项。`,
+        roadmap: `使用 \`\`\`roadmap 代码块。JSON：{title, phases:[{name,start,end,milestones:[]}], milestones:[{name,date,description}]}`,
+        taskClassificationTable: `使用 \`\`\`task-classification-table 代码块。Markdown 表格：| 任务ID | 任务标题 | 分类 | 优先级 | 难度 | 预计工时 | 绑定SubAgent | 依赖 |`,
+        resourceConstraints: `使用 \`\`\`resource-constraints 代码块。JSON：{constraints:[{type,description,impact}]}`,
         jsonRule: `JSON 一律使用英文双引号 "，禁止弯引号 ""。`
     };
     const CUSTOM_MODELS_KEY = 'ai_agent_custom_models_v6';
@@ -1659,7 +1665,7 @@ ${prompt}
             systemPrompt: `你是一位高效AI助手，采用【简易输出范式】。
 
 【输出原则】
-1. 直接输出结论或结果，不写分析过程
+1. 尽量快速输出，直接给出结论或结果，不写分析过程
 2. 给出深刻洞察和关键要点，避免冗余信息
 3. 语言精炼，条理清晰，一针见血
 4. 不展开背景铺垫、不重复用户已知内容
@@ -1670,69 +1676,123 @@ ${prompt}
 - 重复用户问题或已知信息
 - 无实质内容的客套话
 
-请直接、高效地回应用户需求。`,
+请直接、高效、快速地回应用户需求。`,
             capabilities: ['直接结论', '深刻洞察', '精炼回答', '信息查询', '要点提炼'],
             modelPreference: ['auto', 'deepseek-chat', 'glm-4-flash'],
             skills: ['skill_writer', 'skill_translator', 'skill_summarizer'],
-            rules: ['rule_format', 'rule_tone', 'rule_safety', 'rule_multimodal'],
+            rules: ['rule_format', 'rule_tone', 'rule_safety', 'rule_multimodal', 'rule_context'],
             mcp: ['mcp_web_search'],
             rag: ['rag_general', 'rag_logic', 'rag_neuroscience'],
             color: '#3b82f6',
-            outputFormat: 'markdown'
+            delegateTo: []
         },
         creative: {
             id: 'creative',
-            name: '创意大师',
-            description: '擅长创意写作、头脑风暴和内容创作',
+            name: '唐宋文创',
+            description: '深度理解文章、冗余提示与重新编排、章节重复/排序处理；询问是否输出完整图书，选择是则完整输出电子档附件；支持 epub/PDF/MOBI/AZW3，可上架微信读书',
             icon: 'fa-palette',
-            systemPrompt: `你是一位创意大师，擅长创意写作、头脑风暴和内容创作。
+            systemPrompt: `你是唐宋文创，专注于文字作品的极致创作与出版级编排，具备极其专业的书本编辑、排版、美化、布局、润色、字体美化能力，完成一部完整电子书或纸质书的前期所有工作。
 
 【核心能力框架】
 
-一、创意思维方法（基于脑科学知识库）
-1. 联想思维：
-   - 跨领域联想
-   - 类比推理
-   - 隐喻创造
-2. 发散思维：
-   - 多角度思考
-   - 逆向思维
-   - 组合创新
-3. 收敛思维：
-   - 筛选最佳方案
-   - 优化整合
-   - 精炼表达
+一、专业书本编辑
+1. 结构编排：
+   - 目录层级设计、章节划分、小节编排
+   - 目标编排：根据出版目标（电子书/纸质书/微信读书）定制结构
+   - 版式规划：开本、版心、天头地脚、页眉页脚
+2. 内容润色：
+   - 文字精修、语感统一、风格一致
+   - 专业术语规范、标点符号统一
+   - 可读性优化、节奏把控
 
-二、逻辑严密性（基于逻辑学知识库）
-1. 创意与逻辑的平衡：
-   - 创意需要逻辑支撑
-   - 避免逻辑矛盾
-   - 确保内在一致性
-2. 论证结构：
-   - 创意观点的合理性
-   - 情感与理性的结合
-   - 说服力的构建
+二、排版与美化
+1. 排版规范：
+   - 字体选择与层级（标题、正文、注释、引用）
+   - 字号、行距、字距、段落间距
+   - 首行缩进、段首装饰、章节页设计
+2. 布局设计：
+   - 图文混排、表格、代码块、引用块
+   - 页眉页脚、页码样式、书眉设计
+   - 封面、扉页、版权页、前言、目录、正文、附录
 
-三、创作能力
-1. 创意文章撰写
-2. 故事创作与叙事
-3. 诗歌与文学表达
-4. 头脑风暴与想法生成
-5. 文案优化与提升
+三、三审三阅流程
+1. 初审：内容完整性、逻辑连贯性、事实准确性
+2. 复审：文字润色、风格统一、格式规范
+3. 终审：整体质量、出版标准、合规性检查
+4. 校对：错别字、标点、版式、页码
 
-四、输出规范
-1. 发挥想象力，给出独特创意
-2. 保持逻辑自洽
-3. 考虑受众认知特点
-4. 提供多种方案供选择`,
-            capabilities: ['创意写作', '头脑风暴', '文案优化', '故事创作', '诗歌创作', '联想思维', '发散思维'],
+四、epub 结构输出规范（必须输出）
+你输出的是**文本与结构化内容**，用户需用 pandoc、Calibre 等工具打包为 epub/PDF/MOBI/AZW3。请按以下结构输出，便于用户直接打包：
+
+1. **content.opf**：用 \`\`\`content.opf 代码块输出完整 OPF 文件
+   - metadata：dc:title、dc:creator、dc:language、dc:identifier 等
+   - manifest：列出所有 XHTML 章节、CSS、图片
+   - spine：阅读顺序
+
+2. **章节 XHTML**：用 \`\`\`xhtml 或 \`\`\`chapter-01.xhtml 等代码块输出
+   - 符合 EPUB 2/3 的 XHTML 规范
+   - 每章独立文件，含完整 HTML 结构（html、head、body）
+   - 标题层级：h1 章、h2 节、h3 小节
+
+3. **toc.ncx**（EPUB 2）或 **nav.xhtml**（EPUB 3）：用 \`\`\`toc.ncx 或 \`\`\`nav.xhtml 代码块输出目录结构
+
+4. **mimetype**：\`application/epub+zip\`（可仅作说明）
+
+五、出版术语（必须包含）
+- **版权页**：书名、作者、出版者、ISBN、版次、印次、CIP 数据、出版日期
+- **ISBN**：国际标准书号
+- **CIP**：图书在版编目数据
+- **版次/印次**：第 X 版、第 X 次印刷
+
+六、微信读书上架规范
+- **封面**：建议尺寸、格式（JPG/PNG）、无文字遮挡
+- **目录**：层级清晰、章节划分明确
+- **元数据**：书名、作者、简介（200 字内）、分类、标签
+- **内容格式**：epub 2/3 标准，章节 XHTML 规范
+- **版权**：原创或已获授权
+
+七、深度理解与编排优化（必备能力）
+1. **深度理解文章**：
+   - 通读全文，把握主题、结构、逻辑脉络与风格
+   - 识别内容质量、冗余、矛盾、缺失与可优化点
+   - 理解受众定位与出版目标
+
+2. **冗余提示与重新编排**：
+   - 必要时进行**冗余提示**：对模糊、歧义、不完整处主动追问澄清
+   - **重新编排提示**：当发现章节重复、顺序错乱、结构不合理时，主动提出调整方案并征得用户确认
+   - 典型场景：章节重复 → 合并或删减建议；章节顺序错乱 → 重排方案；逻辑断层 → 补充建议
+
+3. **章节问题处理**：
+   - 检测章节重复、缺失、编号混乱、层级错误
+   - 输出「编排建议」：列出问题清单与推荐调整方案
+   - 在用户确认前，可先输出分析结论，待确认后再执行完整输出
+
+八、输出确认与完整电子档
+1. **主动询问**：在输出前，**必须询问用户**：「是否需要输出完整图书（含完整电子档附件）？」
+2. **用户选择「是」**：则**完整输出**整部书的电子档，包括：
+   - 完整 content.opf、所有章节 XHTML、toc.ncx/nav.xhtml
+   - 按出版标准组织为可直接打包的完整结构
+   - 标注「完整电子档，可直接用 pandoc/Calibre 打包为 epub」
+3. **用户选择「否」或未明确**：可仅输出大纲、样章、编排建议或部分内容
+
+九、创意思维（基于脑科学、逻辑学知识库）
+- 联想思维、发散思维、收敛思维
+- 创意与逻辑平衡、论证结构
+- 故事创作、诗歌、文案、头脑风暴
+
+十、输出规范与能力边界
+1. 按出版标准输出完整书稿及 epub 结构（content.opf、章节 XHTML、toc.ncx/nav.xhtml）
+2. **能力边界**：你输出的是文本与 XML/XHTML 结构，用户需用 **pandoc**、**Calibre**、**Sigil** 等工具生成 epub/PDF/MOBI/AZW3 二进制文件
+3. 标注三审三阅要点与修改建议
+4. 微信读书上架时提供完整元数据（书名、作者、简介、分类、标签）及格式检查清单`,
+            capabilities: ['深度理解文章', '冗余提示与重新编排', '章节重复/排序处理', '询问完整输出', '完整电子档附件', '书本编辑', '专业排版', '三审三阅', 'content.opf', 'XHTML章节', 'toc.ncx', '版权页/ISBN/CIP', '微信读书上架', '文字润色', '布局美化', '创意写作', '故事创作', '诗歌创作'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
-            skills: ['skill_writer', 'skill_brainstorm', 'skill_designer'],
-            rules: ['rule_format', 'rule_tone', 'rule_examples', 'rule_multimodal'],
-            outputFormat: 'markdown',
-            mcp: ['mcp_web_search'],
-            rag: ['rag_literature', 'rag_logic', 'rag_neuroscience'],
-            color: '#8b5cf6'
+            skills: ['skill_writer', 'skill_brainstorm', 'skill_designer', 'skill_reviewer', 'skill_summarizer', 'skill_pyramid', 'skill_mece', 'skill_planner'],
+            rules: ['rule_format', 'rule_tone', 'rule_safety', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_multimodal', 'rule_context'],
+            mcp: ['mcp_web_search', 'mcp_document_parser', 'mcp_filesystem'],
+            rag: ['rag_literature', 'rag_logic', 'rag_neuroscience', 'rag_philosophy', 'rag_first_principles'],
+            color: '#8b5cf6',
+            delegateTo: []
         },
         code: {
             id: 'code',
@@ -1782,115 +1842,92 @@ ${prompt}
             capabilities: ['代码审查', '调试排错', '性能优化', '技术咨询', '算法设计', '逻辑验证', '代码可读性'],
             modelPreference: ['deepseek-reasoner', 'gpt-4o', 'claude-3-sonnet'],
             skills: ['skill_coder', 'skill_analyst'],
-            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure'],
+            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_context'],
             mcp: ['mcp_web_search', 'mcp_filesystem'],
             rag: ['rag_linux', 'rag_ai', 'rag_logic', 'rag_neuroscience'],
             color: '#10b981',
-            outputFormat: 'markdown'
+            delegateTo: []
         },
         task: {
             id: 'task',
             name: '任务助手',
-            description: '任务管理、待办事项、进度跟踪',
+            description: '任务管理、MECE分解、分类分级、依赖分析、表格输出',
             icon: 'fa-tasks',
-            systemPrompt: `你是一位任务管理专家，擅长帮助用户管理任务、制定计划、跟踪进度。
+            systemPrompt: `你是一位任务管理专家，擅长 MECE 分解、分类分级、依赖分析和表格化输出。
 
-【核心能力框架】
+【核心能力】
 
-一、逻辑思维（基于逻辑学知识库）
-1. 任务分解逻辑：
-   - MECE原则（相互独立，完全穷尽）
-   - 依赖关系分析
-   - 前置条件识别
-2. 优先级逻辑：
-   - 紧急重要矩阵
-   - 价值与成本权衡
-   - 风险与收益分析
+一、MECE 原则（Mutually Exclusive, Collectively Exhaustive）
+- 相互独立：任务之间无重叠、无交叉
+- 完全穷尽：覆盖目标全部范围，无遗漏
+- 原子化：每个任务为可独立执行的原子单元（单一职责、可验收）
 
-二、认知优化（基于脑科学知识库）
-1. 注意力管理：
-   - 单任务专注
-   - 避免上下文切换
-   - 番茄工作法
-2. 记忆辅助：
-   - 清单化
-   - 可视化进度
-   - 定期回顾
+二、分类与分级
+- 分类：按业务域/模块分类（如：需求、设计、开发、测试、部署）
+- 优先级：P0(紧急重要)、P1(重要不紧急)、P2(紧急不重要)、P3(可延后)
+- 难度：easy/medium/hard（影响时间估算）
 
-三、任务管理能力
-1. 复杂任务分解
-2. 优先级设置
-3. 时间安排
-4. 进度跟踪
-5. 执行建议
+三、依赖关系
+- 识别任务间 FS(完成-开始)、SS(开始-开始)、FF(完成-完成)、SF(开始-完成) 依赖
+- 输出 dependency-graph 代码块：{nodes:[{id,label}], edges:[{from,to,label}]}
 
-四、输出规范
-1. 清晰的任务结构
-2. 可执行的步骤
-3. 合理的优先级
-4. 可视化的进度追踪`,
-            capabilities: ['任务管理', '待办事项', '进度跟踪', '优先级排序', 'MECE分解', '时间管理'],
+四、输出规范（必须使用）
+- 任务分类表：使用 \`\`\`task-classification-table 代码块，输出 Markdown 表格
+  格式：| 任务ID | 任务标题 | 分类 | 优先级 | 难度 | 预计工时 | 依赖 |
+- 依赖关系图：使用 \`\`\`dependency-graph 代码块
+- 任务列表：使用 \`\`\`json 代码块输出结构化 TODO 数组`,
+            capabilities: ['任务管理', 'MECE分解', '分类分级', '优先级排序', '原子化', '依赖分析', '表格输出'],
             modelPreference: ['deepseek-chat', 'glm-4-flash'],
-            skills: ['skill_planner', 'skill_writer'],
-            rules: ['rule_format', 'rule_structure'],
+            skills: ['skill_mece', 'skill_planner', 'skill_dependency', 'skill_writer'],
+            rules: ['rule_format', 'rule_structure', 'rule_context'],
             mcp: ['mcp_web_search'],
             rag: ['rag_logic', 'rag_neuroscience'],
             color: '#f59e0b',
-            outputFormat: 'markdown'
+            delegateTo: []
         },
         plan: {
             id: 'plan',
             name: '计划大师',
-            description: '项目规划、时间管理、目标设定',
+            description: 'Roadmap、里程碑、风险矩阵、资源约束、任务-SubAgent强绑定、智能规划',
             icon: 'fa-calendar-alt',
-            systemPrompt: `你是一位计划制定专家，擅长项目规划、时间管理和目标设定。
+            systemPrompt: `你是一位计划制定专家，擅长 Roadmap、里程碑、风险矩阵、资源约束识别和智能规划。
 
-【核心能力框架】
+【核心能力】
 
-一、逻辑思维（基于逻辑学知识库）
-1. 目标分解逻辑：
-   - 金字塔原理（目标→策略→行动）
-   - 因果关系链
-   - 必要与充分条件
-2. 计划验证：
-   - 可行性分析
-   - 资源约束检查
-   - 风险评估逻辑
+一、Roadmap 与里程碑
+- 输出 \`\`\`roadmap 代码块：{title, phases:[{name,start,end,milestones:[]}], milestones:[{name,date,description}]}
+- 支持 HTML 和 Markdown 格式导出
 
-二、认知优化（基于脑科学知识库）
-1. SMART目标设定：
-   - Specific（具体）
-   - Measurable（可衡量）
-   - Achievable（可实现）
-   - Relevant（相关）
-   - Time-bound（有时限）
-2. 执行心理：
-   - 启动效应
-   - 习惯养成
-   - 正向反馈
+二、依赖关系与风险矩阵
+- 依赖关系：\`\`\`dependency-graph 代码块 {nodes, edges}
+- 风险矩阵：\`\`\`risk-matrix 代码块 {high:[], medium:[], low:[]}
 
-三、计划能力
-1. 项目规划
-2. 时间管理
-3. 目标设定
-4. 里程碑安排
-5. TODO生成与跟踪
-6. 执行策略制定
+三、资源约束识别
+- 识别人力、时间、工具等约束
+- 输出 \`\`\`resource-constraints 代码块：{constraints:[{type,description,impact}]}
 
-四、输出规范
-1. 详细可行的计划
-2. SMART目标
-3. 清晰的里程碑
-4. 可执行的行动步骤
-5. 可视化的进度追踪`,
-            capabilities: ['项目规划', '时间管理', '目标设定', '里程碑安排', 'TODO生成', '金字塔原理', 'SMART目标'],
+四、时间点智能识别
+- 将自然语言时间（如"下周"、"Q2"、"月底"）转为具体日期或相对天数
+
+五、任务-SubAgent 强绑定
+- 为每个任务指定最合适的 SubAgent（subAgentId）
+- 可用 SubAgent：task、plan、general、coder、analyst 等，根据任务类型匹配
+
+六、智能规划
+- 根据 **任务难度**、**人力资源**、**任务数量**、**deadline** 进行时间和计划智能规划
+- 输出 \`\`\`task-classification-table 表格，含：任务ID、标题、分类、优先级、难度、工时、绑定SubAgent、依赖
+
+七、输出规范（必须使用）
+- roadmap、milestones、dependency-graph、risk-matrix、resource-constraints、task-classification-table
+- TODO 列表：\`\`\`json 代码块，每项含 subAgentId、dependencies、targetDate`,
+            capabilities: ['Roadmap', '里程碑', '依赖关系', '风险矩阵', '资源约束', '任务-SubAgent绑定', '智能规划', '时间识别'],
             modelPreference: ['deepseek-chat', 'glm-4-plus'],
-            skills: ['skill_planner', 'skill_writer'],
-            rules: ['rule_format', 'rule_structure'],
+            skills: ['skill_mece', 'skill_planner', 'skill_gantt', 'skill_dependency', 'skill_risk_identification', 'skill_writer'],
+            rules: ['rule_format', 'rule_structure', 'rule_context'],
             mcp: ['mcp_web_search'],
             rag: ['rag_logic', 'rag_neuroscience'],
             color: '#ec4899',
-            outputFormat: 'markdown'
+            delegateTo: []
         },
         super_decision: {
             id: 'super_decision',
@@ -2136,11 +2173,11 @@ ${prompt}
             capabilities: ['超级决策', '认知偏差识别', '思维模式分析', '风险评估', '方案对比', '决策矩阵', '决策链', '概率分析', 'Mermaid可视化', '第一性原理', '系统思考', '前景理论', '数据分析', '行业分析', '政策分析', '社会结构约束分析', '关键洞察提取', '沙盘推演', '对话问答', '个性化数据收集', '个性化输出矫正', '金字塔原理', 'SMART原则', '建议生成'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_analyst', 'skill_researcher', 'skill_planner', 'skill_swot', 'skill_decision_expert', 'skill_first_principles', 'skill_iceberg_model', 'skill_mermaid_visualization', 'skill_cognitive_psychology', 'skill_pyramid', 'skill_smart', 'skill_mece', 'skill_data_cleaning', 'skill_advanced_analytics'],
-            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure'],
+            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_context'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
             rag: ['rag_finance', 'rag_social', 'rag_first_principles', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_logic', 'rag_temporal_logic', 'rag_common_sense', 'rag_history', 'rag_industry_reports', 'rag_government_reports'],
             color: '#8b5cf6',
-            outputFormat: 'markdown'
+            delegateTo: []
         },
         cognitive: {
             id: 'cognitive',
@@ -2179,11 +2216,53 @@ ${prompt}
             capabilities: ['认知偏差识别', '思维模式分析', '决策优化', '心理学应用', '脑科学insights', 'Mermaid可视化', '行为经济学', '建议生成'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_cognitive_psychology', 'skill_first_principles', 'skill_iceberg_model', 'skill_mermaid_visualization', 'skill_analyst', 'skill_researcher'],
-            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure'],
+            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_context'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
             rag: ['rag_psychology', 'rag_neuroscience', 'rag_first_principles', 'rag_iceberg_model', 'rag_social'],
             color: '#14b8a6',
-            outputFormat: 'markdown'
+            delegateTo: []
+        },
+        prompt_expert: {
+            id: 'prompt_expert',
+            name: '提示词专家',
+            description: '提示词设计、优化与工程化，帮助用户写出高质量、可复用的 AI 提示词',
+            icon: 'fa-magic',
+            systemPrompt: `你是一位提示词工程专家，擅长设计、优化和工程化 AI 提示词（Prompt）。
+
+【核心能力】
+
+一、提示词设计
+1. 需求澄清：帮助用户明确目标、受众、约束和期望输出格式
+2. 结构设计：角色设定、任务描述、上下文注入、输出规范、示例（Few-shot）
+3. 模式选择：零样本、少样本、思维链（CoT）、自洽性、分步推理等
+4. 边界控制：明确禁止项、敏感词过滤、输出长度与格式
+
+二、提示词优化
+1. 歧义消除：识别并修正模糊、多义、冲突的表述
+2. 信息密度：精简冗余、补充关键信息、平衡详略
+3. 指令清晰：动词明确、顺序合理、层级分明
+4. 抗干扰：增强鲁棒性，减少模型幻觉与跑题
+
+三、工程化实践
+1. 模板化：可复用模板、变量占位、条件分支
+2. 版本管理：迭代记录、A/B 对比、效果评估
+3. 多模型适配：针对不同模型（GPT、Claude、GLM、DeepSeek 等）的调优建议
+4. 系统提示词：为 Agent、工作流设计系统级提示词
+
+四、输出规范
+1. 直接给出优化后的提示词，用 \`\`\` 代码块包裹
+2. 简要说明设计思路与关键改动点
+3. 提供变体或可选方案（如需要）
+4. 标注适用场景与注意事项
+
+【Workflow 链中补充模式】当你在主 Agent 与下级 Agent 之间时，你的输出为对下级 Agent 的补充提示词。下级 Agent 将保留其完整系统提示词与能力，你的输出与之叠加使用。仅可增强、澄清、专业化任务描述，不可删减、弱化或丢失关键信息。`,
+            capabilities: ['提示词设计', '提示词优化', 'Few-shot 示例', '思维链设计', '角色设定', '输出格式规范', '多模型适配', '系统提示词', '模板化', '需求澄清'],
+            modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
+            skills: ['skill_writer', 'skill_analyst', 'skill_brainstorm'],
+            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_context'],
+            mcp: ['mcp_web_search'],
+            rag: ['rag_ai', 'rag_logic', 'rag_psychology', 'rag_neuroscience'],
+            color: '#f59e0b'
         },
         work_secretary: {
             id: 'work_secretary',
@@ -2235,12 +2314,17 @@ ${prompt}
 4. 整合多维度：技术+策略+方法+决策，避免空泛建议
 5. 风险前置：识别并标注关键风险
 
-【核心输出结构】汇报项目/任务时，必须包含以下模块。
+【核心输出结构】汇报项目/任务时，必须包含以下模块，使用 project-dashboard 代码块输出 JSON，配合 Markdown 文本说明。
 
-【推荐】优先使用 \`\`\`html 输出完整 H5 驾驶舱页面（PC+移动端适配，玻璃拟态、Tailwind、Font Awesome）：
-${DIAGRAM_FORMAT_SPEC.projectDashboardH5}
+【交付产物要求】每个交付物必须用代码块输出完整内容，不可仅列文件名或单行描述。用户需能直接下载、打开、保存：
+- Markdown 报告：用 \`\`\`md 代码块包裹完整报告全文（含结构化汇报、列表、表格）
+- 纯文本摘要：用 \`\`\`txt 代码块包裹完整摘要内容
+- HTML 归档：用 \`\`\`html 代码块包裹完整 HTML 文档（含 project-dashboard 等图表，支持预览与下载）
+- 禁止仅输出文件名或「见上文」等省略表述；每个交付物须包含可独立使用的完整内容
 
-【备选】使用 \`\`\`project-dashboard 或 \`\`\`json 输出 JSON 结构：
+【全息复盘总结】当用户要求复盘、总结、回顾时，输出全息复盘总结，包含：时间线、关键决策、得失分析、经验教训、改进建议。输出格式为 HTML 或 Markdown，便于归档。
+
+【project-dashboard 格式规范】必须严格按此结构输出，否则渲染失败：
 ${DIAGRAM_FORMAT_SPEC.projectDashboard}
 
 模块说明：
@@ -2248,14 +2332,13 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
 2. 关键资源负荷：resource_load（数组 [{name,load}]）
 3. 依赖情况：dependencies、blocking_deps、critical_path
 4. 认知偏差：cognitive_biases`,
-            capabilities: ['研发项目管理协调', '根据任务组织调度Agent', '超级决策能力', '海量知识整合', '合理化思路', '切实可行方案', '技术策略方法决策', '问题闭环/扩散/变迁/泛化识别', 'PMP', 'WBS', '根因分析', '风险识别', '研发技术'],
+            capabilities: ['研发项目管理协调', '根据任务组织调度Agent', '超级决策能力', '海量知识整合', '合理化思路', '切实可行方案', '技术策略方法决策', '问题闭环/扩散/变迁/泛化识别', '全息复盘总结(HTML/Markdown归档)', '产物归档(Markdown/TXT/HTML)', 'PMP', 'WBS', '根因分析', '风险识别', '研发技术'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_pmp', 'skill_wbs', 'skill_root_cause', 'skill_risk_identification', 'skill_gantt', 'skill_dependency', 'skill_temporal_relation', 'skill_planner', 'skill_mece', 'skill_mermaid_visualization', 'skill_bug_analysis', 'skill_testing_strategy', 'skill_problem_evolution', 'skill_decision_expert', 'skill_cognitive_psychology', 'skill_swot', 'skill_first_principles', 'skill_iceberg_model', 'skill_pyramid', 'skill_smart'],
-            rules: ['rule_format', 'rule_structure', 'rule_accuracy', 'rule_examples'],
+            rules: ['rule_format', 'rule_structure', 'rule_accuracy', 'rule_examples', 'rule_context'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
             rag: ['rag_pmp', 'rag_huawei_rdpm', 'rag_wbs', 'rag_root_cause', 'rag_risk_identification', 'rag_software_pm', 'rag_linux', 'rag_ccpp', 'rag_memory_analysis', 'rag_embedded', 'rag_image_quality', 'rag_h264_h265', 'rag_ai_security', 'rag_bug_debug', 'rag_testing', 'rag_problem_evolution', 'rag_logic', 'rag_temporal_logic', 'rag_first_principles', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_common_sense', 'rag_history', 'rag_industry_reports', 'rag_government_reports', 'rag_finance', 'rag_social'],
-            color: '#0ea5e9',
-            outputFormat: 'h5'
+            color: '#0ea5e9'
         }
     };
 
@@ -2279,7 +2362,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
         models: {},
         settings: {
             theme: 'dark',
-            language: 'zh',
+            language: 'zh-CN',
             autoVoice: false,
             sendShortcut: 'ctrl-enter',
             webSearchEnabled: true,
@@ -2366,6 +2449,11 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                 loadState(),
                 sleep(5000).then(() => window.Logger?.warn?.('loadState 超时，使用默认状态'))
             ]);
+            // loadState 完成后应用已加载的配置（theme/language 等）
+            applyTheme(AppState.settings.theme);
+            applyLanguage(AppState.settings.language);
+            applyFontSize(AppState.settings.fontSize);
+            applyShortcut(AppState.settings.sendShortcut);
             
             updateSplashProgress(80, '正在加载SubAgent配置...');
             await sleep(200);
@@ -2384,6 +2472,10 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
             if (window.RAGManager && typeof window.RAGManager.init === 'function') {
                 window.RAGManager.init();
                 window.Logger?.info('RAGManager初始化完成');
+            }
+            // 初始化PlanManager（加载计划）
+            if (window.PlanManager && typeof window.PlanManager.init === 'function') {
+                window.PlanManager.init();
             }
             
             updateSplashProgress(95, '正在初始化界面...');
@@ -2443,14 +2535,15 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
 
     function initModels() {
         AppState.models = JSON.parse(JSON.stringify(BUILTIN_MODELS));
-        const saved = localStorage.getItem(CUSTOM_MODELS_KEY);
-        if (saved) {
-            try {
+        if (!isLocalStorageAvailable()) return;
+        try {
+            const saved = localStorage.getItem(CUSTOM_MODELS_KEY);
+            if (saved) {
                 const customModels = JSON.parse(saved);
                 Object.assign(AppState.models, customModels);
-            } catch (e) {
-                window.Logger?.error('加载自定义模型失败:', e);
             }
+        } catch (e) {
+            window.Logger?.warn?.('加载自定义模型失败:', e?.message);
         }
     }
 
@@ -2463,36 +2556,43 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
 
     function initSubAgents() {
         AppState.subAgents = JSON.parse(JSON.stringify(BUILTIN_SUB_AGENTS));
-        const saved = localStorage.getItem(CUSTOM_SUBAGENTS_KEY);
-        if (saved) {
-            try {
+        if (!isLocalStorageAvailable()) return;
+        try {
+            const saved = localStorage.getItem(CUSTOM_SUBAGENTS_KEY);
+            if (saved) {
                 AppState.customSubAgents = JSON.parse(saved);
                 Object.assign(AppState.subAgents, AppState.customSubAgents);
-            } catch (e) {
-                window.Logger?.error('加载自定义Sub Agent失败:', e);
             }
+        } catch (e) {
+            window.Logger?.warn?.('加载自定义Sub Agent失败:', e?.message);
         }
     }
 
     async function loadState() {
         try {
+            if (!isLocalStorageAvailable()) {
+                window.Logger?.warn?.('localStorage 不可用，配置和会话将无法持久化');
+            }
             await (window.StorageService?.init?.() ?? Promise.resolve());
             let state = null;
-            // 优先从 localStorage 读取（兼容 file:// 及部分浏览器 IndexedDB 异常）
-            const savedLocal = localStorage.getItem(STORAGE_KEY);
-            if (savedLocal) {
-                try {
+            // 优先从 localStorage 同步读取（兼容 file:// 及部分浏览器 IndexedDB 异常）
+            try {
+                const savedLocal = localStorage.getItem(STORAGE_KEY);
+                if (savedLocal) {
                     state = JSON.parse(savedLocal);
-                } catch (e) {
-                    window.Logger?.warn?.('localStorage 解析失败:', e?.message);
+                    window.Logger?.debug?.('从 localStorage 加载状态成功');
                 }
+            } catch (e) {
+                window.Logger?.warn?.('localStorage 读取/解析失败:', e?.message);
             }
             if (!state && window.StorageService?.get) {
                 state = await window.StorageService.get(STORAGE_KEY);
+                if (state) window.Logger?.debug?.('从 IndexedDB 加载状态成功');
             }
-            if (state && !savedLocal) {
-                // 若仅 IndexedDB 有数据，回写 localStorage 做双写备份
-                try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
+            if (state && isLocalStorageAvailable()) {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+                } catch (_) {}
             }
             if (state) {
                 if (state.chats && Array.isArray(state.chats)) {
@@ -2504,7 +2604,9 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                 if (state.todos) AppState.todos = state.todos;
                 if (state.currentChatId) AppState.currentChatId = state.currentChatId;
                 if (state.currentMode) {
-                    AppState.currentMode = state.currentMode === 'writing' ? 'creative' : state.currentMode;
+                    const m = state.currentMode === 'writing' ? 'creative' : state.currentMode;
+                    // 已移除 task/creative/plan 模式，兼容旧数据
+                    AppState.currentMode = (m === 'task' || m === 'creative' || m === 'plan') ? 'chat' : m;
                 }
                 if (state.currentModel) AppState.currentModel = state.currentModel;
                 if (state.currentSubAgent) AppState.currentSubAgent = state.currentSubAgent;
@@ -2546,10 +2648,13 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                             if (c?.serviceTarget !== undefined) AppState.subAgents[id].serviceTarget = c.serviceTarget;
                             if (c?.ignoreInfoDesc !== undefined) AppState.subAgents[id].ignoreInfoDesc = c.ignoreInfoDesc;
                             if (c?.delegateTo !== undefined) AppState.subAgents[id].delegateTo = Array.isArray(c.delegateTo) ? c.delegateTo : [];
-                            if (c?.outputFormat !== undefined) AppState.subAgents[id].outputFormat = c.outputFormat;
                         }
                     });
                 }
+            }
+            // 加载完成后立即保存一次，确保双写一致
+            if (isLocalStorageAvailable()) {
+                immediateSave();
             }
         } catch (error) {
             window.Logger?.error('加载状态失败:', error);
@@ -2564,8 +2669,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                 if (agent) subAgentConfigs[id] = {
                     skills: agent.skills || [], rules: agent.rules || [], mcp: agent.mcp || [], rag: agent.rag || [],
                     modelPreference: agent.modelPreference || [], serviceTarget: agent.serviceTarget,
-                    ignoreInfoDesc: agent.ignoreInfoDesc, delegateTo: agent.delegateTo ?? [],
-                    outputFormat: agent.outputFormat ?? 'markdown'
+                    ignoreInfoDesc: agent.ignoreInfoDesc, delegateTo: agent.delegateTo ?? []
                 };
             });
             const state = {
@@ -2587,7 +2691,9 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                 savedAt: Date.now(),
                 version: AppState.version
             };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            if (isLocalStorageAvailable()) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            }
             if (window.StorageService?.set) {
                 window.StorageService.set(STORAGE_KEY, state).catch(err => window.Logger?.warn?.('Storage save failed:', err?.message));
             }
@@ -2600,6 +2706,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                 window.Logger?.warn('localStorage 已满，将尝试保存精简数据');
             }
             // 如果存储失败，尝试清理旧数据
+            if (!isLocalStorageAvailable()) return;
             try {
                 const saved = localStorage.getItem(STORAGE_KEY);
                 if (saved) {
@@ -2622,6 +2729,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
     
     // 保存SubAgent配置（包括资源关联）
     function saveSubAgentConfigs() {
+        if (!isLocalStorageAvailable()) return;
         try {
             // 保存自定义subagent
             localStorage.setItem(CUSTOM_SUBAGENTS_KEY, JSON.stringify(AppState.customSubAgents));
@@ -2639,8 +2747,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                         modelPreference: agent.modelPreference || [],
                         serviceTarget: agent.serviceTarget,
                         ignoreInfoDesc: agent.ignoreInfoDesc,
-                        delegateTo: agent.delegateTo ?? [],
-                        outputFormat: agent.outputFormat ?? 'markdown'
+                        delegateTo: agent.delegateTo ?? []
                     };
                 }
             });
@@ -2667,7 +2774,6 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                         if (config.serviceTarget !== undefined) AppState.subAgents[id].serviceTarget = config.serviceTarget;
                         if (config.ignoreInfoDesc !== undefined) AppState.subAgents[id].ignoreInfoDesc = config.ignoreInfoDesc;
                         if (config.delegateTo !== undefined) AppState.subAgents[id].delegateTo = Array.isArray(config.delegateTo) ? config.delegateTo : [];
-                        if (config.outputFormat !== undefined) AppState.subAgents[id].outputFormat = config.outputFormat;
                     }
                 });
             }
@@ -2703,6 +2809,61 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
             return true;
         } catch (error) {
             window.Logger?.error('清除SubAgent配置失败:', error);
+            return false;
+        }
+    }
+
+    /** 重置到初始化状态：仅清除用户自定义数据和历史数据，保留 API 密钥、同步配置、Jina AI 配置 */
+    async function resetToInitialState() {
+        try {
+            if (!isLocalStorageAvailable()) return false;
+            // 1. 保留 settings、syncConfig、jinaAI（用户 API 密钥与系统配置）
+            const preserved = {
+                settings: { ...AppState.settings },
+                syncConfig: { ...AppState.syncConfig },
+                jinaAI: { ...AppState.jinaAI }
+            };
+            // 2. 移除用户数据相关的 localStorage 键
+            localStorage.removeItem(CUSTOM_MODELS_KEY);
+            localStorage.removeItem(CUSTOM_SUBAGENTS_KEY);
+            localStorage.removeItem(RAG_VECTORS_KEY);
+            localStorage.removeItem(SUBAGENT_CONFIGS_KEY);
+            if (window.StorageService?.remove) {
+                await Promise.all([
+                    window.StorageService.remove(RAG_VECTORS_KEY).catch(() => {}),
+                    window.StorageService.remove(CUSTOM_MODELS_KEY).catch(() => {}),
+                    window.StorageService.remove(CUSTOM_SUBAGENTS_KEY).catch(() => {})
+                ]);
+            }
+            // 3. 重置历史与用户自定义数据
+            AppState.chats = [];
+            AppState.plans = [];
+            AppState.tasks = [];
+            AppState.todos = [];
+            AppState.currentChatId = null;
+            AppState.currentMode = 'chat';
+            AppState.currentModel = 'auto';
+            AppState.currentSubAgent = 'general';
+            AppState.currentOutputFormat = 'markdown';
+            AppState.messages = [];
+            AppState.attachments = [];
+            AppState.customWorkflows = [];
+            AppState.ragVectors = {};
+            // 4. 恢复内置模型、资源、SubAgent
+            initModels();
+            initResources();
+            initSubAgents();
+            loadSubAgentConfigs();
+            // 5. 恢复保留的配置
+            AppState.settings = preserved.settings;
+            AppState.syncConfig = preserved.syncConfig;
+            AppState.jinaAI = preserved.jinaAI;
+            // 6. 持久化
+            immediateSave();
+            saveRagVectors();
+            return true;
+        } catch (e) {
+            window.Logger?.error('重置到初始化状态失败:', e);
             return false;
         }
     }
@@ -2945,6 +3106,11 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
     }
 
     // 获取Sub Agent引用的资源
+    function getSubAgentList() {
+        const agents = AppState.subAgents || {};
+        return Object.values(agents).map(a => ({ id: a.id, name: a.name || a.id }));
+    }
+
     function getSubAgentResources(subAgentId) {
         const subAgent = AppState.subAgents?.[subAgentId];
         const empty = { skills: [], rules: [], mcp: [], rag: [] };
@@ -3184,18 +3350,85 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
         debouncedSave();
     }
 
+    const I18N = {
+        'new-chat': { 'zh-CN': '新建对话', 'en': 'New Chat' },
+        'chat-history': { 'zh-CN': '对话历史', 'en': 'Chat History' },
+        'settings': { 'zh-CN': '设置', 'en': 'Settings' },
+        'general-settings': { 'zh-CN': '通用设置', 'en': 'General' },
+        'theme': { 'zh-CN': '主题', 'en': 'Theme' },
+        'language': { 'zh-CN': '语言', 'en': 'Language' },
+        'dark': { 'zh-CN': '深色', 'en': 'Dark' },
+        'light': { 'zh-CN': '浅色', 'en': 'Light' },
+        'auto': { 'zh-CN': '自动', 'en': 'Auto' },
+        'send-shortcut': { 'zh-CN': '发送快捷键', 'en': 'Send Shortcut' },
+        'font-size': { 'zh-CN': '字体大小', 'en': 'Font Size' },
+        'small': { 'zh-CN': '小', 'en': 'Small' },
+        'medium': { 'zh-CN': '中', 'en': 'Medium' },
+        'large': { 'zh-CN': '大', 'en': 'Large' },
+        'model-settings': { 'zh-CN': '模型设置', 'en': 'Models' },
+        'resource-mgmt': { 'zh-CN': '资源管理', 'en': 'Resources' },
+        'subagents': { 'zh-CN': 'SubAgent', 'en': 'SubAgent' },
+        'chat': { 'zh-CN': '对话', 'en': 'Chat' },
+        'plan': { 'zh-CN': '计划', 'en': 'Plan' },
+        'task': { 'zh-CN': '任务', 'en': 'Task' },
+        'welcome-title': { 'zh-CN': '有什么可以帮您的？', 'en': 'How can I help you?' },
+        'welcome-subtitle': { 'zh-CN': '选择一个AI助手开始对话', 'en': 'Select an AI assistant to start' },
+        'quick-write': { 'zh-CN': '写文章', 'en': 'Write' },
+        'quick-analysis': { 'zh-CN': '数据分析', 'en': 'Analysis' },
+        'quick-plan': { 'zh-CN': '制定计划', 'en': 'Plan' },
+        'quick-code': { 'zh-CN': '写代码', 'en': 'Code' },
+        'input-placeholder': { 'zh-CN': '输入消息...', 'en': 'Type a message...' },
+        'select-agent': { 'zh-CN': '选择AI助手', 'en': 'Select Assistant' },
+        'select-model': { 'zh-CN': '选择模型', 'en': 'Select Model' },
+        'close': { 'zh-CN': '关闭', 'en': 'Close' },
+        'add-agent': { 'zh-CN': '添加助手', 'en': 'Add Assistant' },
+        'add-model': { 'zh-CN': '添加模型', 'en': 'Add Model' },
+        'general': { 'zh-CN': '通用', 'en': 'General' },
+        'general-desc': { 'zh-CN': '主题、语言、快捷键', 'en': 'Theme, Language, Shortcut' },
+        'models': { 'zh-CN': '模型', 'en': 'Models' },
+        'models-desc': { 'zh-CN': 'AI模型配置', 'en': 'AI Model Config' },
+        'resources': { 'zh-CN': '资源', 'en': 'Resources' },
+        'resources-desc': { 'zh-CN': 'RAG、技能、MCP', 'en': 'RAG, Skills, MCP' },
+        'agents': { 'zh-CN': '助手', 'en': 'Assistants' },
+        'agents-desc': { 'zh-CN': 'SubAgent管理', 'en': 'SubAgent Management' }
+    };
+
+    function updateUIForLanguage(lang) {
+        const L = lang === 'zh-CN' ? 'zh-CN' : 'en';
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.dataset.i18n;
+            if (I18N[key] && I18N[key][L]) el.textContent = I18N[key][L];
+        });
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+            const key = el.dataset.i18nPlaceholder;
+            if (I18N[key] && I18N[key][L]) el.placeholder = I18N[key][L];
+        });
+        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+            const key = el.dataset.i18nTitle;
+            if (I18N[key] && I18N[key][L]) el.title = I18N[key][L];
+        });
+        document.querySelectorAll('[data-i18n-opt]').forEach(el => {
+            const key = el.dataset.i18nOpt;
+            if (I18N[key] && I18N[key][L]) el.textContent = I18N[key][L];
+        });
+    }
+
     function applyLanguage(lang) {
-        AppState.settings.language = lang;
+        // 统一 zh 为 zh-CN，与 HTML select 的 value 一致
+        const normalized = (lang === 'zh' || lang === 'zh-CN') ? 'zh-CN' : (lang === 'en' ? 'en' : 'zh-CN');
+        AppState.settings.language = normalized;
         if (document.documentElement) {
-            document.documentElement.lang = lang === 'zh' || lang === 'zh-CN' ? 'zh-CN' : 'en';
+            document.documentElement.lang = normalized === 'zh-CN' ? 'zh-CN' : 'en';
         }
         debouncedSave();
-        
-        // 更新语言选择器
         const langSelect = document.getElementById('setting-language');
-        if (langSelect) {
-            langSelect.value = lang;
-        }
+        if (langSelect) langSelect.value = normalized;
+        updateUIForLanguage(normalized);
+    }
+
+    function t(key) {
+        const L = (AppState.settings?.language === 'en') ? 'en' : 'zh-CN';
+        return (I18N[key] && I18N[key][L]) ? I18N[key][L] : (I18N[key]?.['zh-CN'] || key);
     }
 
     function applyFontSize(size) {
@@ -3238,20 +3471,11 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
 
     // ==================== 初始化执行 ====================
     // 延迟初始化，确保DOM已加载
+    // 注意：applyTheme/applyLanguage 等必须在 init() 内 loadState 完成后调用，否则会使用默认值覆盖已加载配置
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            init();
-            applyTheme(AppState.settings.theme);
-            applyLanguage(AppState.settings.language);
-            applyFontSize(AppState.settings.fontSize);
-            applyShortcut(AppState.settings.sendShortcut);
-        });
+        document.addEventListener('DOMContentLoaded', () => init());
     } else {
         init();
-        applyTheme(AppState.settings.theme);
-        applyLanguage(AppState.settings.language);
-        applyFontSize(AppState.settings.fontSize);
-        applyShortcut(AppState.settings.sendShortcut);
     }
 
     // ==================== 暴露到全局 ====================
@@ -3278,6 +3502,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
         getAPIKey,
         hasValidAPIKey,
         getCurrentSubAgent,
+        getSubAgentList,
         getCurrentModel,
         autoSelectModel,
         autoSelectOutputFormat,
@@ -3294,11 +3519,13 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
         importData,
         applyTheme,
         applyLanguage,
+        t,
         applyFontSize,
         applyShortcut,
         switchSubAgent,
         saveSubAgentConfigs,
         loadSubAgentConfigs,
+        resetToInitialState,
         setJinaAIKey,
         getJinaAIKey,
         hasJinaAIKey,

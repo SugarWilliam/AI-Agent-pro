@@ -1283,6 +1283,11 @@ body {
     border-top-right-radius: var(--radius-xs);
 }
 
+/* 续写气泡：长回复自动拆分时的视觉衔接 */
+.message.message-continuation {
+    margin-top: 4px;
+}
+
 /* 消息附件：仅显示文件名，不展开内容 */
 .message-attachments {
     display: flex;
@@ -4099,6 +4104,109 @@ body {
     margin: 16px 0;
 }
 
+/* 交付物代码块（md/txt/html）带下载按钮 */
+.deliverable-code-wrapper {
+    margin: 12px 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--bg-tertiary);
+}
+.deliverable-code-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+}
+.deliverable-code-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+.deliverable-download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--primary);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+.deliverable-download-btn:hover {
+    background: rgba(0, 212, 255, 0.1);
+    border-color: var(--primary);
+}
+.deliverable-code-wrapper .code-block {
+    margin: 0;
+    border: none;
+    border-radius: 0;
+}
+
+/* Plan 模式步骤块：照抄 search-todo，已完成=实心绿勾、进行中=蓝色转圈、未开始=空心圆，纵向竖线连接 */
+.plan-steps-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    margin: 12px 0;
+    padding: 10px 14px;
+    padding-left: 24px;
+    background: rgba(0, 212, 255, 0.08);
+    border-left: 3px solid var(--primary);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    position: relative;
+}
+.plan-steps-block::before {
+    content: '';
+    position: absolute;
+    left: 30px;
+    top: 22px;
+    bottom: 22px;
+    width: 2px;
+    background: var(--border);
+}
+.plan-step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+    color: var(--text-secondary);
+}
+.plan-step-item.plan-step-in_progress {
+    color: var(--primary);
+}
+.plan-step-item.plan-step-done {
+    color: var(--success, #22c55e);
+}
+.plan-step-icon {
+    flex-shrink: 0;
+    width: 14px;
+    font-size: 12px;
+    text-align: center;
+    margin-top: 2px;
+}
+.plan-step-done {
+    color: var(--success, #22c55e);
+}
+.plan-step-spin {
+    color: var(--primary);
+}
+.plan-step-text {
+    color: inherit;
+    font-size: 12px;
+    line-height: 1.5;
+}
+.plan-step-connector {
+    height: 6px;
+}
+
 .diagram-toolbar {
     display: flex;
     flex-wrap: wrap;
@@ -4729,6 +4837,55 @@ body {
     width: 16px;
     height: 16px;
     accent-color: var(--primary);
+}
+
+/* 计划详情：元信息、路线图、里程碑、风险、约束 */
+.plan-detail-meta {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+.plan-roadmap-section, .plan-milestones-section, .plan-risk-section, .plan-constraints-section {
+    margin-bottom: 16px;
+}
+.plan-roadmap-section h4, .plan-milestones-section h4, .plan-risk-section h4, .plan-constraints-section h4 {
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+}
+.plan-roadmap-preview .phase-item {
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+.plan-milestones-list {
+    list-style: none;
+    padding-left: 0;
+}
+.plan-milestones-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 13px;
+}
+.plan-risk-preview {
+    display: flex;
+    gap: 1rem;
+    font-size: 13px;
+}
+.plan-risk-preview .risk-high { color: var(--error); }
+.plan-risk-preview .risk-medium { color: var(--warning); }
+.plan-risk-preview .risk-low { color: var(--success); }
+.plan-constraints-section ul {
+    padding-left: 1.2rem;
+    font-size: 13px;
+}
+.todo-category, .todo-agent {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-left: 6px;
 }
 
 /* ==================== 移动端适配 (合并所有移动设备) ==================== */
@@ -5419,7 +5576,7 @@ body {
     
     /* 资源选择区域适配 */
     .subagent-resources-section {
-        max-height: 180px;
+        max-height: min(350px, 50vh);
         padding: 8px;
     }
     
@@ -5659,13 +5816,13 @@ body {
     transform: rotate(-90deg);
 }
 
-/* 资源卡片网格 */
+/* 资源卡片网格：增大高度以列出所有资源，避免仅显示部分 */
 .resource-cards-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 10px;
     padding: 12px;
-    max-height: 240px;
+    max-height: min(420px, 50vh);
     overflow-y: auto;
 }
 
@@ -5930,7 +6087,7 @@ body {
     background: var(--bg-tertiary);
     border-radius: var(--radius-md);
     padding: 12px;
-    max-height: 300px;
+    max-height: min(450px, 55vh);
     overflow-y: auto;
 }
 

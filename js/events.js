@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.3.1 - 事件处理模块
+ * AI Agent Pro v8.4.0 - 事件处理模块
  * 未来科技感交互设计
  */
 
@@ -111,18 +111,14 @@
         const modeBadge = document.getElementById('current-mode-badge');
         if (modeBadge) {
             const modeNames = {
-                chat: '对话',
-                task: '任务',
-                plan: '计划',
-                creative: '创作',
-                workflow: 'Workflow',
-                writing: '创作'
+                chat: 'Chat',
+                workflow: 'Workflow'
             };
-            modeBadge.textContent = modeNames[window.AppState.currentMode] || '对话';
+            modeBadge.textContent = modeNames[window.AppState.currentMode] || 'Chat';
         }
         document.querySelectorAll('.mode-option').forEach(btn => {
             const mode = window.AppState?.currentMode || 'chat';
-            btn.classList.toggle('active', btn.dataset.mode === mode || (mode === 'writing' && btn.dataset.mode === 'creative'));
+            btn.classList.toggle('active', btn.dataset.mode === mode);
         });
     }
 
@@ -244,7 +240,7 @@
         // Workflow 模板和运行按钮
         document.querySelectorAll('.workflow-template').forEach(tpl => {
             tpl.addEventListener('click', () => {
-                const placeholders = { research: '例如：分析2024年AI行业发展趋势', analysis: '例如：对比分析几种技术方案的优劣', creative: '例如：为新产品构思10个创意营销方案' };
+                const placeholders = { research: '例如：分析2024年AI行业发展趋势', analysis: '例如：对比分析几种技术方案的优劣', creative: '例如：创作一部电子书并输出 epub 格式，可上架微信读书' };
                 const inp = document.getElementById('workflow-input');
                 if (inp) inp.placeholder = placeholders[tpl.dataset.workflow] || inp.placeholder;
             });
@@ -321,6 +317,11 @@
                         case 'copy':
                             if (window.AIAgentUI?.copyMessage) {
                                 window.AIAgentUI.copyMessage(messageId);
+                            }
+                            break;
+                        case 'open':
+                            if (window.AIAgentUI?.openMessage) {
+                                window.AIAgentUI.openMessage(messageId);
                             }
                             break;
                         case 'download':
@@ -408,6 +409,16 @@
                     }
                     return;
                 }
+                // 处理交付物代码块下载按钮（md/txt/html）
+                const deliverableDownloadBtn = e.target.closest('.deliverable-download-btn');
+                if (deliverableDownloadBtn) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (window.AIAgentUI?.downloadDeliverableCode) {
+                        window.AIAgentUI.downloadDeliverableCode(deliverableDownloadBtn);
+                    }
+                    return;
+                }
             });
         }
 
@@ -418,7 +429,8 @@
         });
         document.getElementById('setting-language')?.addEventListener('change', (e) => {
             window.AIAgentApp?.applyLanguage?.(e.target.value);
-            window.AIAgentUI?.showToast?.('语言已更新', 'success');
+            const msg = (window.AppState?.settings?.language === 'en') ? 'Language updated' : '语言已更新';
+            window.AIAgentUI?.showToast?.(msg, 'success');
         });
         document.getElementById('setting-shortcut')?.addEventListener('change', (e) => {
             window.AppState.settings = window.AppState.settings || {};
@@ -516,14 +528,18 @@
         // 打开专门的subagent-modal
         window.AIAgentUI?.openModal?.('subagent-modal');
         
-        // 绑定点击事件
+        // 绑定点击事件：切换 SubAgent 时创建新会话
         document.querySelectorAll('#subagent-list .subagent-item').forEach(item => {
             item.addEventListener('click', () => {
                 const agentId = item.dataset.id;
                 const result = window.AIAgentApp?.switchSubAgent?.(agentId);
                 if (result) {
                     window.AIAgentUI?.closeModal?.('subagent-modal');
-                    window.AIAgentUI?.showToast?.('已切换到: ' + (subAgents[agentId]?.name || '通用助手'), 'success');
+                    createNewChat({ silent: true });
+                    const name = subAgents[agentId]?.name || '通用助手';
+                    const msg = (window.AppState?.settings?.language === 'en')
+                        ? `Switched to ${name}, new chat started` : `已切换到: ${name}，已开启新会话`;
+                    window.AIAgentUI?.showToast?.(msg, 'success');
                     updateAgentName();
                 }
             });
@@ -561,10 +577,7 @@
         window.AIAgentApp?.saveState?.();
         
         const modeActions = {
-            chat: () => window.AIAgentUI?.showToast?.('切换到对话模式', 'success'),
-            task: () => openTaskModal(),
-            plan: () => openPlanModal(),
-            creative: () => window.AIAgentUI?.showToast?.('切换到创作模式', 'success'),
+            chat: () => window.AIAgentUI?.showToast?.('切换到 Chat 模式', 'success'),
             workflow: () => openWorkflowModal()
         };
         
@@ -595,7 +608,7 @@
         ],
         creative: [
             { agentId: 'general', instruction: '搜集信息' },
-            { agentId: 'creative', instruction: '头脑风暴与方案筛选' }
+            { agentId: 'creative', instruction: '深度理解文章、冗余提示与重新编排、章节重复/排序处理；询问用户是否输出完整图书，选择是则完整输出电子档附件（epub/PDF/MOBI/AZW3）' }
         ]
     };
 
@@ -792,7 +805,7 @@
         const placeholders = {
             research: '例如：分析2024年AI行业发展趋势',
             analysis: '例如：对比分析几种技术方案的优劣',
-            creative: '例如：为新产品构思10个创意营销方案'
+            creative: '例如：创作一部电子书并输出 epub 格式，可上架微信读书'
         };
         const inp = document.getElementById('workflow-input');
         if (inp) inp.placeholder = placeholders[presetId] || inp.placeholder;
@@ -828,7 +841,8 @@
     }
 
     // ==================== 新建对话 ====================
-    function createNewChat() {
+    function createNewChat(opts) {
+        const silent = opts?.silent === true;
         const chatId = 'chat_' + Date.now();
         const newChat = {
             id: chatId,
@@ -848,7 +862,10 @@
 
         closeSidebar();
         window.AIAgentApp?.saveState?.();
-        window.AIAgentUI?.showToast?.('新建对话成功', 'success');
+        if (!silent) {
+            const msg = (window.AppState?.settings?.language === 'en') ? 'New chat created' : '新建对话成功';
+            window.AIAgentUI?.showToast?.(msg, 'success');
+        }
     }
 
     // ==================== 加载对话 ====================
@@ -994,10 +1011,24 @@
             if (mainId && (agent.delegateTo || []).length > 0) {
                 validDelegates = (agent.delegateTo || []).filter(id => subAgents[id] && id !== mainId);
                 if (validDelegates.length > 0) {
+                    const hasPromptExpert = validDelegates.includes('prompt_expert');
+                    const firstInstruction = hasPromptExpert
+                        ? '分析任务、提炼关键需求与约束；后续将由提示词专家优化指令，再调度其他助手。根据问题决定调度顺序并监控执行'
+                        : '分析任务、根据问题决定调度后续助手并监控执行';
+                    const lastInstruction = hasPromptExpert
+                        ? '整合各助手输出（含提示词专家的精准描述），完成最终结论与交付物'
+                        : '整合各助手输出，完成最终结论与交付物';
+                    // 设计约束：prompt_expert 必须排在主 Agent 分析之后、其他 Agent 之前（固定第二位）
+                    const othersWithoutPrompt = validDelegates.filter(id => id !== 'prompt_expert');
+                    const orderedDelegates = hasPromptExpert ? ['prompt_expert', ...othersWithoutPrompt] : validDelegates;
                     workflowChainSteps = [
-                        { agentId: mainId, label: mainName, instruction: '分析任务、根据问题决定调度后续助手并监控执行' },
-                        ...validDelegates.map(id => ({ agentId: id, label: '', instruction: '' })),
-                        { agentId: mainId, label: mainName, instruction: '整合各助手输出，完成最终结论与交付物' }
+                        { agentId: mainId, label: mainName, instruction: firstInstruction },
+                        ...orderedDelegates.map(id => ({
+                            agentId: id,
+                            label: '',
+                            instruction: id === 'prompt_expert' ? '对主 Agent 初步分析后的任务进行专业化、深度分析，形成对下级 Agent 的补充提示词。要求：1) 仅增强、澄清、专业化，不可删减、弱化或丢失关键信息；2) 输出为补充提示词，下级 Agent 将保留其完整系统提示词，你的输出与之叠加使用；3) 消除歧义、指令清晰，使后续助手可精准执行' : ''
+                        })),
+                        { agentId: mainId, label: mainName, instruction: lastInstruction }
                     ];
                     autoWorkflow = true;
                 }
@@ -1724,15 +1755,17 @@
     function selectSubAgent(agentId) {
         const result = window.AIAgentApp?.switchSubAgent?.(agentId);
         if (!result) {
-            window.AIAgentUI?.showToast?.('切换助手失败', 'error');
+            window.AIAgentUI?.showToast?.((window.AppState?.settings?.language === 'en') ? 'Failed to switch agent' : '切换助手失败', 'error');
             return;
         }
         const agent = window.AppState.subAgents?.[agentId];
-        
+        createNewChat({ silent: true });
         window.AIAgentUI?.renderSubAgentList?.();
         updateAgentName();
-        
-        window.AIAgentUI?.showToast?.(`已切换到 ${agent?.name || '通用助手'}`, 'success');
+        const name = agent?.name || '通用助手';
+        const msg = (window.AppState?.settings?.language === 'en')
+            ? `Switched to ${name}, new chat started` : `已切换到 ${name}，已开启新会话`;
+        window.AIAgentUI?.showToast?.(msg, 'success');
     }
 
     // ==================== 设置 ====================
@@ -2543,8 +2576,8 @@ tags: code, review, quality
 
         const filename = `对话_${Date.now()}.html`;
         
-        let html = `<!DOCTYPE html>
-<html>
+        let html = '\uFEFF' + `<!DOCTYPE html>
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <title>对话记录</title>
@@ -2575,7 +2608,7 @@ tags: code, review, quality
 </body>
 </html>`;
 
-        const blob = new Blob([html], { type: 'text/html' });
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -2719,11 +2752,15 @@ tags: code, review, quality
         e.target.value = '';
     }
 
-    function clearAllData() {
-        if (confirm('确定要清除所有数据吗？此操作不可恢复！')) {
-            localStorage.clear();
-            window.AIAgentUI?.showToast?.('数据已清除，页面将刷新', 'success');
-            setTimeout(() => location.reload(), 1500);
+    async function clearAllData() {
+        if (confirm('确定要清除所有会话、计划和自定义数据吗？API 密钥和配置将保留。')) {
+            const ok = await (window.AIAgentApp?.resetToInitialState?.() ?? Promise.resolve(false));
+            if (ok) {
+                window.AIAgentUI?.showToast?.('已恢复到初始化状态，页面将刷新', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                window.AIAgentUI?.showToast?.('清除失败，请重试', 'error');
+            }
         }
     }
 
@@ -2935,6 +2972,16 @@ tags: code, review, quality
                         <label>任务描述</label>
                         <textarea id="plan-from-msg-desc" rows="4">${escapeHtml(message)}</textarea>
                     </div>
+                    <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="form-group">
+                            <label>截止时间</label>
+                            <input type="text" id="plan-from-msg-deadline" placeholder="如：2025-03-15 或 下周">
+                        </div>
+                        <div class="form-group">
+                            <label>人力资源</label>
+                            <input type="text" id="plan-from-msg-hr" placeholder="如：2人、1人兼职">
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn-secondary" onclick="AIAgentUI.closeModal('create-plan-from-msg-dialog')">取消</button>
@@ -2958,30 +3005,38 @@ tags: code, review, quality
             window.AIAgentUI?.showToast?.('正在生成计划...', 'info');
 
             try {
+                const deadline = dialog.querySelector('#plan-from-msg-deadline')?.value?.trim() || null;
+                const humanResources = dialog.querySelector('#plan-from-msg-hr')?.value?.trim() || null;
+
                 const plan = await window.PlanManager.createPlan(title, description, {
                     taskType: 'general',
                     enableSkills: true,
                     enableRules: true,
                     enableMCP: true,
-                    enableRAG: true
+                    enableRAG: true,
+                    deadline,
+                    humanResources
                 });
 
-                // 调用AI生成TODO
                 const analysisPrompt = window.PlanManager.buildAnalysisPrompt(title, description,
-                    window.AIAgentApp.getSubAgentResources(window.AIAgentApp.getCurrentSubAgent().id));
+                    window.AIAgentApp.getSubAgentResources(window.AIAgentApp.getCurrentSubAgent().id),
+                    { deadline, humanResources, subAgents: window.AIAgentApp.getSubAgentList() });
 
                 const result = await window.LLMService.invokeIntelligentAgent(
                     [{ role: 'user', content: analysisPrompt }],
                     { modelId: 'auto', outputFormat: 'markdown' }
                 );
 
-                const todos = window.PlanManager.parseTodoList(result.content);
-                if (todos.length > 0) {
-                    plan.todos = todos;
-                    window.PlanManager.updatePlan(plan.id, { todos });
-                }
+                const parsed = window.PlanManager.parsePlanFullOutput(result.content, plan);
+                if (parsed.todos.length > 0) plan.todos = parsed.todos;
+                if (parsed.roadmap) plan.roadmap = parsed.roadmap;
+                if (parsed.milestones?.length) plan.milestones = parsed.milestones;
+                if (parsed.riskMatrix) plan.riskMatrix = parsed.riskMatrix;
+                if (parsed.resourceConstraints?.length) plan.resourceConstraints = parsed.resourceConstraints;
+                if (parsed.dependencyGraph) plan.dependencyGraph = parsed.dependencyGraph;
+                window.PlanManager.updatePlan(plan.id, plan);
 
-                window.AIAgentUI?.showToast?.(`计划创建成功，包含 ${todos.length} 个任务`, 'success');
+                window.AIAgentUI?.showToast?.(`计划创建成功，包含 ${plan.todos.length} 个任务`, 'success');
                 window.AIAgentUI?.showPlanDetail?.(plan.id);
             } catch (error) {
                 window.ErrorHandler?.handle(error, {
