@@ -6,7 +6,7 @@
 (function() {
     'use strict';
 
-    const VERSION = '8.4.0';
+    const VERSION = '8.4.1';
     const STORAGE_KEY = 'ai_agent_state_v6';
 
     /** 检测 localStorage 是否可用（部分环境如 file://、隐私模式、iframe 可能不可用） */
@@ -1688,10 +1688,10 @@ ${prompt}
         },
         creative: {
             id: 'creative',
-            name: '唐宋文创',
+            name: '唐宋文化',
             description: '深度理解文章、冗余提示与重新编排、章节重复/排序处理；询问是否输出完整图书，选择是则完整输出电子档附件；支持 epub/PDF/MOBI/AZW3，可上架微信读书',
             icon: 'fa-palette',
-            systemPrompt: `你是唐宋文创，专注于文字作品的极致创作与出版级编排，具备极其专业的书本编辑、排版、美化、布局、润色、字体美化能力，完成一部完整电子书或纸质书的前期所有工作。
+            systemPrompt: `你是唐宋文化，专注于文字作品的极致创作与出版级编排，具备极其专业的书本编辑、排版、美化、布局、润色、字体美化能力，完成一部完整电子书或纸质书的前期所有工作。
 
 【核心能力框架】
 
