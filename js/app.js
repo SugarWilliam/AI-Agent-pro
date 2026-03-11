@@ -1717,11 +1717,12 @@ ${prompt}
    - manifest：列出所有 XHTML 章节、CSS、图片
    - spine：阅读顺序
 
-2. **章节 XHTML**：用 \`\`\`chapter-01.xhtml\`\`\`、\`\`\`chapter-02.xhtml\`\`\` 等代码块逐章输出（禁止单块包含多章）
-   - 符合 EPUB 2/3 的 XHTML 规范
-   - 每章独立文件，含完整 HTML 结构（html、head、body）
+2. **章节 XHTML（分立输出）**：按章节依次输出，每章一个代码块，命名规范：
+   - 章节1 → \`\`\`chat01.xhtml 代码块，章节2 → \`\`\`chat02.xhtml，依次类推（chat03.xhtml、chat04.xhtml…）
+   - 也可使用 \`\`\`xhtml 或 \`\`\`chapter-01.xhtml，每章独立文件，含完整 XHTML 结构（html、head、body）
    - 标题层级：h1 章、h2 节、h3 小节
-   - content.opf 中 manifest 的 href 使用 \`Text/chapter-01.xhtml\` 格式
+   - 每个代码块在界面中带「下载」按钮、支持代码折叠，最后打包为真实可下载的完整电子档（禁止使用占位符，须全部真实内容）
+   - content.opf 中 manifest 的 href 可使用 \`Text/chapter-01.xhtml\` 或 \`chapter-01.xhtml\` 格式
 
 3. **toc.ncx**（EPUB 2）或 **nav.xhtml**（EPUB 3）：用 \`\`\`toc.ncx 或 \`\`\`nav.xhtml 代码块输出目录结构
 
@@ -1756,8 +1757,14 @@ ${prompt}
 
 九、能力边界（元说明）
 - 你输出的是**文本与 XML/XHTML 结构**，用户需用 pandoc、Calibre、Sigil 等工具生成 epub/PDF/MOBI/AZW3
-- 定稿前做 MECE 检验与 EPUB 完整性审查，在总结中写明结论`,
-            capabilities: ['深度理解', '冗余歧义提示', '章节问题检测', '结构编排', '内容润色', '三审三阅', '排版布局', 'epub结构输出', '出版术语与平台规范', '输出前询问', '完整电子档附件', '电子书上架指导', '版权申请指导', '纸质输出版本指导', '运营指导', '创意写作', '故事创作', '诗歌创作', 'MECE检验', 'EPUB完整性审查', '风险识别与补充', '敏感词过滤', '侵权审查', '免责声明补充', 'AI贡献声明', '法律合规审查', '原创新声明', '参考文献审查', '引用标注规范', '内容真实性核查'],
+- 定稿前做 MECE 检验与 EPUB 完整性审查，在总结中写明结论
+
+十、分立输出与格式约束（必须遵守）
+1. **按分立部分依次输出**：章节1 输出 \`\`\`chat01.xhtml，章节2 输出 \`\`\`chat02.xhtml，其余章节照此执行；每块提供该文件下载、代码折叠展示。
+2. **真实可下载、禁止占位符**：最终输出的电子档须为真实可下载且内容正确，不得使用占位符，须全部为完整真实正文。
+3. **正文禁止带入格式符号**：整理正式内容时，不得将原文中的 Markdown/格式符号（如 \`#\`、\`##\`、\`---\`、\`**...**\`、\`*...*\` 等）带入正文；只输出纯 XHTML 或纯文本，标题用 <h1>/<h2>/<h3>，强调用 <strong>/<em>。
+4. **字体与排版适合手机端**：章节 XHTML 的 CSS 须兼顾手机端阅读：正文字号 16px～18px、行高 1.6～1.8、合理边距与 viewport，字体优先系统无衬线，确保小屏可读。`,
+            capabilities: ['深度理解', '冗余歧义提示', '章节问题检测', '结构编排', '内容润色', '三审三阅', '排版布局', 'epub结构输出', '出版术语与平台规范', '输出前询问', '完整电子档附件', '电子书上架指导', '版权申请指导', '纸质输出版本指导', '运营指导', '创意写作', '故事创作', '诗歌创作', 'MECE检验', 'EPUB完整性审查', '风险识别与补充', '敏感词过滤', '侵权审查', '免责声明补充', 'AI贡献声明', '法律合规审查', '原创新声明', '参考文献审查', '引用标注规范', '内容真实性核查', '分立输出', 'chat01.xhtml', '格式符号禁止', '手机端排版'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_writer', 'skill_brainstorm', 'skill_designer', 'skill_reviewer', 'skill_summarizer', 'skill_pyramid', 'skill_mece', 'skill_planner'],
             rules: ['rule_format', 'rule_tone', 'rule_safety', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_multimodal', 'rule_context'],

@@ -433,6 +433,15 @@
                     }
                     return;
                 }
+                const chapterToggleBtn = e.target.closest('.chapter-deliverable-toggle');
+                if (chapterToggleBtn) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (window.AIAgentUI?.toggleChapterDeliverable) {
+                        window.AIAgentUI.toggleChapterDeliverable(chapterToggleBtn);
+                    }
+                    return;
+                }
             });
         }
 

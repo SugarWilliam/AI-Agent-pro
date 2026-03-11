@@ -555,7 +555,7 @@
                 result.nav = code;
             } else if (lang === 'style.css' || (lang === 'css' && /@page|epub|chapter|body\s*\{/i.test(code))) {
                 result.css = code;
-            } else if (/^chapter-\d+(\.xhtml)?$/i.test(lang)) {
+            } else if (/^chapter-\d+(\.xhtml)?$/i.test(lang) || /^chat\d+\.xhtml$/i.test(lang)) {
                 const key = /\.xhtml$/i.test(lang) ? lang : lang + '.xhtml';
                 result.chapters[key] = code;
             } else if (/^appendix-\d+(\.xhtml)?$/i.test(lang)) {
@@ -650,6 +650,19 @@
         a.click();
     }
 
+    /** 构建分立文件块 HTML：与章节一致，折叠 + 标签 + 按文件名下载 */
+    function buildDeliverableFileBlock(codeHtml, fileLabel, ext, fileName, defaultCollapsed) {
+        const collapsedClass = defaultCollapsed ? ' collapsed' : '';
+        return `<div class="deliverable-code-wrapper chapter-deliverable-wrapper${collapsedClass}">
+            <div class="deliverable-code-toolbar">
+                <span class="deliverable-code-label"><i class="fas fa-file-code"></i> ${escapeHtml(fileLabel)}</span>
+                <button type="button" class="btn-icon chapter-deliverable-toggle" title="展开/折叠"><i class="fas fa-chevron-${defaultCollapsed ? 'down' : 'up'}"></i></button>
+                <button type="button" class="deliverable-download-btn" data-ext="${escapeHtml(ext)}" data-filename="${escapeHtml(fileName)}" title="下载 ${escapeHtml(fileName)}"><i class="fas fa-download"></i> 下载</button>
+            </div>
+            <div class="chapter-deliverable-body">${codeHtml}</div>
+        </div>`;
+    }
+
     // ==================== Markdown渲染 ====================
     function renderMarkdown(text) {
         if (!text) return '';
@@ -668,11 +681,16 @@
             return `\x00DIAGRAM${diagramBlocks.length - 1}\x00`;
         });
 
-        // 保存通用代码块，避免被其他规则处理
-        // 特殊处理：```json 块若含 project-dashboard 结构（project/owner + timeline/top_risks/status），按仪表板渲染
+        // 保存通用代码块，避免被其他规则处理（lang 支持 chat01.xhtml、chapter-01.xhtml、content.opf、toc.ncx 等）
         const codeBlocks = [];
-        text = text.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
+        let chapterXhtmlIndex = 0;
+        let deliverableFileIndex = 0;
+        text = text.replace(/```([\w.-]+)?\n([\s\S]*?)```/g, (match, lang, code) => {
             const trimmed = code.trim();
+            const normalizedLang = (lang || '').toLowerCase();
+            const isChapterXhtml = /^(xhtml|html|chapter-\d+\.xhtml|chat\d+\.xhtml)$/.test(normalizedLang);
+            const isNamedFile = /\./.test(normalizedLang) && /^[\w.-]+$/.test(normalizedLang);
+            if (isChapterXhtml) chapterXhtmlIndex += 1;
             if (lang === 'json' || !lang) {
                 let jsonStr = trimmed.replace(/^\s*project-dashboard\s*/i, '').trim();
                 if (jsonStr.startsWith('{')) {
@@ -703,11 +721,25 @@
                     } catch (_) { /* 解析失败则按代码块显示 */ }
                 }
             }
-            const deliverableExt = { md: 'md', markdown: 'md', txt: 'txt', html: 'html' }[String(lang || '').toLowerCase()];
+            const deliverableExt = { md: 'md', markdown: 'md', txt: 'txt', html: 'html' }[normalizedLang];
             const codeHtml = `<pre class="code-block"><code class="language-${lang || 'text'}">${escapeHtml(trimmed)}</code></pre>`;
-            const blockHtml = deliverableExt
-                ? `<div class="deliverable-code-wrapper"><div class="deliverable-code-toolbar"><span class="deliverable-code-label">${deliverableExt === 'md' ? 'Markdown' : deliverableExt === 'txt' ? '纯文本' : 'HTML'}</span><button class="deliverable-download-btn" data-ext="${deliverableExt}" title="下载为 .${deliverableExt}"><i class="fas fa-download"></i> 下载</button></div>${codeHtml}</div>`
-                : codeHtml;
+            let blockHtml;
+            if (isChapterXhtml) {
+                const fileName = /^chat\d+\.xhtml$/.test(normalizedLang) ? normalizedLang : (/^chapter-(\d+)\.xhtml$/.test(normalizedLang) ? normalizedLang : 'chat' + String(chapterXhtmlIndex).padStart(2, '0') + '.xhtml');
+                const fileLabel = '章节' + chapterXhtmlIndex + ' - ' + fileName;
+                blockHtml = buildDeliverableFileBlock(codeHtml, fileLabel, 'xhtml', fileName, true);
+            } else if (isNamedFile) {
+                const fileName = normalizedLang;
+                const ext = (fileName.split('.').pop() || 'txt').toLowerCase();
+                blockHtml = buildDeliverableFileBlock(codeHtml, fileName, ext, fileName, true);
+            } else if (deliverableExt) {
+                deliverableFileIndex += 1;
+                const fileName = '文档-' + deliverableFileIndex + '.' + deliverableExt;
+                const fileLabel = (deliverableExt === 'md' ? 'Markdown' : deliverableExt === 'txt' ? '纯文本' : 'HTML') + ' - ' + fileName;
+                blockHtml = buildDeliverableFileBlock(codeHtml, fileLabel, deliverableExt, fileName, true);
+            } else {
+                blockHtml = codeHtml;
+            }
             codeBlocks.push(blockHtml);
             return `\x00CODEBLOCK${codeBlocks.length - 1}\x00`;
         });
@@ -2899,28 +2931,41 @@ ${alertHtml}
         }
     }
 
-    /** 下载交付物代码块（md/txt/html） */
+    /** 下载交付物代码块（md/txt/html/xhtml 等），支持 data-filename 指定文件名 */
     function downloadDeliverableCode(btn) {
         const wrapper = btn.closest('.deliverable-code-wrapper');
         if (!wrapper) return;
         const codeEl = wrapper.querySelector('.code-block code');
         const content = codeEl?.textContent?.trim() || '';
-        const ext = btn.dataset.ext || 'md';
+        const ext = (btn.dataset.ext || 'md').toLowerCase();
+        const filename = btn.dataset.filename;
         if (!content) {
             showToast?.('内容为空', 'error');
             return;
         }
-        const mimeMap = { md: 'text/markdown;charset=utf-8', txt: 'text/plain;charset=utf-8', html: 'text/html;charset=utf-8' };
+        const mimeMap = { md: 'text/markdown;charset=utf-8', markdown: 'text/markdown;charset=utf-8', txt: 'text/plain;charset=utf-8', html: 'text/html;charset=utf-8', xhtml: 'application/xhtml+xml;charset=utf-8' };
         const blob = new Blob(['\uFEFF' + content], { type: mimeMap[ext] || 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `交付物-${Date.now()}.${ext}`;
+        a.download = filename && filename.length > 0 ? filename : `交付物-${Date.now()}.${ext}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        showToast(`已下载为 .${ext}`, 'success');
+        showToast(filename ? `已下载 ${filename}` : `已下载为 .${ext}`, 'success');
+    }
+
+    /** 展开/折叠章节交付物代码块 */
+    function toggleChapterDeliverable(btn) {
+        const wrapper = btn.closest('.chapter-deliverable-wrapper');
+        if (!wrapper) return;
+        wrapper.classList.toggle('collapsed');
+        const icon = btn.querySelector('i.fas');
+        if (icon) {
+            icon.classList.toggle('fa-chevron-down', wrapper.classList.contains('collapsed'));
+            icon.classList.toggle('fa-chevron-up', !wrapper.classList.contains('collapsed'));
+        }
     }
 
     // ==================== 多模态输出操作 ====================
@@ -5621,6 +5666,7 @@ ${ex.content}`).join('\n\n')}
         previewH5,
         downloadH5,
         downloadDeliverableCode,
+        toggleChapterDeliverable,
         downloadAsPDF,
         downloadAsDOC,
         downloadAsCSV,

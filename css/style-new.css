@@ -4082,6 +4082,27 @@ body {
     border-radius: 0;
 }
 
+/* 章节交付物（xhtml）：默认折叠，可展开/下载 */
+.chapter-deliverable-wrapper .deliverable-code-toolbar {
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.chapter-deliverable-wrapper .chapter-deliverable-toggle {
+    margin-left: auto;
+    padding: 4px 8px;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+.chapter-deliverable-wrapper.collapsed .chapter-deliverable-body {
+    display: none;
+}
+.chapter-deliverable-wrapper .chapter-deliverable-body {
+    display: block;
+}
+
 /* Plan 模式步骤块：照抄 search-todo，已完成=实心绿勾、进行中=蓝色转圈、未开始=空心圆，纵向竖线连接 */
 .plan-steps-block {
     display: flex;
