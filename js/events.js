@@ -409,6 +409,20 @@
                     }
                     return;
                 }
+                // 处理 EPUB 附件下载
+                const epubAttachment = e.target.closest('.epub-download-attachment');
+                if (epubAttachment) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const msgId = epubAttachment.dataset.messageId;
+                    const idx = parseInt(epubAttachment.dataset.attachmentIdx, 10);
+                    const msg = window.AppState?.messages?.find(m => m.id === msgId);
+                    const att = msg?.attachments?.[idx];
+                    if (att?.type === 'epub' && att?.data && window.AIAgentUI?.downloadEpubAttachment) {
+                        window.AIAgentUI.downloadEpubAttachment(att.data, att.name || '电子书.epub');
+                    }
+                    return;
+                }
                 // 处理交付物代码块下载按钮（md/txt/html）
                 const deliverableDownloadBtn = e.target.closest('.deliverable-download-btn');
                 if (deliverableDownloadBtn) {
@@ -608,7 +622,7 @@
         ],
         creative: [
             { agentId: 'general', instruction: '搜集信息' },
-            { agentId: 'creative', instruction: '深度理解文章、冗余提示与重新编排、章节重复/排序处理；询问用户是否输出完整图书，选择是则完整输出电子档附件（epub/PDF/MOBI/AZW3）' }
+            { agentId: 'creative', instruction: '理解诊断→编排润色→排版布局；询问是否输出完整图书，选择是则完整输出 epub 附件；输出后询问上架/版权/纸质/运营指导' }
         ]
     };
 
@@ -1137,6 +1151,23 @@
             };
 
             window.AppState.messages.push(aiMessage);
+
+            // 唐宋文化 / Workflow 末步为 creative：若消息包含可打包 EPUB 结构，自动生成 EPUB 附件
+            const lastStepCreative = workflowChainSteps?.length > 0 && workflowChainSteps[workflowChainSteps.length - 1]?.agentId === 'creative';
+            if ((window.AppState.currentSubAgent === 'creative' || lastStepCreative) && response?.content) {
+                try {
+                    const std = await window.AIAgentUI?.buildEpubAsAttachment?.(response.content, 'standard');
+                    const wx = await window.AIAgentUI?.buildEpubAsAttachment?.(response.content, 'wechat');
+                    const atts = [];
+                    if (std) atts.push(std);
+                    if (wx) atts.push(wx);
+                    if (atts.length > 0) {
+                        aiMessage.attachments = (aiMessage.attachments || []).concat(atts);
+                        window.AIAgentUI?.renderMessages?.();
+                    }
+                } catch (_) { /* 忽略 EPUB 打包失败 */ }
+            }
+
             updateCurrentChat();
             window.AIAgentApp?.saveState?.();
 
@@ -1663,6 +1694,22 @@
             };
 
             window.AppState.messages.push(aiMessage);
+
+            // 唐宋文化：若消息包含可打包 EPUB 结构，自动生成 EPUB 附件
+            if (window.AppState.currentSubAgent === 'creative' && response?.content) {
+                try {
+                    const std = await window.AIAgentUI?.buildEpubAsAttachment?.(response.content, 'standard');
+                    const wx = await window.AIAgentUI?.buildEpubAsAttachment?.(response.content, 'wechat');
+                    const atts = [];
+                    if (std) atts.push(std);
+                    if (wx) atts.push(wx);
+                    if (atts.length > 0) {
+                        aiMessage.attachments = (aiMessage.attachments || []).concat(atts);
+                        window.AIAgentUI?.renderMessages?.();
+                    }
+                } catch (_) { /* 忽略 EPUB 打包失败 */ }
+            }
+
             updateCurrentChat();
             window.AIAgentApp?.saveState?.();
 

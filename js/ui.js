@@ -136,12 +136,16 @@
             attachmentsHtml = '<div class="message-attachments">' +
                 msg.attachments.map((att, idx) => {
                     if (!att) return '';
-                    const icon = att.type === 'image' ? 'fa-image' : 'fa-file';
+                    const icon = att.type === 'image' ? 'fa-image' : (att.type === 'epub' ? 'fa-book' : 'fa-file');
                     const name = escapeHtml(att.name || '附件');
                     const sizeStr = att.size != null ? formatSize(att.size) : '';
                     const sizeHtml = sizeStr ? `<span class="message-attachment-size">${sizeStr}</span>` : '';
                     if (att.type === 'image' && att.data) {
                         return `<div class="message-attachment-item message-attachment-preview" onclick="AIAgentUI.previewImage('${att.data.replace(/'/g, "\\'")}')" title="点击预览">` +
+                            `<i class="fas ${icon}"></i> <span class="message-attachment-name">${name}</span>${sizeHtml}</div>`;
+                    }
+                    if (att.type === 'epub' && att.data) {
+                        return `<div class="message-attachment-item message-attachment-preview epub-download-attachment" data-message-id="${msg.id}" data-attachment-idx="${idx}" title="点击下载">` +
                             `<i class="fas ${icon}"></i> <span class="message-attachment-name">${name}</span>${sizeHtml}</div>`;
                     }
                     const hasContent = att.content && att.content.trim().length > 0;
@@ -522,6 +526,128 @@
         
         // 返回消息ID，供调用者使用
         return msgId;
+    }
+
+    // ==================== EPUB 解析与打包 ====================
+    /**
+     * 从消息内容中解析 EPUB 相关代码块
+     * @param {string} content - 消息正文
+     * @returns {{ opf: string, toc: string, nav: string, css: string, chapters: Record<string, string> }}
+     */
+    function extractEpubBlocksFromContent(content) {
+        const result = { opf: '', toc: '', nav: '', css: '', chapters: {} };
+        if (!content || typeof content !== 'string') return result;
+
+        const blockRe = /```([\w.-]+)?\s*\n([\s\S]*?)```/g;
+        let m;
+        while ((m = blockRe.exec(content)) !== null) {
+            const lang = (m[1] || '').trim().toLowerCase();
+            const code = m[2].trim();
+            if (!code) continue;
+
+            if (lang === 'content.opf' || (lang === 'opf' && /<\?xml|package|metadata|manifest|spine/i.test(code))) {
+                result.opf = code;
+            } else if (lang === 'xml' && /<\?xml|package|metadata|manifest|spine/i.test(code) && !result.opf) {
+                result.opf = code;
+            } else if (lang === 'toc.ncx') {
+                result.toc = code;
+            } else if (lang === 'nav.xhtml' || (lang === 'nav' && /nav|toc|epub/i.test(code))) {
+                result.nav = code;
+            } else if (lang === 'style.css' || (lang === 'css' && /@page|epub|chapter|body\s*\{/i.test(code))) {
+                result.css = code;
+            } else if (/^chapter-\d+(\.xhtml)?$/i.test(lang)) {
+                const key = /\.xhtml$/i.test(lang) ? lang : lang + '.xhtml';
+                result.chapters[key] = code;
+            } else if (/^appendix-\d+(\.xhtml)?$/i.test(lang)) {
+                const key = /\.xhtml$/i.test(lang) ? lang : lang + '.xhtml';
+                result.chapters[key] = code;
+            } else if (lang === 'copyright.xhtml' || lang === 'copyright') {
+                result.chapters['copyright.xhtml'] = code;
+            } else if (lang === 'xhtml' && /<html|<!DOCTYPE/i.test(code)) {
+                const fallback = 'chapter-' + String(Object.keys(result.chapters).length + 1).padStart(2, '0') + '.xhtml';
+                result.chapters[fallback] = code;
+            }
+        }
+
+        // 兜底：从 opf 解析 manifest 的 href，若某 href 在 chapters 中缺失，尝试从 content 中按文件名查找
+        if (result.opf && Object.keys(result.chapters).length === 0) {
+            const hrefRe = /href=["']([^"']+\.xhtml)["']/gi;
+            let hrefM;
+            while ((hrefM = hrefRe.exec(result.opf)) !== null) {
+                const href = hrefM[1];
+                const baseName = href.split('/').pop();
+                const blockRe2 = new RegExp('```' + baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\n([\\s\\S]*?)```', 'i');
+                const m2 = content.match(blockRe2);
+                if (m2) result.chapters[href] = m2[1].trim();
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 将解析结果打包为 EPUB 并返回附件对象
+     * @param {string} content - 消息正文
+     * @param {'standard'|'wechat'} epubType - 标准版或微信专版
+     * @returns {Promise<{ type: string, name: string, data: string, size: number }|null>}
+     */
+    async function buildEpubAsAttachment(content, epubType) {
+        if (typeof JSZip === 'undefined') return null;
+        const blocks = extractEpubBlocksFromContent(content);
+        if (!blocks.opf || Object.keys(blocks.chapters).length === 0) return null;
+
+        const zip = new JSZip();
+        const opfPath = 'OEBPS/content.opf';
+        const suffix = epubType === 'wechat' ? '-微信读书' : '';
+
+        zip.file('mimetype', 'application/epub+zip', { compression: 'STORE' });
+        zip.file('META-INF/container.xml', `<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="${opfPath}" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>`);
+
+        const files = {};
+        files[opfPath] = blocks.opf;
+        if (blocks.toc) files['OEBPS/toc.ncx'] = blocks.toc;
+        if (blocks.nav) files['OEBPS/nav.xhtml'] = blocks.nav;
+        if (blocks.css) files['OEBPS/style.css'] = blocks.css;
+
+        for (const [href, body] of Object.entries(blocks.chapters)) {
+            const path = href.includes('/') ? 'OEBPS/' + href : 'OEBPS/Text/' + href;
+            files[path] = body;
+        }
+
+        for (const [path, body] of Object.entries(files)) {
+            zip.file(path, body);
+        }
+
+        const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+        const size = blob.size;
+        if (size < 3072) return null;
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve({
+                type: 'epub',
+                name: `电子书${suffix}.epub`,
+                data: reader.result,
+                size
+            });
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    /**
+     * 触发 EPUB 附件下载
+     * @param {string} dataUrl - data URL (base64)
+     * @param {string} filename
+     */
+    function downloadEpubAttachment(dataUrl, filename) {
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = filename || '电子书.epub';
+        a.click();
     }
 
     // ==================== Markdown渲染 ====================
@@ -5498,6 +5624,9 @@ ${ex.content}`).join('\n\n')}
         downloadAsPDF,
         downloadAsDOC,
         downloadAsCSV,
+        downloadEpubAttachment,
+        buildEpubAsAttachment,
+        extractEpubBlocksFromContent,
         // 输出格式相关
         detectOutputFormat,
         renderContentByFormat
