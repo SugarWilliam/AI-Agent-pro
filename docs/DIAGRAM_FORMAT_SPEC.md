@@ -4,7 +4,7 @@
 
 ## 一、对接原则
 
-1. **内置标准**：图表格式规范在 `js/llm.js` 的 `buildEnhancedSystemPrompt` 中注入到【输出格式要求】，**所有 Agent**（工作秘书、决策专家、创意大师、编程专家等）在输出图表时均须遵循
+1. **内置标准**：图表格式规范在 `js/llm.js` 的 `buildEnhancedSystemPrompt` 中注入到【输出格式要求】，**所有 Agent**（工作秘书、决策专家、唐宋文化、编程专家等）在输出图表时均须遵循
 2. **单一数据源**：`DIAGRAM_FORMAT_SPEC`（暴露为 `window.AIAgentApp.DIAGRAM_FORMAT_SPEC`）为格式规范，渲染器按此解析
 3. **渲染器兼容**：对常见变体（camelCase、中文字段名、对象/数组）做别名兼容
 

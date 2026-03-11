@@ -240,7 +240,7 @@
         // Workflow 模板和运行按钮
         document.querySelectorAll('.workflow-template').forEach(tpl => {
             tpl.addEventListener('click', () => {
-                const placeholders = { research: '例如：分析2024年AI行业发展趋势', analysis: '例如：对比分析几种技术方案的优劣', creative: '例如：为新产品构思10个创意营销方案' };
+                const placeholders = { research: '例如：分析2024年AI行业发展趋势', analysis: '例如：对比分析几种技术方案的优劣', creative: '例如：创作一部电子书并输出 epub 格式，可上架微信读书' };
                 const inp = document.getElementById('workflow-input');
                 if (inp) inp.placeholder = placeholders[tpl.dataset.workflow] || inp.placeholder;
             });
@@ -409,6 +409,20 @@
                     }
                     return;
                 }
+                // 处理 EPUB 附件下载
+                const epubAttachment = e.target.closest('.epub-download-attachment');
+                if (epubAttachment) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const msgId = epubAttachment.dataset.messageId;
+                    const idx = parseInt(epubAttachment.dataset.attachmentIdx, 10);
+                    const msg = window.AppState?.messages?.find(m => m.id === msgId);
+                    const att = msg?.attachments?.[idx];
+                    if (att?.type === 'epub' && att?.data && window.AIAgentUI?.downloadEpubAttachment) {
+                        window.AIAgentUI.downloadEpubAttachment(att.data, att.name || '电子书.epub');
+                    }
+                    return;
+                }
                 // 处理交付物代码块下载按钮（md/txt/html）
                 const deliverableDownloadBtn = e.target.closest('.deliverable-download-btn');
                 if (deliverableDownloadBtn) {
@@ -429,7 +443,8 @@
         });
         document.getElementById('setting-language')?.addEventListener('change', (e) => {
             window.AIAgentApp?.applyLanguage?.(e.target.value);
-            window.AIAgentUI?.showToast?.('语言已更新', 'success');
+            const msg = (window.AppState?.settings?.language === 'en') ? 'Language updated' : '语言已更新';
+            window.AIAgentUI?.showToast?.(msg, 'success');
         });
         document.getElementById('setting-shortcut')?.addEventListener('change', (e) => {
             window.AppState.settings = window.AppState.settings || {};
@@ -527,14 +542,18 @@
         // 打开专门的subagent-modal
         window.AIAgentUI?.openModal?.('subagent-modal');
         
-        // 绑定点击事件
+        // 绑定点击事件：切换 SubAgent 时创建新会话
         document.querySelectorAll('#subagent-list .subagent-item').forEach(item => {
             item.addEventListener('click', () => {
                 const agentId = item.dataset.id;
                 const result = window.AIAgentApp?.switchSubAgent?.(agentId);
                 if (result) {
                     window.AIAgentUI?.closeModal?.('subagent-modal');
-                    window.AIAgentUI?.showToast?.('已切换到: ' + (subAgents[agentId]?.name || '通用助手'), 'success');
+                    createNewChat({ silent: true });
+                    const name = subAgents[agentId]?.name || '通用助手';
+                    const msg = (window.AppState?.settings?.language === 'en')
+                        ? `Switched to ${name}, new chat started` : `已切换到: ${name}，已开启新会话`;
+                    window.AIAgentUI?.showToast?.(msg, 'success');
                     updateAgentName();
                 }
             });
@@ -603,7 +622,7 @@
         ],
         creative: [
             { agentId: 'general', instruction: '搜集信息' },
-            { agentId: 'creative', instruction: '头脑风暴与方案筛选' }
+            { agentId: 'creative', instruction: '理解诊断→编排润色→排版布局；询问是否输出完整图书，选择是则完整输出 epub 附件；输出后询问上架/版权/纸质/运营指导' }
         ]
     };
 
@@ -800,7 +819,7 @@
         const placeholders = {
             research: '例如：分析2024年AI行业发展趋势',
             analysis: '例如：对比分析几种技术方案的优劣',
-            creative: '例如：为新产品构思10个创意营销方案'
+            creative: '例如：创作一部电子书并输出 epub 格式，可上架微信读书'
         };
         const inp = document.getElementById('workflow-input');
         if (inp) inp.placeholder = placeholders[presetId] || inp.placeholder;
@@ -836,7 +855,8 @@
     }
 
     // ==================== 新建对话 ====================
-    function createNewChat() {
+    function createNewChat(opts) {
+        const silent = opts?.silent === true;
         const chatId = 'chat_' + Date.now();
         const newChat = {
             id: chatId,
@@ -856,7 +876,10 @@
 
         closeSidebar();
         window.AIAgentApp?.saveState?.();
-        window.AIAgentUI?.showToast?.('新建对话成功', 'success');
+        if (!silent) {
+            const msg = (window.AppState?.settings?.language === 'en') ? 'New chat created' : '新建对话成功';
+            window.AIAgentUI?.showToast?.(msg, 'success');
+        }
     }
 
     // ==================== 加载对话 ====================
@@ -1128,6 +1151,23 @@
             };
 
             window.AppState.messages.push(aiMessage);
+
+            // 唐宋文化 / Workflow 末步为 creative：若消息包含可打包 EPUB 结构，自动生成 EPUB 附件
+            const lastStepCreative = workflowChainSteps?.length > 0 && workflowChainSteps[workflowChainSteps.length - 1]?.agentId === 'creative';
+            if ((window.AppState.currentSubAgent === 'creative' || lastStepCreative) && response?.content) {
+                try {
+                    const std = await window.AIAgentUI?.buildEpubAsAttachment?.(response.content, 'standard');
+                    const wx = await window.AIAgentUI?.buildEpubAsAttachment?.(response.content, 'wechat');
+                    const atts = [];
+                    if (std) atts.push(std);
+                    if (wx) atts.push(wx);
+                    if (atts.length > 0) {
+                        aiMessage.attachments = (aiMessage.attachments || []).concat(atts);
+                        window.AIAgentUI?.renderMessages?.();
+                    }
+                } catch (_) { /* 忽略 EPUB 打包失败 */ }
+            }
+
             updateCurrentChat();
             window.AIAgentApp?.saveState?.();
 
@@ -1654,6 +1694,22 @@
             };
 
             window.AppState.messages.push(aiMessage);
+
+            // 唐宋文化：若消息包含可打包 EPUB 结构，自动生成 EPUB 附件
+            if (window.AppState.currentSubAgent === 'creative' && response?.content) {
+                try {
+                    const std = await window.AIAgentUI?.buildEpubAsAttachment?.(response.content, 'standard');
+                    const wx = await window.AIAgentUI?.buildEpubAsAttachment?.(response.content, 'wechat');
+                    const atts = [];
+                    if (std) atts.push(std);
+                    if (wx) atts.push(wx);
+                    if (atts.length > 0) {
+                        aiMessage.attachments = (aiMessage.attachments || []).concat(atts);
+                        window.AIAgentUI?.renderMessages?.();
+                    }
+                } catch (_) { /* 忽略 EPUB 打包失败 */ }
+            }
+
             updateCurrentChat();
             window.AIAgentApp?.saveState?.();
 
@@ -1746,15 +1802,17 @@
     function selectSubAgent(agentId) {
         const result = window.AIAgentApp?.switchSubAgent?.(agentId);
         if (!result) {
-            window.AIAgentUI?.showToast?.('切换助手失败', 'error');
+            window.AIAgentUI?.showToast?.((window.AppState?.settings?.language === 'en') ? 'Failed to switch agent' : '切换助手失败', 'error');
             return;
         }
         const agent = window.AppState.subAgents?.[agentId];
-        
+        createNewChat({ silent: true });
         window.AIAgentUI?.renderSubAgentList?.();
         updateAgentName();
-        
-        window.AIAgentUI?.showToast?.(`已切换到 ${agent?.name || '通用助手'}`, 'success');
+        const name = agent?.name || '通用助手';
+        const msg = (window.AppState?.settings?.language === 'en')
+            ? `Switched to ${name}, new chat started` : `已切换到 ${name}，已开启新会话`;
+        window.AIAgentUI?.showToast?.(msg, 'success');
     }
 
     // ==================== 设置 ====================

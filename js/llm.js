@@ -409,7 +409,7 @@
             
             const patterns = {
                 code: ['代码', '编程', 'bug', 'debug', '函数', 'class', 'python', 'javascript', 'java'],
-                creative: ['创意', '写作', '故事', '诗歌', '文案', '创作'],
+                creative: ['创意', '写作', '故事', '诗歌', '文案', '创作', '电子书', 'epub', '排版', '编辑', '微信读书', '唐宋文化'],
                 analysis: ['分析', '决策', '对比', '评估', '建议'],
                 planning: ['计划', '规划', 'todo', '任务', '时间表'],
                 research: ['研究', '调研', '资料', '文献'],
@@ -666,14 +666,27 @@ ${rows}
                 throw new Error(`模型 ${model.name} 未配置API Key，请在设置中配置`);
             }
 
-            // 构建消息列表
+            // 构建消息列表，超长时保留最近消息防止上下文截断导致 API 报错
+            const MAX_CONTEXT_CHARS = 80000;  // 对话历史总字符上限（预留 systemPrompt 与响应空间）
             const validMessages = messages.filter(msg => msg.role === 'user' || msg.role === 'assistant');
+            let toSend = validMessages.map(msg => ({ role: msg.role, content: msg.content || '' }));
+            let totalLen = systemPrompt.length + toSend.reduce((s, m) => s + (m.content?.length || 0), 0);
+            if (totalLen > MAX_CONTEXT_CHARS && toSend.length > 1) {
+                const reserve = MAX_CONTEXT_CHARS - systemPrompt.length - 2000;
+                let kept = [];
+                let len = 0;
+                for (let i = toSend.length - 1; i >= 0; i--) {
+                    const l = (toSend[i].content?.length || 0);
+                    if (len + l > reserve && kept.length > 0) break;
+                    kept.unshift(toSend[i]);
+                    len += l;
+                }
+                toSend = kept;
+                window.Logger?.info?.(`上下文截断: 保留最近 ${toSend.length}/${validMessages.length} 条消息，约 ${len} 字符`);
+            }
             const formattedMessages = [
                 { role: 'system', content: systemPrompt },
-                ...validMessages.map(msg => ({
-                    role: msg.role,
-                    content: msg.content
-                }))
+                ...toSend
             ];
 
             // 根据provider调用不同API
@@ -3202,8 +3215,8 @@ ${rows}
                         agentCardsPrompt = this.formatAgentCardsForPrompt(cards);
                     }
                     if (!isFirst) {
-                        const MAX_PREV_CONTENT = 12000;
-                        const MAX_PER_STEP = 4000; // 整合步骤中每步输出最大字符
+                        const MAX_PREV_CONTENT = 32000; // 扩充：原12000，防止长上下文截断
+                        const MAX_PER_STEP = 10000;     // 扩充：原4000，每步输出最大字符
                         if (isLast && stepOutputs.filter(Boolean).length > 0) {
                             // 整合步骤：汇总所有已执行步骤的输出，供主 Agent 完整整合
                             const parts = [];

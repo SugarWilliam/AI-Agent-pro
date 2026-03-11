@@ -6,7 +6,7 @@
 (function() {
     'use strict';
 
-    const VERSION = '8.4.0';
+    const VERSION = '8.4.2';
     const STORAGE_KEY = 'ai_agent_state_v6';
 
     /** 检测 localStorage 是否可用（部分环境如 file://、隐私模式、iframe 可能不可用） */
@@ -1680,7 +1680,7 @@ ${prompt}
             capabilities: ['直接结论', '深刻洞察', '精炼回答', '信息查询', '要点提炼'],
             modelPreference: ['auto', 'deepseek-chat', 'glm-4-flash'],
             skills: ['skill_writer', 'skill_translator', 'skill_summarizer'],
-            rules: ['rule_format', 'rule_tone', 'rule_safety', 'rule_multimodal'],
+            rules: ['rule_format', 'rule_tone', 'rule_safety', 'rule_multimodal', 'rule_context'],
             mcp: ['mcp_web_search'],
             rag: ['rag_general', 'rag_logic', 'rag_neuroscience'],
             color: '#3b82f6',
@@ -1688,57 +1688,83 @@ ${prompt}
         },
         creative: {
             id: 'creative',
-            name: '创意大师',
-            description: '擅长创意写作、头脑风暴和内容创作',
+            name: '唐宋文化',
+            description: '理解诊断→编排润色→排版布局→epub 输出；输出前询问完整图书、输出后询问上架/版权/纸质/运营指导；自动打包 EPUB 附件',
             icon: 'fa-palette',
-            systemPrompt: `你是一位创意大师，擅长创意写作、头脑风暴和内容创作。
+            systemPrompt: `你是唐宋文化，专注于文字作品的极致创作与出版级编排，完成电子书或纸质书的前期全部工作。能力框架按 MECE 原则划分，互不重叠、覆盖完整。
 
-【核心能力框架】
+【核心能力框架（MECE）】
 
-一、创意思维方法（基于脑科学知识库）
-1. 联想思维：
-   - 跨领域联想
-   - 类比推理
-   - 隐喻创造
-2. 发散思维：
-   - 多角度思考
-   - 逆向思维
-   - 组合创新
-3. 收敛思维：
-   - 筛选最佳方案
-   - 优化整合
-   - 精炼表达
+一、理解与诊断（输入阶段）
+1. **深度理解**：通读全文，把握主题、结构、逻辑脉络、风格与受众定位
+2. **冗余与歧义提示**：对模糊、歧义、不完整处主动追问澄清
+3. **章节问题检测**：识别章节重复、缺失、顺序错乱、编号混乱、层级错误，输出「编排建议」并征得用户确认后再执行
 
-二、逻辑严密性（基于逻辑学知识库）
-1. 创意与逻辑的平衡：
-   - 创意需要逻辑支撑
-   - 避免逻辑矛盾
-   - 确保内在一致性
-2. 论证结构：
-   - 创意观点的合理性
-   - 情感与理性的结合
-   - 说服力的构建
+二、结构编排与内容润色（编辑阶段）
+1. **结构编排**：目录层级、章节划分、小节编排；按出版目标（电子书/纸质书/微信读书）定制结构
+2. **内容润色**：文字精修、语感统一、风格一致、术语规范、标点统一、可读性与节奏优化
+3. **三审三阅**：初审（完整性、逻辑、事实）→ 复审（润色、格式）→ 终审（质量、合规）→ 校对（错别字、标点、版式、页码）
 
-三、创作能力
-1. 创意文章撰写
-2. 故事创作与叙事
-3. 诗歌与文学表达
-4. 头脑风暴与想法生成
-5. 文案优化与提升
+三、排版与布局（呈现阶段）
+1. **排版规范**：字体层级、字号行距字距、首行缩进、段首装饰、章节页设计
+2. **布局设计**：开本、版心、天头地脚；封面、扉页、版权页、前言、目录、正文、附录；页眉页脚、页码、书眉；图文混排、表格、引用块
 
-四、输出规范
-1. 发挥想象力，给出独特创意
-2. 保持逻辑自洽
-3. 考虑受众认知特点
-4. 提供多种方案供选择`,
-            capabilities: ['创意写作', '头脑风暴', '文案优化', '故事创作', '诗歌创作', '联想思维', '发散思维'],
+四、epub 结构输出规范（交付物技术规范，必须输出）
+你输出的是**文本与结构化内容**，用户需用 pandoc、Calibre 等工具打包为 epub/PDF/MOBI/AZW3。请按以下结构输出，便于用户直接打包：
+
+1. **content.opf**：用 \`\`\`content.opf 代码块输出完整 OPF 文件
+   - metadata：dc:title、dc:creator、dc:language、dc:identifier 等
+   - manifest：列出所有 XHTML 章节、CSS、图片
+   - spine：阅读顺序
+
+2. **章节 XHTML**：用 \`\`\`chapter-01.xhtml\`\`\`、\`\`\`chapter-02.xhtml\`\`\` 等代码块逐章输出（禁止单块包含多章）
+   - 符合 EPUB 2/3 的 XHTML 规范
+   - 每章独立文件，含完整 HTML 结构（html、head、body）
+   - 标题层级：h1 章、h2 节、h3 小节
+   - content.opf 中 manifest 的 href 使用 \`Text/chapter-01.xhtml\` 格式
+
+3. **toc.ncx**（EPUB 2）或 **nav.xhtml**（EPUB 3）：用 \`\`\`toc.ncx 或 \`\`\`nav.xhtml 代码块输出目录结构
+
+4. **mimetype**：\`application/epub+zip\`（可仅作说明）
+
+五、出版术语与平台规范（交付物知识）
+- **出版术语**：版权页、ISBN、CIP、版次/印次
+- **平台规范（微信读书等）**：封面尺寸格式、目录层级、元数据（书名/作者/简介 200 字内/分类/标签）、epub 2/3 格式、版权声明
+
+六、输出确认与完整电子档（交互流程）
+1. **输出前询问**：**必须询问**「是否需要输出完整图书（含完整电子档附件）？」
+2. **用户选「是」**：完整输出 content.opf、逐章 XHTML、toc.ncx/nav.xhtml；系统自动打包 EPUB 附件（标准版 + 微信读书版）
+3. **用户选「否」或未明确**：可仅输出大纲、样章、编排建议或部分内容
+4. **输出后询问**：在完整输出或定稿后，**必须询问**「是否需要提供以下指导？」
+   - 电子书上架指导（微信读书、Kindle、豆瓣阅读等）
+   - 版权申请指导（著作权登记、ISBN、CIP）
+   - 纸质输出版本指导（出版流程、版次印次、印刷规范）
+   - 运营指导（推广、读者运营、数据复盘）
+
+七、创意思维（横向能力，基于脑科学、逻辑学知识库）
+- 联想思维、发散思维、收敛思维；创意与逻辑平衡、论证结构
+- 故事创作、诗歌、文案、头脑风暴
+
+八、合规与风险审查（定稿前必须执行）
+1. **风险识别与补充**：识别涉及隐私、政治敏感、名誉、争议、未成年人保护等内容；**敏感词过滤**：平台敏感词、违禁词检查；输出风险清单与修改建议
+2. **侵权审查**：版权、引用授权、抄袭、肖像权、商标等侵权风险提醒与意见补充
+3. **免责声明**：识别需免责场景（投资风险、时效性、医疗/法律建议、预测性内容等），补充或建议免责声明文案
+4. **AI 贡献声明**：若内容含 AI 生成或辅助创作，须在版权页或适当位置声明 AI 贡献
+5. **法律合规审查**：出版法规、平台规范、广告法（如有推广内容）等合规检查
+6. **原创新声明**：原创声明或授权说明，明确权利归属
+7. **参考文献审查**：引用标注规范（脚注、尾注、参考文献格式）、出处完整性、可追溯性核查；**内容真实性核查**：事实核查、数据来源验证
+
+九、能力边界（元说明）
+- 你输出的是**文本与 XML/XHTML 结构**，用户需用 pandoc、Calibre、Sigil 等工具生成 epub/PDF/MOBI/AZW3
+- 定稿前做 MECE 检验与 EPUB 完整性审查，在总结中写明结论`,
+            capabilities: ['深度理解', '冗余歧义提示', '章节问题检测', '结构编排', '内容润色', '三审三阅', '排版布局', 'epub结构输出', '出版术语与平台规范', '输出前询问', '完整电子档附件', '电子书上架指导', '版权申请指导', '纸质输出版本指导', '运营指导', '创意写作', '故事创作', '诗歌创作', 'MECE检验', 'EPUB完整性审查', '风险识别与补充', '敏感词过滤', '侵权审查', '免责声明补充', 'AI贡献声明', '法律合规审查', '原创新声明', '参考文献审查', '引用标注规范', '内容真实性核查'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
-            skills: ['skill_writer', 'skill_brainstorm', 'skill_designer'],
-            rules: ['rule_format', 'rule_tone', 'rule_examples', 'rule_multimodal'],
-            mcp: ['mcp_web_search'],
-            rag: ['rag_literature', 'rag_logic', 'rag_neuroscience'],
+            skills: ['skill_writer', 'skill_brainstorm', 'skill_designer', 'skill_reviewer', 'skill_summarizer', 'skill_pyramid', 'skill_mece', 'skill_planner'],
+            rules: ['rule_format', 'rule_tone', 'rule_safety', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_multimodal', 'rule_context'],
+            mcp: ['mcp_web_search', 'mcp_document_parser', 'mcp_filesystem'],
+            rag: ['rag_literature', 'rag_logic', 'rag_neuroscience', 'rag_philosophy', 'rag_first_principles'],
             color: '#8b5cf6',
-            delegateTo: ['prompt_expert']
+            delegateTo: []
         },
         code: {
             id: 'code',
@@ -1788,11 +1814,11 @@ ${prompt}
             capabilities: ['代码审查', '调试排错', '性能优化', '技术咨询', '算法设计', '逻辑验证', '代码可读性'],
             modelPreference: ['deepseek-reasoner', 'gpt-4o', 'claude-3-sonnet'],
             skills: ['skill_coder', 'skill_analyst'],
-            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure'],
+            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_context'],
             mcp: ['mcp_web_search', 'mcp_filesystem'],
             rag: ['rag_linux', 'rag_ai', 'rag_logic', 'rag_neuroscience'],
             color: '#10b981',
-            delegateTo: ['prompt_expert']
+            delegateTo: []
         },
         task: {
             id: 'task',
@@ -1825,11 +1851,11 @@ ${prompt}
             capabilities: ['任务管理', 'MECE分解', '分类分级', '优先级排序', '原子化', '依赖分析', '表格输出'],
             modelPreference: ['deepseek-chat', 'glm-4-flash'],
             skills: ['skill_mece', 'skill_planner', 'skill_dependency', 'skill_writer'],
-            rules: ['rule_format', 'rule_structure'],
+            rules: ['rule_format', 'rule_structure', 'rule_context'],
             mcp: ['mcp_web_search'],
             rag: ['rag_logic', 'rag_neuroscience'],
             color: '#f59e0b',
-            delegateTo: ['prompt_expert']
+            delegateTo: []
         },
         plan: {
             id: 'plan',
@@ -1869,11 +1895,11 @@ ${prompt}
             capabilities: ['Roadmap', '里程碑', '依赖关系', '风险矩阵', '资源约束', '任务-SubAgent绑定', '智能规划', '时间识别'],
             modelPreference: ['deepseek-chat', 'glm-4-plus'],
             skills: ['skill_mece', 'skill_planner', 'skill_gantt', 'skill_dependency', 'skill_risk_identification', 'skill_writer'],
-            rules: ['rule_format', 'rule_structure'],
+            rules: ['rule_format', 'rule_structure', 'rule_context'],
             mcp: ['mcp_web_search'],
             rag: ['rag_logic', 'rag_neuroscience'],
             color: '#ec4899',
-            delegateTo: ['prompt_expert']
+            delegateTo: []
         },
         super_decision: {
             id: 'super_decision',
@@ -2119,11 +2145,11 @@ ${prompt}
             capabilities: ['超级决策', '认知偏差识别', '思维模式分析', '风险评估', '方案对比', '决策矩阵', '决策链', '概率分析', 'Mermaid可视化', '第一性原理', '系统思考', '前景理论', '数据分析', '行业分析', '政策分析', '社会结构约束分析', '关键洞察提取', '沙盘推演', '对话问答', '个性化数据收集', '个性化输出矫正', '金字塔原理', 'SMART原则', '建议生成'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_analyst', 'skill_researcher', 'skill_planner', 'skill_swot', 'skill_decision_expert', 'skill_first_principles', 'skill_iceberg_model', 'skill_mermaid_visualization', 'skill_cognitive_psychology', 'skill_pyramid', 'skill_smart', 'skill_mece', 'skill_data_cleaning', 'skill_advanced_analytics'],
-            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure'],
+            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_context'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
             rag: ['rag_finance', 'rag_social', 'rag_first_principles', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_logic', 'rag_temporal_logic', 'rag_common_sense', 'rag_history', 'rag_industry_reports', 'rag_government_reports'],
             color: '#8b5cf6',
-            delegateTo: ['prompt_expert']
+            delegateTo: []
         },
         cognitive: {
             id: 'cognitive',
@@ -2162,11 +2188,11 @@ ${prompt}
             capabilities: ['认知偏差识别', '思维模式分析', '决策优化', '心理学应用', '脑科学insights', 'Mermaid可视化', '行为经济学', '建议生成'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_cognitive_psychology', 'skill_first_principles', 'skill_iceberg_model', 'skill_mermaid_visualization', 'skill_analyst', 'skill_researcher'],
-            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure'],
+            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_context'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
             rag: ['rag_psychology', 'rag_neuroscience', 'rag_first_principles', 'rag_iceberg_model', 'rag_social'],
             color: '#14b8a6',
-            delegateTo: ['prompt_expert']
+            delegateTo: []
         },
         prompt_expert: {
             id: 'prompt_expert',
@@ -2205,7 +2231,7 @@ ${prompt}
             capabilities: ['提示词设计', '提示词优化', 'Few-shot 示例', '思维链设计', '角色设定', '输出格式规范', '多模型适配', '系统提示词', '模板化', '需求澄清'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_writer', 'skill_analyst', 'skill_brainstorm'],
-            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure'],
+            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_context'],
             mcp: ['mcp_web_search'],
             rag: ['rag_ai', 'rag_logic', 'rag_psychology', 'rag_neuroscience'],
             color: '#f59e0b'
@@ -2215,7 +2241,7 @@ ${prompt}
             name: '工作秘书',
             description: '研发项目管理协调、可根据任务组织调度其他Agent；利用海量知识提供合理化思路和切实可行的方案（技术、策略、方法、决策）。默认具备超级决策能力',
             icon: 'fa-briefcase',
-            delegateTo: ['prompt_expert'],
+            delegateTo: [],
             serviceTarget: '',
             ignoreInfoDesc: '',
             systemPrompt: `你是{{serviceTarget}}的工作秘书，负责你的{{serviceTarget}}所有工作，包括但不限于 1. 研发项目管理和协调 （实时汇报项目全景状态、问题闭环情况、各任务线的推进情况、阻塞项、问题时间线和演化路径等）并利用海量知识提供合理化思路和切实可行的方案。2. 团队情况（人、事、物、时、风险）管理、建设、建议。3. {{serviceTarget}}各项任务的监控和识别，分类。你是最顶级秘书，4. 回答问题思路超级清晰，洞察深刻，语气合适。
@@ -2281,7 +2307,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
             capabilities: ['研发项目管理协调', '根据任务组织调度Agent', '超级决策能力', '海量知识整合', '合理化思路', '切实可行方案', '技术策略方法决策', '问题闭环/扩散/变迁/泛化识别', '全息复盘总结(HTML/Markdown归档)', '产物归档(Markdown/TXT/HTML)', 'PMP', 'WBS', '根因分析', '风险识别', '研发技术'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_pmp', 'skill_wbs', 'skill_root_cause', 'skill_risk_identification', 'skill_gantt', 'skill_dependency', 'skill_temporal_relation', 'skill_planner', 'skill_mece', 'skill_mermaid_visualization', 'skill_bug_analysis', 'skill_testing_strategy', 'skill_problem_evolution', 'skill_decision_expert', 'skill_cognitive_psychology', 'skill_swot', 'skill_first_principles', 'skill_iceberg_model', 'skill_pyramid', 'skill_smart'],
-            rules: ['rule_format', 'rule_structure', 'rule_accuracy', 'rule_examples'],
+            rules: ['rule_format', 'rule_structure', 'rule_accuracy', 'rule_examples', 'rule_context'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
             rag: ['rag_pmp', 'rag_huawei_rdpm', 'rag_wbs', 'rag_root_cause', 'rag_risk_identification', 'rag_software_pm', 'rag_linux', 'rag_ccpp', 'rag_memory_analysis', 'rag_embedded', 'rag_image_quality', 'rag_h264_h265', 'rag_ai_security', 'rag_bug_debug', 'rag_testing', 'rag_problem_evolution', 'rag_logic', 'rag_temporal_logic', 'rag_first_principles', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_common_sense', 'rag_history', 'rag_industry_reports', 'rag_government_reports', 'rag_finance', 'rag_social'],
             color: '#0ea5e9'
@@ -3296,6 +3322,69 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
         debouncedSave();
     }
 
+    const I18N = {
+        'new-chat': { 'zh-CN': '新建对话', 'en': 'New Chat' },
+        'chat-history': { 'zh-CN': '对话历史', 'en': 'Chat History' },
+        'settings': { 'zh-CN': '设置', 'en': 'Settings' },
+        'general-settings': { 'zh-CN': '通用设置', 'en': 'General' },
+        'theme': { 'zh-CN': '主题', 'en': 'Theme' },
+        'language': { 'zh-CN': '语言', 'en': 'Language' },
+        'dark': { 'zh-CN': '深色', 'en': 'Dark' },
+        'light': { 'zh-CN': '浅色', 'en': 'Light' },
+        'auto': { 'zh-CN': '自动', 'en': 'Auto' },
+        'send-shortcut': { 'zh-CN': '发送快捷键', 'en': 'Send Shortcut' },
+        'font-size': { 'zh-CN': '字体大小', 'en': 'Font Size' },
+        'small': { 'zh-CN': '小', 'en': 'Small' },
+        'medium': { 'zh-CN': '中', 'en': 'Medium' },
+        'large': { 'zh-CN': '大', 'en': 'Large' },
+        'model-settings': { 'zh-CN': '模型设置', 'en': 'Models' },
+        'resource-mgmt': { 'zh-CN': '资源管理', 'en': 'Resources' },
+        'subagents': { 'zh-CN': 'SubAgent', 'en': 'SubAgent' },
+        'chat': { 'zh-CN': '对话', 'en': 'Chat' },
+        'plan': { 'zh-CN': '计划', 'en': 'Plan' },
+        'task': { 'zh-CN': '任务', 'en': 'Task' },
+        'welcome-title': { 'zh-CN': '有什么可以帮您的？', 'en': 'How can I help you?' },
+        'welcome-subtitle': { 'zh-CN': '选择一个AI助手开始对话', 'en': 'Select an AI assistant to start' },
+        'quick-write': { 'zh-CN': '写文章', 'en': 'Write' },
+        'quick-analysis': { 'zh-CN': '数据分析', 'en': 'Analysis' },
+        'quick-plan': { 'zh-CN': '制定计划', 'en': 'Plan' },
+        'quick-code': { 'zh-CN': '写代码', 'en': 'Code' },
+        'input-placeholder': { 'zh-CN': '输入消息...', 'en': 'Type a message...' },
+        'select-agent': { 'zh-CN': '选择AI助手', 'en': 'Select Assistant' },
+        'select-model': { 'zh-CN': '选择模型', 'en': 'Select Model' },
+        'close': { 'zh-CN': '关闭', 'en': 'Close' },
+        'add-agent': { 'zh-CN': '添加助手', 'en': 'Add Assistant' },
+        'add-model': { 'zh-CN': '添加模型', 'en': 'Add Model' },
+        'general': { 'zh-CN': '通用', 'en': 'General' },
+        'general-desc': { 'zh-CN': '主题、语言、快捷键', 'en': 'Theme, Language, Shortcut' },
+        'models': { 'zh-CN': '模型', 'en': 'Models' },
+        'models-desc': { 'zh-CN': 'AI模型配置', 'en': 'AI Model Config' },
+        'resources': { 'zh-CN': '资源', 'en': 'Resources' },
+        'resources-desc': { 'zh-CN': 'RAG、技能、MCP', 'en': 'RAG, Skills, MCP' },
+        'agents': { 'zh-CN': '助手', 'en': 'Assistants' },
+        'agents-desc': { 'zh-CN': 'SubAgent管理', 'en': 'SubAgent Management' }
+    };
+
+    function updateUIForLanguage(lang) {
+        const L = lang === 'zh-CN' ? 'zh-CN' : 'en';
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.dataset.i18n;
+            if (I18N[key] && I18N[key][L]) el.textContent = I18N[key][L];
+        });
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+            const key = el.dataset.i18nPlaceholder;
+            if (I18N[key] && I18N[key][L]) el.placeholder = I18N[key][L];
+        });
+        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+            const key = el.dataset.i18nTitle;
+            if (I18N[key] && I18N[key][L]) el.title = I18N[key][L];
+        });
+        document.querySelectorAll('[data-i18n-opt]').forEach(el => {
+            const key = el.dataset.i18nOpt;
+            if (I18N[key] && I18N[key][L]) el.textContent = I18N[key][L];
+        });
+    }
+
     function applyLanguage(lang) {
         // 统一 zh 为 zh-CN，与 HTML select 的 value 一致
         const normalized = (lang === 'zh' || lang === 'zh-CN') ? 'zh-CN' : (lang === 'en' ? 'en' : 'zh-CN');
@@ -3304,12 +3393,14 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
             document.documentElement.lang = normalized === 'zh-CN' ? 'zh-CN' : 'en';
         }
         debouncedSave();
-        
-        // 更新语言选择器（必须使用 select 中存在的 value）
         const langSelect = document.getElementById('setting-language');
-        if (langSelect) {
-            langSelect.value = normalized;
-        }
+        if (langSelect) langSelect.value = normalized;
+        updateUIForLanguage(normalized);
+    }
+
+    function t(key) {
+        const L = (AppState.settings?.language === 'en') ? 'en' : 'zh-CN';
+        return (I18N[key] && I18N[key][L]) ? I18N[key][L] : (I18N[key]?.['zh-CN'] || key);
     }
 
     function applyFontSize(size) {
@@ -3400,6 +3491,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
         importData,
         applyTheme,
         applyLanguage,
+        t,
         applyFontSize,
         applyShortcut,
         switchSubAgent,

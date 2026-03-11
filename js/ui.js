@@ -8,6 +8,9 @@
 
     let currentStreamMessageEl = null;
     let currentStreamContentEl = null;
+    const STREAM_CHUNK_LIMIT = 12000;  // 单气泡字数上限，超出则切换新气泡继续输出
+    let streamChunkIndex = 0;
+    let firstStreamBubbleEl = null;    // 首个气泡，用于追加 thinking
 
     // ==================== 对话历史 ====================
     function renderChatHistory() {
@@ -133,12 +136,16 @@
             attachmentsHtml = '<div class="message-attachments">' +
                 msg.attachments.map((att, idx) => {
                     if (!att) return '';
-                    const icon = att.type === 'image' ? 'fa-image' : 'fa-file';
+                    const icon = att.type === 'image' ? 'fa-image' : (att.type === 'epub' ? 'fa-book' : 'fa-file');
                     const name = escapeHtml(att.name || '附件');
                     const sizeStr = att.size != null ? formatSize(att.size) : '';
                     const sizeHtml = sizeStr ? `<span class="message-attachment-size">${sizeStr}</span>` : '';
                     if (att.type === 'image' && att.data) {
                         return `<div class="message-attachment-item message-attachment-preview" onclick="AIAgentUI.previewImage('${att.data.replace(/'/g, "\\'")}')" title="点击预览">` +
+                            `<i class="fas ${icon}"></i> <span class="message-attachment-name">${name}</span>${sizeHtml}</div>`;
+                    }
+                    if (att.type === 'epub' && att.data) {
+                        return `<div class="message-attachment-item message-attachment-preview epub-download-attachment" data-message-id="${msg.id}" data-attachment-idx="${idx}" title="点击下载">` +
                             `<i class="fas ${icon}"></i> <span class="message-attachment-name">${name}</span>${sizeHtml}</div>`;
                     }
                     const hasContent = att.content && att.content.trim().length > 0;
@@ -276,11 +283,47 @@
         messagesList.appendChild(div);
         currentStreamMessageEl = div;
         currentStreamContentEl = div.querySelector('.stream-content');
+        streamChunkIndex = 0;
+        firstStreamBubbleEl = div;
         
         // 存储搜索状态和 Workflow 步骤元素的引用
         window.currentSearchStatusEl = div.querySelector('#search-status');
         window.currentWorkflowProgressEl = div.querySelector('#workflow-step-progress');
 
+        scrollToBottom();
+    }
+
+    /** 达到字数上限时，将当前气泡固化并创建新气泡继续输出 */
+    function finalizeStreamChunkForContinuation(chunkContent) {
+        if (!currentStreamMessageEl || !currentStreamContentEl) return;
+        currentStreamMessageEl.classList.remove('streaming');
+        currentStreamMessageEl.dataset.streamChunkIndex = String(streamChunkIndex);
+        const outputFormat = detectOutputFormat(chunkContent);
+        const contentHtml = renderContentByFormat(renderMarkdown(chunkContent + '\n\n*（续）*'), outputFormat);
+        const streamWrap = currentStreamMessageEl.querySelector('.stream-content');
+        if (streamWrap) {
+            streamWrap.outerHTML = `<div class="stream-content-fixed">${contentHtml}</div>`;
+        }
+        const name = window.AppState.subAgents?.[window.AppState.currentSubAgent]?.name || 'AI助手';
+        const div = document.createElement('div');
+        div.className = 'message assistant streaming message-continuation';
+        div.dataset.streamChunkIndex = String(streamChunkIndex + 1);
+        div.innerHTML = `
+            <div class="message-avatar"><i class="fas fa-robot"></i></div>
+            <div class="message-content">
+                <div class="message-header">
+                    <span class="message-name">${escapeHtml(name)}</span>
+                    <span class="message-time">${formatTime(Date.now())}</span>
+                </div>
+                <div class="message-body">
+                    <div class="stream-content"></div>
+                </div>
+            </div>
+        `;
+        document.getElementById('messages-list')?.appendChild(div);
+        streamChunkIndex++;
+        currentStreamMessageEl = div;
+        currentStreamContentEl = div.querySelector('.stream-content');
         scrollToBottom();
     }
     
@@ -373,50 +416,65 @@
             thinkingIndicator.style.display = 'none';
         }
 
-        currentStreamContentEl.innerHTML = renderMarkdown(content);
+        // 达到字数上限时切换新气泡，防止长上下文断开
+        while (content.length > (streamChunkIndex + 1) * STREAM_CHUNK_LIMIT) {
+            const chunkEnd = (streamChunkIndex + 1) * STREAM_CHUNK_LIMIT;
+            const chunkContent = content.substring(streamChunkIndex * STREAM_CHUNK_LIMIT, chunkEnd);
+            finalizeStreamChunkForContinuation(chunkContent);
+        }
+
+        const displayContent = content.substring(streamChunkIndex * STREAM_CHUNK_LIMIT);
+        currentStreamContentEl.innerHTML = renderMarkdown(displayContent);
         scrollToBottom();
     }
 
     function finalizeStreamMessage(finalContent, thinking = '', messageId = null) {
         if (!currentStreamMessageEl) return null;
 
-        currentStreamMessageEl.classList.remove('streaming');
-        
-        // 使用传入的消息ID，如果没有则生成新的
         const msgId = messageId || 'msg_' + Date.now();
-        currentStreamMessageEl.dataset.messageId = msgId;
+        const hasContinuation = streamChunkIndex > 0;
 
-        const messageBody = currentStreamMessageEl.querySelector('.message-body');
-        if (messageBody) {
-            let thinkingHtml = '';
-            if (thinking && window.AppState.settings?.showThinking !== false) {
-                // 使用与 createMessageElement 相同的HTML结构
-                const thinkingLines = thinking.split('\n').filter(line => line.trim());
-                const hasMore = thinkingLines.length > 3;
-                const previewText = thinkingLines.slice(0, 3).join('\n') + (hasMore ? '\n...' : '');
-                const fullText = thinkingLines.join('\n');
-                
-                thinkingHtml = `
-                    <div class="thinking-section" data-message-id="${msgId}">
-                        <div class="thinking-header" onclick="AIAgentUI.toggleThinking('${msgId}')">
-                            <i class="fas fa-brain"></i>
-                            <span>思考过程</span>
-                            <span class="thinking-count">${thinkingLines.length} 步</span>
-                            <i class="fas fa-chevron-down thinking-toggle-icon" style="margin-left: auto; font-size: 10px;"></i>
-                        </div>
-                        <div class="thinking-content collapsed">
-                            <div class="thinking-preview"><pre>${escapeHtml(previewText)}</pre></div>
-                            <div class="thinking-full" style="display: none;"><pre>${escapeHtml(fullText)}</pre></div>
-                        </div>
+        // 多气泡时：thinking 仅加在首个气泡
+        if (thinking && window.AppState.settings?.showThinking !== false && firstStreamBubbleEl) {
+            const thinkingLines = thinking.split('\n').filter(line => line.trim());
+            const hasMore = thinkingLines.length > 3;
+            const previewText = thinkingLines.slice(0, 3).join('\n') + (hasMore ? '\n...' : '');
+            const fullText = thinkingLines.join('\n');
+            const thinkingHtml = `
+                <div class="thinking-section" data-message-id="${msgId}">
+                    <div class="thinking-header" onclick="AIAgentUI.toggleThinking('${msgId}')">
+                        <i class="fas fa-brain"></i>
+                        <span>思考过程</span>
+                        <span class="thinking-count">${thinkingLines.length} 步</span>
+                        <i class="fas fa-chevron-down thinking-toggle-icon" style="margin-left: auto; font-size: 10px;"></i>
                     </div>
-                `;
+                    <div class="thinking-content collapsed">
+                        <div class="thinking-preview"><pre>${escapeHtml(previewText)}</pre></div>
+                        <div class="thinking-full" style="display: none;"><pre>${escapeHtml(fullText)}</pre></div>
+                    </div>
+                </div>
+            `;
+            const firstBody = firstStreamBubbleEl.querySelector('.message-body');
+            if (firstBody) {
+                const existing = firstBody.querySelector('.thinking-section');
+                if (!existing) firstBody.insertAdjacentHTML('afterbegin', thinkingHtml);
             }
-            
-            // 渲染内容
-            const outputFormat = detectOutputFormat(finalContent);
-            const contentHtml = renderContentByFormat(renderMarkdown(finalContent), outputFormat);
-            
-            // 添加操作按钮 - 使用data属性而不是onclick
+        }
+
+        // 当前（最后一个）气泡：渲染其内容片段
+        currentStreamMessageEl.classList.remove('streaming');
+        currentStreamMessageEl.dataset.messageId = msgId;
+        const lastChunkContent = finalContent.substring(streamChunkIndex * STREAM_CHUNK_LIMIT);
+        const outputFormat = detectOutputFormat(lastChunkContent);
+        const contentHtml = renderContentByFormat(renderMarkdown(lastChunkContent), outputFormat);
+        const streamWrap = currentStreamMessageEl.querySelector('.stream-content');
+        const messageBody = currentStreamMessageEl.querySelector('.message-body');
+        if (streamWrap) {
+            streamWrap.outerHTML = `<div class="stream-content-fixed">${contentHtml}</div>`;
+        }
+
+        // 操作按钮仅加在最后一个气泡
+        if (messageBody) {
             const leftActions = `
                 <button class="msg-action-btn" data-action="open" data-message-id="${msgId}" title="打开">
                     <i class="fas fa-external-link-alt"></i>
@@ -428,7 +486,6 @@
                     <i class="fas fa-copy"></i>
                 </button>
             `;
-            
             const rightActions = `
                 <button class="msg-action-btn" data-action="speak" data-message-id="${msgId}" title="语音播放"><i class="fas fa-volume-up"></i></button>
                 <button class="msg-action-btn" data-action="regenerate" data-message-id="${msgId}" title="重新生成"><i class="fas fa-redo"></i></button>
@@ -439,10 +496,6 @@
                     <i class="fas fa-trash"></i>
                 </button>
             `;
-            
-            messageBody.innerHTML = thinkingHtml + contentHtml;
-            
-            // 添加操作按钮
             const actionsDiv = document.createElement('div');
             actionsDiv.className = 'message-actions';
             actionsDiv.innerHTML = `
@@ -452,8 +505,20 @@
             messageBody.appendChild(actionsDiv);
         }
 
+        // 为所有续写气泡统一设置 messageId，便于复制/删除时识别整条消息
+        if (hasContinuation && firstStreamBubbleEl) {
+            let el = firstStreamBubbleEl;
+            while (el) {
+                el.dataset.messageId = msgId;
+                if (el === currentStreamMessageEl) break;
+                el = el.nextElementSibling;
+            }
+        }
+
         currentStreamMessageEl = null;
         currentStreamContentEl = null;
+        firstStreamBubbleEl = null;
+        streamChunkIndex = 0;
         window.currentSearchStatusEl = null;
         window.currentWorkflowProgressEl = null;
 
@@ -461,6 +526,128 @@
         
         // 返回消息ID，供调用者使用
         return msgId;
+    }
+
+    // ==================== EPUB 解析与打包 ====================
+    /**
+     * 从消息内容中解析 EPUB 相关代码块
+     * @param {string} content - 消息正文
+     * @returns {{ opf: string, toc: string, nav: string, css: string, chapters: Record<string, string> }}
+     */
+    function extractEpubBlocksFromContent(content) {
+        const result = { opf: '', toc: '', nav: '', css: '', chapters: {} };
+        if (!content || typeof content !== 'string') return result;
+
+        const blockRe = /```([\w.-]+)?\s*\n([\s\S]*?)```/g;
+        let m;
+        while ((m = blockRe.exec(content)) !== null) {
+            const lang = (m[1] || '').trim().toLowerCase();
+            const code = m[2].trim();
+            if (!code) continue;
+
+            if (lang === 'content.opf' || (lang === 'opf' && /<\?xml|package|metadata|manifest|spine/i.test(code))) {
+                result.opf = code;
+            } else if (lang === 'xml' && /<\?xml|package|metadata|manifest|spine/i.test(code) && !result.opf) {
+                result.opf = code;
+            } else if (lang === 'toc.ncx') {
+                result.toc = code;
+            } else if (lang === 'nav.xhtml' || (lang === 'nav' && /nav|toc|epub/i.test(code))) {
+                result.nav = code;
+            } else if (lang === 'style.css' || (lang === 'css' && /@page|epub|chapter|body\s*\{/i.test(code))) {
+                result.css = code;
+            } else if (/^chapter-\d+(\.xhtml)?$/i.test(lang)) {
+                const key = /\.xhtml$/i.test(lang) ? lang : lang + '.xhtml';
+                result.chapters[key] = code;
+            } else if (/^appendix-\d+(\.xhtml)?$/i.test(lang)) {
+                const key = /\.xhtml$/i.test(lang) ? lang : lang + '.xhtml';
+                result.chapters[key] = code;
+            } else if (lang === 'copyright.xhtml' || lang === 'copyright') {
+                result.chapters['copyright.xhtml'] = code;
+            } else if (lang === 'xhtml' && /<html|<!DOCTYPE/i.test(code)) {
+                const fallback = 'chapter-' + String(Object.keys(result.chapters).length + 1).padStart(2, '0') + '.xhtml';
+                result.chapters[fallback] = code;
+            }
+        }
+
+        // 兜底：从 opf 解析 manifest 的 href，若某 href 在 chapters 中缺失，尝试从 content 中按文件名查找
+        if (result.opf && Object.keys(result.chapters).length === 0) {
+            const hrefRe = /href=["']([^"']+\.xhtml)["']/gi;
+            let hrefM;
+            while ((hrefM = hrefRe.exec(result.opf)) !== null) {
+                const href = hrefM[1];
+                const baseName = href.split('/').pop();
+                const blockRe2 = new RegExp('```' + baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\n([\\s\\S]*?)```', 'i');
+                const m2 = content.match(blockRe2);
+                if (m2) result.chapters[href] = m2[1].trim();
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 将解析结果打包为 EPUB 并返回附件对象
+     * @param {string} content - 消息正文
+     * @param {'standard'|'wechat'} epubType - 标准版或微信专版
+     * @returns {Promise<{ type: string, name: string, data: string, size: number }|null>}
+     */
+    async function buildEpubAsAttachment(content, epubType) {
+        if (typeof JSZip === 'undefined') return null;
+        const blocks = extractEpubBlocksFromContent(content);
+        if (!blocks.opf || Object.keys(blocks.chapters).length === 0) return null;
+
+        const zip = new JSZip();
+        const opfPath = 'OEBPS/content.opf';
+        const suffix = epubType === 'wechat' ? '-微信读书' : '';
+
+        zip.file('mimetype', 'application/epub+zip', { compression: 'STORE' });
+        zip.file('META-INF/container.xml', `<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="${opfPath}" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>`);
+
+        const files = {};
+        files[opfPath] = blocks.opf;
+        if (blocks.toc) files['OEBPS/toc.ncx'] = blocks.toc;
+        if (blocks.nav) files['OEBPS/nav.xhtml'] = blocks.nav;
+        if (blocks.css) files['OEBPS/style.css'] = blocks.css;
+
+        for (const [href, body] of Object.entries(blocks.chapters)) {
+            const path = href.includes('/') ? 'OEBPS/' + href : 'OEBPS/Text/' + href;
+            files[path] = body;
+        }
+
+        for (const [path, body] of Object.entries(files)) {
+            zip.file(path, body);
+        }
+
+        const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+        const size = blob.size;
+        if (size < 3072) return null;
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve({
+                type: 'epub',
+                name: `电子书${suffix}.epub`,
+                data: reader.result,
+                size
+            });
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    /**
+     * 触发 EPUB 附件下载
+     * @param {string} dataUrl - data URL (base64)
+     * @param {string} filename
+     */
+    function downloadEpubAttachment(dataUrl, filename) {
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = filename || '电子书.epub';
+        a.click();
     }
 
     // ==================== Markdown渲染 ====================
@@ -5437,6 +5624,9 @@ ${ex.content}`).join('\n\n')}
         downloadAsPDF,
         downloadAsDOC,
         downloadAsCSV,
+        downloadEpubAttachment,
+        buildEpubAsAttachment,
+        extractEpubBlocksFromContent,
         // 输出格式相关
         detectOutputFormat,
         renderContentByFormat
