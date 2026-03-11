@@ -79,6 +79,9 @@ ssh_public_key.txt
 ssh_public_key.pub
 ssh_public_key
 
+# 用户生成的电子书（唐宋文化输出）
+*.epub
+
 # 项目临时/本地文件（不跟踪、不上传）
 533(1Gb)B11V2.项目仪表盘.html
 costco_8+8.html
