@@ -1153,6 +1153,55 @@ body {
     color: var(--text-secondary);
 }
 
+/* 消息内确认/同意快捷按钮 */
+.confirm-quick-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+
+.confirm-quick-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-active);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.confirm-quick-btn:hover {
+    background: var(--primary);
+    color: var(--bg-primary);
+    border-color: var(--primary);
+}
+
+.confirm-auto-mode-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.confirm-auto-mode-wrap:hover {
+    color: var(--text-secondary);
+}
+
+.confirm-auto-mode-cb {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
 .capabilities {
     display: flex;
     flex-wrap: wrap;
@@ -1989,6 +2038,345 @@ body {
 }
 .workflow-step-item.workflow-step-expanded .workflow-step-preview {
     display: block;
+}
+.workflow-step-desc {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-top: 2px;
+    line-height: 1.4;
+}
+.workflow-step-progress.creative-workflow .workflow-step-label {
+    font-weight: 600;
+}
+.workflow-step-status-badge {
+    font-size: 11px;
+    margin-left: 6px;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+.workflow-step-done-badge {
+    color: var(--success, #22c55e);
+    background: rgba(34, 197, 94, 0.15);
+}
+.workflow-step-current-badge {
+    color: var(--primary);
+    background: rgba(0, 212, 255, 0.15);
+}
+.workflow-step-pending-badge {
+    color: var(--text-muted);
+}
+
+/* 唐宋文化步骤指示条（含所有步骤预览 + Step x / total，与整体 UI 风格一致） */
+.workflow-step-indicator {
+    margin: 8px 0 10px;
+    padding: 8px 12px;
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+}
+.workflow-step-indicator-active {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+}
+.workflow-step-indicator-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.workflow-step-indicator-badge {
+    font-weight: 600;
+    font-size: 12px;
+    padding: 3px 8px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary)), linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(184, 41, 247, 0.15));
+    -webkit-background-clip: text, padding-box;
+    background-clip: text, padding-box;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    border: 1px solid rgba(0, 212, 255, 0.4);
+    border-radius: var(--radius-sm);
+    letter-spacing: 0.3px;
+}
+.workflow-step-indicator-label {
+    font-size: 13px;
+    font-weight: 500;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+}
+
+/* 唐宋文化工作流程预览（输入区上方） */
+.creative-workflow-preview {
+    margin: 8px 12px;
+    padding: 10px 12px;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+.creative-workflow-preview-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+.creative-workflow-preview-header:hover {
+    color: var(--text-primary);
+}
+.creative-workflow-preview-header .creative-workflow-chevron {
+    margin-left: auto;
+    font-size: 10px;
+    transition: transform 0.2s;
+}
+.creative-workflow-steps-preview {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+.creative-workflow-preview-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 13px;
+}
+.creative-workflow-preview-num {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
+    text-align: center;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 600;
+}
+.creative-workflow-preview-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.creative-workflow-preview-label {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+.creative-workflow-preview-desc {
+    font-size: 11px;
+    color: var(--text-tertiary);
+}
+.creative-workflow-preview-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.creative-workflow-preview-step .creative-preview-done {
+    color: var(--success);
+    margin-left: auto;
+}
+.creative-workflow-preview-step .creative-preview-current {
+    color: var(--primary);
+    margin-left: auto;
+}
+.creative-workflow-preview-step .creative-preview-pending {
+    color: var(--text-muted);
+    margin-left: auto;
+}
+
+/* 文件产物收集面板（默认收起，可展开；输入框上方） */
+.deliverable-collector {
+    margin: 8px 12px;
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+.deliverable-collector-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+.deliverable-collector-header:hover {
+    color: var(--text-primary);
+}
+.deliverable-collector-header span:not(.deliverable-collector-count) {
+    flex: 1;
+}
+.deliverable-collector-count {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+.deliverable-collector-select-all {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+}
+.deliverable-collector-select-all:hover {
+    color: var(--text-secondary);
+}
+.deliverable-collector-select-all input[type="checkbox"] {
+    display: none;
+}
+.deliverable-collector-select-all .deliverable-collector-custom-cb {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    min-height: 18px;
+    aspect-ratio: 1;
+    border: 2px solid var(--text-tertiary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all var(--transition-fast);
+    background: transparent;
+}
+.deliverable-collector-select-all input[type="checkbox"]:checked + .deliverable-collector-custom-cb {
+    border-color: var(--success);
+    background: var(--success);
+}
+.deliverable-collector-select-all .deliverable-collector-custom-cb::after {
+    content: '✓';
+    font-size: 11px;
+    color: white;
+    opacity: 0;
+    transform: scale(0);
+    transition: all var(--transition-fast);
+    font-weight: bold;
+}
+.deliverable-collector-select-all input[type="checkbox"]:checked + .deliverable-collector-custom-cb::after,
+.deliverable-collector-select-all input[type="checkbox"]:indeterminate + .deliverable-collector-custom-cb::after {
+    opacity: 1;
+    transform: scale(1);
+}
+.deliverable-collector-select-all input[type="checkbox"]:indeterminate + .deliverable-collector-custom-cb {
+    border-color: var(--primary);
+    background: var(--primary);
+}
+.deliverable-collector-select-all input[type="checkbox"]:indeterminate + .deliverable-collector-custom-cb::after {
+    content: '−';
+}
+.deliverable-collector-download-btn {
+    padding: 4px 10px;
+    font-size: 12px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.deliverable-collector-download-btn:hover {
+    opacity: 0.9;
+}
+.deliverable-collector-download-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.deliverable-collector-chevron {
+    font-size: 10px;
+    margin-left: 4px;
+    transition: transform 0.2s;
+}
+.deliverable-collector-list-wrap {
+    margin-top: 8px;
+    max-height: 180px;
+    overflow: hidden;
+    transition: max-height 0.25s ease, margin 0.25s ease;
+}
+.deliverable-collector-list-wrap.deliverable-collector-collapsed {
+    max-height: 0;
+    margin-top: 0;
+}
+.deliverable-collector-list {
+    max-height: 140px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.deliverable-collector-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    font-size: 12px;
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+.deliverable-collector-item:hover {
+    background: var(--bg-hover);
+}
+.deliverable-collector-item:has(input[type="checkbox"]:checked) {
+    background: var(--bg-hover);
+}
+/* 文件产物列表项复选框（与 SubAgent 资源勾选风格一致） */
+.deliverable-collector-item input[type="checkbox"] {
+    display: none;
+}
+.deliverable-collector-item .deliverable-collector-custom-cb {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    min-height: 20px;
+    aspect-ratio: 1;
+    border: 2px solid var(--text-tertiary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all var(--transition-fast);
+    background: transparent;
+}
+.deliverable-collector-item input[type="checkbox"]:checked + .deliverable-collector-custom-cb {
+    border-color: var(--success);
+    background: var(--success);
+}
+.deliverable-collector-item .deliverable-collector-custom-cb::after {
+    content: '✓';
+    font-size: 12px;
+    color: white;
+    opacity: 0;
+    transform: scale(0);
+    transition: all var(--transition-fast);
+    font-weight: bold;
+}
+.deliverable-collector-item input[type="checkbox"]:checked + .deliverable-collector-custom-cb::after {
+    opacity: 1;
+    transform: scale(1);
+}
+.deliverable-collector-item input[type="checkbox"]:checked ~ .deliverable-collector-filename {
+    color: var(--text-primary);
+}
+.deliverable-collector-desc {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--primary);
+    min-width: 4em;
+}
+.deliverable-collector-filename {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-secondary);
+    transition: color var(--transition-fast);
 }
 
 /* ==================== 模态框 ==================== */
@@ -3089,6 +3477,57 @@ body {
 .tool-item span {
     font-size: 12px;
     color: var(--text-secondary);
+}
+
+/* ==================== 后台任务指示器 ==================== */
+.background-tasks-indicator {
+    position: fixed;
+    bottom: calc(80px + var(--safe-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9998;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-active);
+    border-radius: var(--radius-lg);
+    font-size: 13px;
+    color: var(--text-secondary);
+    box-shadow: var(--shadow-md);
+}
+.background-tasks-indicator .background-tasks-count {
+    min-width: 20px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    background: var(--primary);
+    color: var(--bg-primary);
+    border-radius: 50%;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.background-tasks-indicator .background-tasks-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    margin-left: 4px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: color 0.2s, background 0.2s;
+}
+
+.background-tasks-indicator .background-tasks-close:hover {
+    background: var(--border);
+    color: var(--text-primary);
 }
 
 /* ==================== Toast提示 ==================== */

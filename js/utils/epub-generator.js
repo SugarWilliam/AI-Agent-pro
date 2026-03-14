@@ -19,7 +19,7 @@
         const s = content;
         const hasOpf = /```content\.opf\s*\n[\s\S]*?```/i.test(s);
         const hasToc = /```(?:toc\.ncx|nav\.xhtml)\s*\n[\s\S]*?```/i.test(s);
-        const xhtmlBlocks = s.match(/```(?:xhtml|html|chapter-\d+\.xhtml|chat\d+\.xhtml)\s*\n[\s\S]*?```/gi);
+        const xhtmlBlocks = s.match(/```(?:xhtml|html|chapter-\d+\.xhtml|chat\d+\.xhtml|titlepage\.xhtml|copyright\.xhtml|disclaimer\.xhtml|ai-contribution\.xhtml|epilogue\.xhtml|acknowledgments\.xhtml|appendix-\d+\.xhtml)\s*\n[\s\S]*?```/gi);
         const chapterCount = xhtmlBlocks ? xhtmlBlocks.length : 0;
         const hasMeceMarker = /MECE\s*检查\s*通过|三审三阅\s*通过|编排\s*确认|完整\s*电子档/i.test(s);
         return hasOpf || hasMeceMarker || (hasToc && chapterCount >= 2) || chapterCount >= 2;
@@ -61,7 +61,7 @@
 
     /** 提取所有章节类代码块（xhtml、html、chapter-01.xhtml、chat01.xhtml 等），按出现顺序 */
     function extractChapterBlocks(content) {
-        const re = /```(?:xhtml|html|chapter-\d+\.xhtml|chat\d+\.xhtml)\s*\n([\s\S]*?)```/gi;
+        const re = /```(?:xhtml|html|chapter-\d+\.xhtml|chat\d+\.xhtml|titlepage\.xhtml|copyright\.xhtml|disclaimer\.xhtml|ai-contribution\.xhtml|epilogue\.xhtml|acknowledgments\.xhtml|appendix-\d+\.xhtml)\s*\n([\s\S]*?)```/gi;
         const matches = [];
         let m;
         while ((m = re.exec(content)) !== null) {

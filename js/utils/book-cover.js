@@ -1,9 +1,13 @@
 /**
  * AI Agent Pro - 默认图书封面生成
  * 用于 epub/PDF 电子书导出
+ * 支持参考封面：将 参考封面.jpg 置于项目根目录，系统会加载并在其上叠加书名、作者
+ * 【硬性约束】使用参考封面时，必须在打包输出时修改封面中的书名和作者，不得直接使用原图
  */
 (function() {
     'use strict';
+
+    const REFERENCE_COVER_PATH = '参考封面.jpg';
 
     function escapeXml(s) {
         if (!s) return '';
@@ -70,9 +74,50 @@
             });
         },
 
-        /** 获取默认封面 PNG Blob，无书名时默认显示 AI Agent Pro */
+        /** 在参考封面上叠加书名、作者（必须执行，不得跳过），返回 PNG Blob */
+        async overlayOnReferenceCover(refImg, title, subtitle, width = 600, height = 800) {
+            return new Promise((resolve) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(refImg, 0, 0, width, height);
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(0, height * 0.32, width, height * 0.4);
+                const t = (title || '电子书').slice(0, 20);
+                const sub = (subtitle || '').slice(0, 30);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 40px "Noto Serif SC", "SimSun", "Microsoft YaHei", serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(t, width / 2, height * 0.45);
+                ctx.font = '16px sans-serif';
+                ctx.fillStyle = '#e2e8f0';
+                ctx.fillText(sub, width / 2, height * 0.55);
+                canvas.toBlob(b => resolve(b), 'image/jpeg', 0.92);
+            });
+        },
+
+        /** 获取默认封面 PNG Blob。优先加载 参考封面.jpg，【必须】在其上叠加真实书名、作者后输出；若无参考封面则使用 SVG 生成 */
         async getDefaultCoverBlob(title, subtitle) {
-            const svg = this.svg(title || 'AI Agent Pro', subtitle || '唐宋文化 · 电子书');
+            const t = title || '电子书';
+            const s = subtitle || '';
+            try {
+                const resp = await fetch(REFERENCE_COVER_PATH);
+                if (resp.ok) {
+                    const blob = await resp.blob();
+                    const img = new Image();
+                    await new Promise((resolve, reject) => {
+                        img.onload = () => resolve();
+                        img.onerror = () => reject(new Error('参考封面加载失败'));
+                        img.src = URL.createObjectURL(blob);
+                    });
+                    const result = await this.overlayOnReferenceCover(img, t, s);
+                    URL.revokeObjectURL(img.src);
+                    return result;
+                }
+            } catch (_) { /* 无参考封面，使用 SVG */ }
+            const svg = this.svg(t, s);
             return this.toPngBlob(svg);
         }
     };

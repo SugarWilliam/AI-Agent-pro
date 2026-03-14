@@ -8,7 +8,7 @@
     <meta name="format-detection" content="telephone=no">
     <meta name="theme-color" content="#000000">
     <meta name="apple-mobile-web-app-title" content="AI Agent Pro">
-    <title>AI Agent Pro v8.4.2</title>
+    <title>AI Agent Pro v8.4.3</title>
     <link rel="icon" href="logo.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <link rel="manifest" href="manifest.json">
@@ -28,7 +28,7 @@
                 </div>
                 <h1 class="splash-title">AI Agent Pro</h1>
                 <p class="splash-subtitle">智能助手，未来已来</p>
-                <p class="splash-version">v8.4.2</p>
+                <p class="splash-version">v8.4.3</p>
                 <div class="splash-loading">
                     <div class="splash-loading-bar" id="splash-loading-bar"></div>
                 </div>
@@ -55,7 +55,7 @@
                     </div>
                     <div class="brand-info">
                         <div class="brand-name">AI Agent Pro</div>
-                        <div class="brand-version">v8.4.2</div>
+                        <div class="brand-version">v8.4.3</div>
                     </div>
                 </div>
                 <button id="close-sidebar" class="close-sidebar-btn">
@@ -198,6 +198,9 @@
                         </button>
                     </div>
                     <div class="mode-selector-right">
+                        <button class="mode-option" id="background-mode-btn" title="后台运行（不阻塞界面，可继续操作）">
+                            <i class="fas fa-clock"></i>
+                        </button>
                         <button class="mode-option web-search" id="search-btn" title="网络搜索">
                             <i class="fas fa-globe"></i>
                         </button>
@@ -209,6 +212,35 @@
                 <!-- 文件附件显示区域（移到输入框上方） -->
                 <div id="file-attachments-container" class="file-attachments-container">
                     <div id="file-attachments" class="file-attachments"></div>
+                </div>
+                <!-- 唐宋文化工作流程预览（选中唐宋文化时显示） -->
+                <div id="creative-workflow-preview" class="creative-workflow-preview" style="display: none;">
+                    <div class="creative-workflow-preview-header" id="creative-workflow-toggle">
+                        <i class="fas fa-list-check"></i>
+                        <span>唐宋文化工作流程</span>
+                        <i class="fas fa-chevron-down creative-workflow-chevron"></i>
+                    </div>
+                    <div id="creative-workflow-steps-preview" class="creative-workflow-steps-preview"></div>
+                </div>
+                <!-- 文件产物收集（默认收起，可展开；支持复选批量下载） -->
+                <div id="deliverable-collector" class="deliverable-collector" style="display: none;">
+                    <div class="deliverable-collector-header" id="deliverable-collector-toggle">
+                        <i class="fas fa-folder-open"></i>
+                        <span>文件产物</span>
+                        <span class="deliverable-collector-count" id="deliverable-collector-count"></span>
+                        <label class="deliverable-collector-select-all" title="全选/取消全选" onclick="event.stopPropagation()">
+                            <input type="checkbox" id="deliverable-collector-select-all-cb">
+                            <span class="deliverable-collector-custom-cb"></span>
+                            <span class="deliverable-collector-select-all-text">全选</span>
+                        </label>
+                        <button type="button" class="deliverable-collector-download-btn" id="deliverable-collector-download-btn" title="下载选中" onclick="event.stopPropagation()">
+                            <i class="fas fa-download"></i> 下载选中
+                        </button>
+                        <i class="fas fa-chevron-down deliverable-collector-chevron" id="deliverable-collector-chevron"></i>
+                    </div>
+                    <div id="deliverable-collector-list-wrap" class="deliverable-collector-list-wrap deliverable-collector-collapsed">
+                        <div id="deliverable-collector-list" class="deliverable-collector-list"></div>
+                    </div>
                 </div>
                 <!-- 输入框 -->
                 <div class="input-box-container">
@@ -701,6 +733,15 @@
         </div>
     </div>
 
+    <!-- 后台任务指示器（有任务时显示） -->
+    <div id="background-tasks-indicator" class="background-tasks-indicator" style="display: none;">
+        <span class="background-tasks-count"></span>
+        <span class="background-tasks-label">后台任务</span>
+        <button type="button" class="background-tasks-close" id="background-tasks-close-btn" title="关闭后台模式">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
     <!-- Toast通知容器 -->
     <div id="toast-container" class="toast-container"></div>
 
@@ -746,6 +787,7 @@
     <script src="js/utils/event-manager.js"></script>
     <script src="js/utils/timer-manager.js"></script>
     <script src="js/utils/resource-manager.js"></script>
+    <script src="js/utils/book-cover.js"></script>
     <!-- UI工具模块 -->
     <script src="js/ui/ui-utils.js"></script>
     <!-- 核心模块（rag 需在 events 前加载，供文件解析使用） -->
@@ -755,6 +797,7 @@
     <script src="js/llm.js"></script>
     <script src="js/events.js"></script>
     <script src="js/plan.js"></script>
+    <script src="js/background-tasks.js"></script>
     <script src="js/sync.js"></script>
 </body>
 </html>
