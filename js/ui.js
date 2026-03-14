@@ -865,38 +865,37 @@
                 result.css = code;
             } else if (/^chapter-\d+(\.xhtml)?$/i.test(lang) || /^chat\d+\.xhtml$/i.test(lang)) {
                 const t = code.slice(0, 800);
-                // 推广简介档 H5：不纳入 EPUB chapters
-                if (/<html|<!DOCTYPE/i.test(t) && /推广简介|推广页|H5|单页.*推广|购买.*入口|阅读.*入口|meta\s+name=["']viewport["']|推广.*档|H5.*格式|响应式.*单页|社交分享/i.test(t)) {
-                    /* 跳过 */
-                } else {
-                let contentKey = null;
-                if (/免责声明|免责条款|投资有风险|不构成.*建议|仅供参考/i.test(t)) contentKey = 'disclaimer.xhtml';
-                else if (/AI\s*贡献声明|AI\s*辅助创作|人工智能.*参与|机器.*生成/i.test(t)) contentKey = 'ai-contribution.xhtml';
-                else if (/版权页|版权声明|版权所有|ISBN|CIP\s*数据/i.test(t) && !/章节|第[一二三四五六七八九十\d]+章/.test(t)) contentKey = 'copyright.xhtml';
-                if (contentKey) {
-                    result.chapters[contentKey] = code;
-                } else {
-                let key;
-                if (/^chapter-\d+(\.xhtml)?$/i.test(lang)) {
-                    key = /\.xhtml$/i.test(lang) ? lang : lang + '.xhtml';
-                } else {
-                    const num = lang.match(/chat(\d+)\.xhtml/i)?.[1] || String(Object.keys(result.chapters).length + 1);
-                    key = 'chapter-' + num.padStart(2, '0') + '.xhtml';
-                }
-                const existing = result.chapters[key];
-                if (existing && /<body|<\/body>/i.test(code)) {
-                    const prevBody = existing.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-                    const newBody = code.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-                    if (prevBody && newBody) {
-                        const merged = existing.replace(/<body[^>]*>[\s\S]*?<\/body>/i, '<body' + (existing.match(/<body([^>]*)>/i)?.[1] || '') + '>' + prevBody[1].trim() + '\n' + newBody[1].trim() + '</body>');
-                        result.chapters[key] = merged;
+                var isH5Promo = /<html|<!DOCTYPE/i.test(t) && /推广简介|推广页|H5|单页.*推广|购买.*入口|阅读.*入口|meta\s+name=["']viewport["']|推广.*档|H5.*格式|响应式.*单页|社交分享/i.test(t);
+                if (!isH5Promo) {
+                    var contentKey = null;
+                    if (/免责声明|免责条款|投资有风险|不构成.*建议|仅供参考/i.test(t)) contentKey = 'disclaimer.xhtml';
+                    else if (/AI\s*贡献声明|AI\s*辅助创作|人工智能.*参与|机器.*生成/i.test(t)) contentKey = 'ai-contribution.xhtml';
+                    else if (/版权页|版权声明|版权所有|ISBN|CIP\s*数据/i.test(t) && !/章节|第[一二三四五六七八九十\d]+章/.test(t)) contentKey = 'copyright.xhtml';
+                    if (contentKey) {
+                        result.chapters[contentKey] = code;
                     } else {
-                        result.chapters[key] = code;
+                        var key;
+                        if (/^chapter-\d+(\.xhtml)?$/i.test(lang)) {
+                            key = /\.xhtml$/i.test(lang) ? lang : lang + '.xhtml';
+                        } else {
+                            var chatMatch = lang.match(/chat(\d+)\.xhtml/i);
+                            var num = chatMatch ? chatMatch[1] : String(Object.keys(result.chapters).length + 1);
+                            key = 'chapter-' + num.padStart(2, '0') + '.xhtml';
+                        }
+                        var existing = result.chapters[key];
+                        if (existing && /<body|<\/body>/i.test(code)) {
+                            var prevBody = existing.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                            var newBody = code.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                            if (prevBody && newBody) {
+                                var bodyAttrMatch = existing.match(/<body([^>]*)>/i);
+                                result.chapters[key] = existing.replace(/<body[^>]*>[\s\S]*?<\/body>/i, '<body' + (bodyAttrMatch ? bodyAttrMatch[1] : '') + '>' + prevBody[1].trim() + '\n' + newBody[1].trim() + '</body>');
+                            } else {
+                                result.chapters[key] = code;
+                            }
+                        } else {
+                            result.chapters[key] = code;
+                        }
                     }
-                } else {
-                    result.chapters[key] = code;
-                }
-                }
                 }
             } else if (/^appendix-\d+(\.xhtml)?$/i.test(lang)) {
                 const key = /\.xhtml$/i.test(lang) ? lang : lang + '.xhtml';
@@ -905,7 +904,8 @@
                     const prevBody = existing.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
                     const newBody = code.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
                     if (prevBody && newBody) {
-                        const merged = existing.replace(/<body[^>]*>[\s\S]*?<\/body>/i, '<body' + (existing.match(/<body([^>]*)>/i)?.[1] || '') + '>' + prevBody[1].trim() + '\n' + newBody[1].trim() + '</body>');
+                        const bodyAttrMatch = existing.match(/<body([^>]*)>/i);
+                        const merged = existing.replace(/<body[^>]*>[\s\S]*?<\/body>/i, '<body' + (bodyAttrMatch ? bodyAttrMatch[1] : '') + '>' + prevBody[1].trim() + '\n' + newBody[1].trim() + '</body>');
                         result.chapters[key] = merged;
                     } else {
                         result.chapters[key] = code;
@@ -927,23 +927,24 @@
                 result.chapters['acknowledgments.xhtml'] = code;
             } else if (lang === 'xhtml' && /<html|<!DOCTYPE/i.test(code)) {
                 const t = code.slice(0, 800);
-                // 推广简介档 H5：不纳入 EPUB chapters，在消息中单独显示并下载为 .html
-                if (/推广简介|推广页|H5|单页.*推广|购买.*入口|阅读.*入口|meta\s+name=["']viewport["']|推广.*档|H5.*格式|响应式.*单页|社交分享/i.test(t)) {
-                    /* 跳过 */
-                } else {
-                let key = null;
-                if (/免责声明|免责条款|投资有风险|不构成.*建议|仅供参考/i.test(t)) key = 'disclaimer.xhtml';
-                else if (/AI\s*贡献声明|AI\s*辅助创作|人工智能.*参与|机器.*生成/i.test(t)) key = 'ai-contribution.xhtml';
-                else if (/版权页|版权声明|版权所有|ISBN|CIP\s*数据/i.test(t) && !/章节|第[一二三四五六七八九十\d]+章/.test(t)) key = 'copyright.xhtml';
-                if (key) {
-                    result.chapters[key] = code;
-                } else {
-                    const existingChapters = Object.keys(result.chapters).filter(k => /^chapter-\d+\.xhtml$/.test(k));
-                    const maxNum = existingChapters.reduce((m, k) => {
-                        const n = parseInt(k.match(/\d+/)?.[0] || '0', 10);
-                        return n > m ? n : m;
-                    }, 0);
-                    result.chapters['chapter-' + String(maxNum + 1).padStart(2, '0') + '.xhtml'] = code;
+                var isH5Xhtml = /推广简介|推广页|H5|单页.*推广|购买.*入口|阅读.*入口|meta\s+name=["']viewport["']|推广.*档|H5.*格式|响应式.*单页|社交分享/i.test(t);
+                if (!isH5Xhtml) {
+                    var key = null;
+                    if (/免责声明|免责条款|投资有风险|不构成.*建议|仅供参考/i.test(t)) key = 'disclaimer.xhtml';
+                    else if (/AI\s*贡献声明|AI\s*辅助创作|人工智能.*参与|机器.*生成/i.test(t)) key = 'ai-contribution.xhtml';
+                    else if (/版权页|版权声明|版权所有|ISBN|CIP\s*数据/i.test(t) && !/章节|第[一二三四五六七八九十\d]+章/.test(t)) key = 'copyright.xhtml';
+                    if (key) {
+                        result.chapters[key] = code;
+                    } else {
+                        var existingChapters = Object.keys(result.chapters).filter(function(k) { return /^chapter-\d+\.xhtml$/.test(k); });
+                        var maxNum = 0;
+                        for (var i = 0; i < existingChapters.length; i++) {
+                            var match = existingChapters[i].match(/\d+/);
+                            var n = match ? parseInt(match[0], 10) : 0;
+                            if (n > maxNum) maxNum = n;
+                        }
+                        result.chapters['chapter-' + String(maxNum + 1).padStart(2, '0') + '.xhtml'] = code;
+                    }
                 }
             }
         }

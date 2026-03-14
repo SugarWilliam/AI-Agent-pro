@@ -11,6 +11,7 @@
 **推广简介档 H5 识别修复**
 - 推广页不再误识别为 chapter-01.xhtml：`inferContentType` 优先识别推广简介档，使用 `.html` 扩展名、正确文件名（如 `推广简介-书名.html`）
 - `extractEpubBlocksFromContent` 排除 H5/推广内容，不纳入 EPUB chapters
+- 语法修复：`extractEpubBlocksFromContent` 中 while 循环缺少闭合括号，修复 `SyntaxError: Unexpected token ')'` 及 `renderChatHistory is not a function`
 - `renderH5Content` 从代码块提取 HTML，避免混入说明文字
 
 **EPUB 文件打不开修复**

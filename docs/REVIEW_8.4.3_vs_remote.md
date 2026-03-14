@@ -14,7 +14,7 @@
 | index.html | 修改 | 版本号 8.4.3 |
 | js/app.js | 修改 | VERSION 8.4.3、唐宋文化 workflowSteps、getCurrentTimeForBook、rule_workflow |
 | js/events.js | 修改 | 版本号 8.4.3 |
-| js/ui.js | 修改 | 版本号 8.4.3、推广页 H5 识别、ensureXhtmlStructure |
+| js/ui.js | 修改 | 版本号 8.4.3、推广页 H5 识别、ensureXhtmlStructure、extractEpubBlocksFromContent while 循环闭合修复 |
 | docs/唐宋文化设计.md | 新增 | 唐宋文化完整设计文档 |
 | docs/CHANGELOG-唐宋文化本次改动.md | 修改 | 8.4.3 版本历史、变更说明 |
 | docs/助手能力全集.md | 修改 | 唐宋文化新增「推广简介档H5」 |
