@@ -1,7 +1,7 @@
 # AI Agent Pro - A2A 自主调度设计文档
 
-**版本**: v2.0  
-**日期**: 2026-03-03  
+**版本**: v2.1  
+**日期**: 2026-03-15  
 **状态**: 可发布级设计文档  
 **参考**: [A2A Protocol](https://github.com/google/A2A)
 
@@ -338,17 +338,26 @@
 | 子 Agent（步骤 1..n-1） | 上一步输出 + 本步 instruction | 本步产出 |
 | 整合（最后一步） | 全部 stepOutputs[0..n-1] | 最终结论与交付物 |
 
-### 8.3 行为矩阵
+### 8.3 多轮对话行为（v8.5.0）
+
+- **首轮**：有 delegateTo 且无 `[Workflow:...]` 前缀时，走完整 Workflow 链（主 Agent 分析 → 子 Agent → 主 Agent 整合）。
+- **后续轮次**：由主 Agent 控住上下文，**不再重新执行整条 Workflow**，仅以当前主 Agent 单轮对话（带完整历史消息），避免信息流丢失、避免重复调用子 Agent。
+- **例外**：用户显式输入 `[Workflow:...]` 时，该条消息仍按手动指定链执行。
+- **主 Agent 职责**：首轮整合步骤基于全部 stepOutputs（含主 Agent 自身分析结果与各子 Agent 产出）综合给出最终结果；多轮时主 Agent 基于对话历史自行给出回复。
+
+### 8.4 行为矩阵
 
 | 场景 | 行为 |
 |------|------|
 | delegateTo 为空 | 不进入 Workflow，单 Agent 对话 |
+| delegateTo 有值，**首轮** | 走完整 Workflow 链（分析→子Agent→整合） |
+| delegateTo 有值，**多轮** | 仅主 Agent 对话（完整历史），不重跑链 |
 | delegateTo 有值，主 Agent 输出有效 schedule | 用 schedule 替换链中 delegate 部分（**prompt_expert 固定第二位**） |
 | delegateTo 有值，主 Agent 未输出 schedule | 用 delegateTo 顺序（**prompt_expert 固定第二位**） |
 | delegateTo 有值，schedule 解析失败 | 用 delegateTo 顺序（**prompt_expert 固定第二位**） |
 | [Workflow:...] 前缀 | 使用手动指定链，不经过动态调度 |
 
-### 8.4 硬性约束（v8.4.0）
+### 8.5 硬性约束（v8.4.0）
 
 | 约束 | 说明 |
 |------|------|

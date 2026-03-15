@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.4.0 - LLM服务
+ * AI Agent Pro v8.5.0 - LLM服务
  * 多模态输入输出支持
  */
 
@@ -347,8 +347,7 @@
                 }
             }
 
-            // 隐藏搜索状态（搜索完成）
-            window.AIAgentUI?.hideSearchStatus?.();
+            // 搜索完成后不立即隐藏，保留✔显示直到响应结束（由 events.js 统一隐藏）
             
             // 8. 查询RAG知识库（如果搜索结果已添加到ragContext，这里会追加）
             let usedRagNames = [];
@@ -739,6 +738,7 @@ ${rows}
             const decoder = new TextDecoder();
             let content = '';
             let thinking = '';
+            let lineBuffer = '';
 
             try {
                 while (true) {
@@ -752,12 +752,15 @@ ${rows}
                     }
 
                     const chunk = decoder.decode(value, { stream: true });
-                    const lines = chunk.split('\n');
+                    const raw = lineBuffer + chunk;
+                    const lines = raw.split('\n');
+                    lineBuffer = lines.pop() || '';
 
                     for (const line of lines) {
                         if (line.startsWith('data: ')) {
-                            const data = line.slice(6);
+                            const data = line.slice(6).trim();
                             if (data === '[DONE]') continue;
+                            if (!data) continue;
                             
                             try {
                                 const json = JSON.parse(data);
@@ -773,9 +776,24 @@ ${rows}
                                     }
                                 }
                             } catch (e) {
-                                window.Logger?.error('解析流数据失败:', e);
+                                if (!/Unterminated|Unexpected end|position/i.test(String(e.message))) {
+                                    window.Logger?.error('解析流数据失败:', e);
+                                }
                             }
                         }
+                    }
+                }
+                if (lineBuffer.startsWith('data: ')) {
+                    const data = lineBuffer.slice(6).trim();
+                    if (data && data !== '[DONE]') {
+                        try {
+                            const json = JSON.parse(data);
+                            const delta = json.choices?.[0]?.delta;
+                            if (delta) {
+                                if (delta.reasoning_content) thinking += delta.reasoning_content;
+                                if (delta.content) content += delta.content;
+                            }
+                        } catch (_) { /* 忽略末尾不完整行 */ }
                     }
                 }
             } catch (error) {
@@ -822,19 +840,21 @@ ${rows}
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let content = '';
+            let lineBuffer = '';
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
                 const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n');
+                const raw = lineBuffer + chunk;
+                const lines = raw.split('\n');
+                lineBuffer = lines.pop() || '';
 
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
-                        const data = line.slice(6);
-                        if (data === '[DONE]') continue;
-                        
+                        const data = line.slice(6).trim();
+                        if (!data || data === '[DONE]') continue;
                         try {
                             const json = JSON.parse(data);
                             const delta = json.choices?.[0]?.delta?.content;
@@ -843,7 +863,9 @@ ${rows}
                                 if (onStream) onStream(content);
                             }
                         } catch (e) {
-                            window.Logger?.error('解析 GLM 流数据失败:', e);
+                            if (!/Unterminated|Unexpected end|position/i.test(String(e.message))) {
+                                window.Logger?.error('解析 GLM 流数据失败:', e);
+                            }
                         }
                     }
                 }
@@ -875,19 +897,21 @@ ${rows}
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let content = '';
+            let lineBuffer = '';
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
                 const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n');
+                const raw = lineBuffer + chunk;
+                const lines = raw.split('\n');
+                lineBuffer = lines.pop() || '';
 
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
-                        const data = line.slice(6);
-                        if (data === '[DONE]') continue;
-                        
+                        const data = line.slice(6).trim();
+                        if (!data || data === '[DONE]') continue;
                         try {
                             const json = JSON.parse(data);
                             const delta = json.choices?.[0]?.delta?.content;
@@ -896,7 +920,9 @@ ${rows}
                                 if (onStream) onStream(content);
                             }
                         } catch (e) {
-                            window.Logger?.error('解析 Kimi 流数据失败:', e);
+                            if (!/Unterminated|Unexpected end|position/i.test(String(e.message))) {
+                                window.Logger?.error('解析 Kimi 流数据失败:', e);
+                            }
                         }
                     }
                 }
@@ -934,34 +960,35 @@ ${rows}
             const decoder = new TextDecoder();
             let content = '';
             let thinking = '';
+            let lineBuffer = '';
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
                 const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n');
+                const raw = lineBuffer + chunk;
+                const lines = raw.split('\n');
+                lineBuffer = lines.pop() || '';
 
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
-                        const data = line.slice(6);
-                        if (data === '[DONE]') continue;
-                        
+                        const data = line.slice(6).trim();
+                        if (!data || data === '[DONE]') continue;
                         try {
                             const json = JSON.parse(data);
                             const delta = json.choices?.[0]?.delta;
-                            
                             if (delta) {
-                                if (delta.reasoning_content) {
-                                    thinking += delta.reasoning_content;
-                                }
+                                if (delta.reasoning_content) thinking += delta.reasoning_content;
                                 if (delta.content) {
                                     content += delta.content;
                                     if (onStream) onStream(content);
                                 }
                             }
                         } catch (e) {
-                            window.Logger?.error('解析 Qwen 流数据失败:', e);
+                            if (!/Unterminated|Unexpected end|position/i.test(String(e.message))) {
+                                window.Logger?.error('解析 Qwen 流数据失败:', e);
+                            }
                         }
                     }
                 }
@@ -994,19 +1021,21 @@ ${rows}
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let content = '';
+            let lineBuffer = '';
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
                 const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n');
+                const raw = lineBuffer + chunk;
+                const lines = raw.split('\n');
+                lineBuffer = lines.pop() || '';
 
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
-                        const data = line.slice(6);
-                        if (data === '[DONE]') continue;
-                        
+                        const data = line.slice(6).trim();
+                        if (!data || data === '[DONE]') continue;
                         try {
                             const json = JSON.parse(data);
                             const delta = json.choices?.[0]?.delta?.content;
@@ -1015,7 +1044,9 @@ ${rows}
                                 if (onStream) onStream(content);
                             }
                         } catch (e) {
-                            window.Logger?.error('解析 OpenAI 流数据失败:', e);
+                            if (!/Unterminated|Unexpected end|position/i.test(String(e.message))) {
+                                window.Logger?.error('解析 OpenAI 流数据失败:', e);
+                            }
                         }
                     }
                 }
@@ -1077,19 +1108,21 @@ ${rows}
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let content = '';
+            let lineBuffer = '';
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
                 const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n');
+                const raw = lineBuffer + chunk;
+                const lines = raw.split('\n');
+                lineBuffer = lines.pop() || '';
 
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
-                        const data = line.slice(6);
-                        if (data === '[DONE]') continue;
-                        
+                        const data = line.slice(6).trim();
+                        if (!data || data === '[DONE]') continue;
                         try {
                             const json = JSON.parse(data);
                             const delta = json.choices?.[0]?.delta?.content;
@@ -1098,7 +1131,9 @@ ${rows}
                                 if (onStream) onStream(content);
                             }
                         } catch (e) {
-                            window.Logger?.error('解析自定义模型流数据失败:', e);
+                            if (!/Unterminated|Unexpected end|position/i.test(String(e.message))) {
+                                window.Logger?.error('解析自定义模型流数据失败:', e);
+                            }
                         }
                     }
                 }
@@ -3167,7 +3202,7 @@ ${rows}
         },
 
         async runWorkflowChain(chainSteps, task, _messages, modelId, onStream, workflowOptions = {}) {
-            const { enableDynamicSchedule = false, mainAgentId = '', delegateIds = [] } = workflowOptions;
+            const { enableDynamicSchedule = false, mainAgentId = '', delegateIds = [], enableWebSearch: wfEnableWebSearch = true } = workflowOptions;
             const chain = Array.isArray(chainSteps) ? chainSteps : [];
             let steps = chain.map(s => {
                 if (typeof s === 'string') return { agentId: s, label: '', instruction: '' };
@@ -3259,7 +3294,7 @@ ${rows}
                     };
                     const result = await this.invokeIntelligentAgent(messages, {
                         modelId: modelId || 'auto',
-                        enableWebSearch: isFirst,
+                        enableWebSearch: isFirst && wfEnableWebSearch,
                         onStream: streamCallback,
                         outputFormat: 'markdown',
                         taskType: 'general',

@@ -1,29 +1,41 @@
-# 唐宋文化助手 - 本次改动 Review 报告
+# 唐宋文化助手 - 改动 Review 报告
 
-> 审查范围：EPUB 附件、输出后询问、MECE 重构、合规与风险审查、可选补充合入
+> 审查范围：EPUB 附件、输出后询问、MECE 重构、合规与风险审查、推广简介档 H5、XHTML 规范化
 
 ---
 
-## 〇、与远端对比（origin/gh-pages）
+## 〇、版本历史
+
+| 版本 | 日期 | 主要变更 |
+|------|------|----------|
+| 8.4.2 | 2026-03-11 | EPUB 自动打包、MECE 九段式、30 项 capabilities、合规审查 |
+| 8.4.3 | 2026-03-14 | 推广页 H5 识别修复、EPUB XHTML 规范化、10 步 workflowSteps、确认流程、封面预览 |
+
+---
+
+## 〇、与远端对比（origin/gh-pages，截至 8.4.3）
 
 **基准**：`origin/gh-pages`（当前分支 gh-pages 的远端）
 
 | 文件 | 变更行数（约） | 变更类型 |
 |------|----------------|----------|
-| index.html | +1 | 新增 JSZip CDN |
-| js/app.js | ~120 行改写 | 唐宋文化 systemPrompt 重构、capabilities 扩展 |
-| js/events.js | +40 | EPUB 附件生成、下载事件、Workflow instruction |
-| js/ui.js | +135 | EPUB 解析/打包、附件渲染、导出函数 |
+| index.html | +43 | 后台模式、工作流预览、文件产物面板、版本号 |
+| js/app.js | +275 | 唐宋文化 systemPrompt 强化、workflowSteps、getCurrentTimeForBook、rule_workflow |
+| js/events.js | +232 | 后台模式、EPUB 生成、deliverable 刷新、确认快捷按钮 |
+| js/ui.js | +938 | 唐宋文化进度、文件产物、EPUB 构建增强、ensureXhtmlStructure、推广页 H5 识别 |
+| js/utils/book-cover.js | +49 | 参考封面叠加 |
+| css/style-new.css | +439 | 唐宋工作流、文件产物、后台指示器 |
 
 **说明**：`origin/main` 的 creative 为「创意大师」，与 gh-pages 的「唐宋文化」不同；本 Review 以 gh-pages 为基准。
 
 ### 远端 vs 本地 核心差异
 
-| 模块 | 远端 (origin/gh-pages) | 本地（本次改动后） |
+| 模块 | 远端 (origin/gh-pages) | 本地（8.4.3） |
 |------|------------------------|---------------------|
-| 唐宋文化 | 十段式 Prompt，20 项 capabilities，无 EPUB 自动打包 | MECE 九段式，30 项 capabilities，含合规审查，EPUB 自动打包 |
-| EPUB | 无 | JSZip 引入，extractEpubBlocksFromContent、buildEpubAsAttachment、下载事件 |
-| 输出后询问 | 无 | 上架/版权/纸质/运营指导 |
+| 唐宋文化 | 十段式 Prompt，20 项 capabilities | MECE 九段式，30 项 capabilities，10 步 workflowSteps |
+| EPUB | 无 | JSZip、extractEpubBlocksFromContent、buildEpubAsAttachment、ensureXhtmlStructure |
+| 推广简介档 H5 | 无 | 优先识别为 .html，不纳入 EPUB，正确文件名 |
+| 输出后询问 | 无 | 上架/版权/纸质/运营指导/推广简介档H5（需用户确认） |
 | 合规审查 | 无 | 风险识别、侵权、免责、AI 声明、法律合规、原创、参考文献、敏感词、真实性 |
 
 ---

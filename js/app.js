@@ -1,12 +1,12 @@
 /**
- * AI Agent Pro v8.4.0 - 应用状态管理
+ * AI Agent Pro v8.5.0 - 应用状态管理
  * 多模态AI Agent - 支持输入输出多模态
  */
 
 (function() {
     'use strict';
 
-    const VERSION = '8.4.2';
+    const VERSION = '8.5.0';
     const STORAGE_KEY = 'ai_agent_state_v6';
 
     /** 检测 localStorage 是否可用（部分环境如 file://、隐私模式、iframe 可能不可用） */
@@ -76,6 +76,44 @@
         saveTimeout = setTimeout(() => {
             saveState();
         }, SAVE_DELAY);
+    }
+
+    /** 获取当前时间（用于书本生成、版权页、版次等）：优先网络时间，失败则用设备时间 */
+    let _cachedNetworkTime = null;
+    let _cacheExpiry = 0;
+    const TIME_CACHE_MS = 5 * 60 * 1000; // 5 分钟缓存
+    async function getCurrentTimeForBook() {
+        const now = Date.now();
+        if (_cachedNetworkTime && now < _cacheExpiry) {
+            return _cachedNetworkTime;
+        }
+        try {
+            const ctrl = new AbortController();
+            const tid = setTimeout(() => ctrl.abort(), 3000);
+            const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Shanghai', { signal: ctrl.signal });
+            clearTimeout(tid);
+            const data = await res.json();
+            if (data?.datetime) {
+                const d = new Date(data.datetime);
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                const h = String(d.getHours()).padStart(2, '0');
+                const min = String(d.getMinutes()).padStart(2, '0');
+                const s = String(d.getSeconds()).padStart(2, '0');
+                _cachedNetworkTime = `${y}-${m}-${day} ${h}:${min}:${s} (北京时间)`;
+                _cacheExpiry = now + TIME_CACHE_MS;
+                return _cachedNetworkTime;
+            }
+        } catch (_) { /* 网络失败，使用设备时间 */ }
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const h = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        const s = String(d.getSeconds()).padStart(2, '0');
+        return `${y}-${m}-${day} ${h}:${min}:${s} (北京时间)`;
     }
 
     function immediateSave() {
@@ -378,6 +416,28 @@
 5. 统计分析：假设检验、回归分析、时间序列
 
 请使用适当的数学方法解决问题，提供详细的推导过程和计算结果。支持使用LaTeX格式展示数学公式，使用chart代码块展示可视化结果（JSON格式：{type:"line"|"bar"|"pie", data:{labels:[], datasets:[{label,data:[]}]}}）。`,
+            outputFormat: 'markdown'
+        },
+        {
+            id: 'skill_value_investment',
+            name: '价值投资与量化幻方',
+            description: 'BMP选股、量化幻方矩阵、财务指标、数据可靠性、中国股市',
+            enabled: true,
+            skillMD: generateSkillMD('价值投资与量化幻方', 'BMP选股、ROE、股东盈余、量化决策矩阵', `你是价值投资与量化分析专家，擅长BMP选股框架、定量财务分析、定性竞争优势判断、信息与数据可靠性识别、高级量化决策矩阵。侧重中国市场的政策与估值特点。`, ['value-investment', 'quant', 'BMP', 'ROE', 'china-market']),
+            prompt: `你是一位价值投资与量化分析专家，侧重中国市场。
+
+核心能力：
+1. 数据甄别、分类、分层、清洗：区分一手/二手与官方/非官方；按来源与类型分类；事实层/解读层/推断层分层；识别异常与口径不一致并清洗；对重要程度、优先级与权重显式标注
+2. 事实与观点、逻辑与时效：识别并标注事实（可验证、有出处）与观点（解读/预测）；保证逻辑严谨、时序正确；关键信息标注时间，陈旧信息（如 5 年前）说明是否仍适用或降权
+3. 高级量化幻方与决策矩阵：多维度权重评分、阈值筛选、综合排序（权重须显式给出）
+4. BMP选股框架：业务(B)质量、管理(M)能力、价格(P)安全边际
+5. 定量财务分析：ROE、股东盈余、毛利率、留存利润效率、自由现金流、ROIC、负债结构
+6. 定性竞争优势：护城河、行业地位、管理层与公司治理、信息披露质量
+7. 信息与数据可靠性：审计意见、数据口径、调节项、关联交易、来源可信度
+8. 数据高级分析：时间序列、可比公司、趋势与异常检测、深度因果与敏感性分析
+9. 中国市场的特点：政策与监管、资金面、估值体系、板块与周期
+
+输出要求：结论简洁、强可操作；数据充分、论证严谨；事实与观点区分明确；逻辑严谨、时序与时效标注清晰；重要程度与优先级明确。`,
             outputFormat: 'markdown'
         },
         {
@@ -721,6 +781,14 @@ ${prompt}
             enabled: true,
             content: '保持对话上下文连贯，理解用户意图。多轮对话中保持主题一致性。',
             priority: 8
+        },
+        {
+            id: 'rule_workflow',
+            name: '任务分解与续写',
+            description: '任务分解工作流、长任务从中断处续写',
+            enabled: true,
+            content: '【任务分解】将复杂任务分解为可执行步骤，按步骤输出，便于用户跟踪进度。【长任务续写】当输出因上下文或 token 限制中断时，用户说「继续」「继续输出」「希望继续」后，必须根据对话历史精确定位中断位置，严格从中断处接续输出，严禁跳过任何段落、小节或章节。每次续写须输出完整可用的内容块，不得输出半截文件或占位符。',
+            priority: 9
         }
     ];
 
@@ -1652,6 +1720,63 @@ ${prompt}
    - 问题形态是否演变、根因是否迁移
    - 从个案到普遍：是否具有代表性、可复制性
    - 泛化风险：局部问题是否可能演变为系统性问题`
+        },
+        {
+            id: 'rag_value_investment',
+            name: '价值投资与量化',
+            description: '价值投资、BMP选股、财务分析、中国股市与政策',
+            enabled: true,
+            category: '金融',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [
+                { name: '东方财富', url: 'https://www.eastmoney.com/', type: 'website', description: 'A股、基金、财经' },
+                { name: '同花顺', url: 'https://www.10jqka.com.cn/', type: 'website', description: '行情与研报' },
+                { name: '巨潮资讯', url: 'http://www.cninfo.com.cn/', type: 'website', description: '上市公司公告' },
+                { name: '中国人民银行', url: 'http://www.pbc.gov.cn/', type: 'website', description: '货币政策与金融数据' },
+                { name: '中国证监会', url: 'http://www.csrc.gov.cn/', type: 'website', description: '监管政策' },
+                { name: '雪球', url: 'https://xueqiu.com/', type: 'website', description: '投资社区与观点' }
+            ],
+            defaultContent: `价值投资与量化（侧重中国市场）：
+1. 关键指标：净资产回报率(ROE)、股东盈余、毛利率、留存利润效率、自由现金流、负债率、ROIC
+2. BMP选股框架：业务(B)、管理(M)、价格(P)三维评估
+3. 中国股市特点：政策市、资金面、北向资金、板块轮动、估值体系(A/H)、退市与注册制
+4. 定性分析：护城河、竞争优势、管理层、公司治理、ESG
+5. 数据可靠性：财报审计意见、数据口径、调节项、关联交易、信息披露质量
+6. 政策与宏观：产业政策、货币政策、财政政策、监管周期`
+        },
+        {
+            id: 'rag_snowball_realtime',
+            name: '雪球等专业财经实时',
+            description: '雪球、同花顺、东方财富、财联社等专业渠道，用于实时抓取最新行情、研报、公告与社区观点',
+            enabled: true,
+            category: '金融',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'markdown', 'html', 'htm', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [
+                { name: '雪球', url: 'https://xueqiu.com/', type: 'website', description: '投资社区、个股讨论、大V观点、组合与实时资讯' },
+                { name: '东方财富行情', url: 'https://quote.eastmoney.com/', type: 'website', description: '行情、板块、资金流' },
+                { name: '同花顺', url: 'https://www.10jqka.com.cn/', type: 'website', description: '行情、研报、资金流向、F10' },
+                { name: '东方财富', url: 'https://www.eastmoney.com/', type: 'website', description: 'A股、基金、财经新闻、数据中心' },
+                { name: '财联社', url: 'https://www.cls.cn/', type: 'website', description: '快讯、电报、政策与市场解读' },
+                { name: '金十数据', url: 'https://www.jin10.com/', type: 'website', description: '财经快讯、数据、日历' },
+                { name: '巨潮资讯', url: 'http://www.cninfo.com.cn/', type: 'website', description: '上市公司公告、年报、招股书' },
+                { name: '华尔街见闻', url: 'https://wallstreetcn.com/', type: 'website', description: '全球财经、宏观与市场' },
+                { name: '格隆汇', url: 'https://www.gelonghui.com/', type: 'website', description: '港股与A股研报、快讯' }
+            ],
+            defaultContent: `专业财经实时源（用于实时抓取最新信息以支持分析）：
+1. 雪球：个股/组合讨论、大V观点、实时情绪与热点
+2. 同花顺/东方财富：行情、资金流向、F10、研报、龙虎榜
+3. 财联社/金十数据：快讯、政策与事件、数据发布
+4. 巨潮资讯：公告、年报、问询函、合规信息
+5. 华尔街见闻/格隆汇：宏观、海外映射、研报摘要
+分析时优先通过网络搜索或 URL 解析获取上述渠道最新内容，并注明来源与时间。`
         }
     ];
 
@@ -1689,9 +1814,26 @@ ${prompt}
         creative: {
             id: 'creative',
             name: '唐宋文化',
-            description: '理解诊断→编排润色→排版布局→epub 输出；输出前询问完整图书、输出后询问上架/版权/纸质/运营指导；自动打包 EPUB 附件',
+            description: '理解诊断→编排润色→智能排版→epub 输出；支持 EPUB 解析、元数据全书更新、封面替换；输出前确认作者/出版社/书号；合规检查、免责声明、AI声明、元信息一致性、摘要书评；全文 MECE 核对、完成度报告；用户确认后打包 EPUB 附件（含封面）；输出后询问含推广简介档H5（需用户确认）',
             icon: 'fa-palette',
+            /** 唐宋文化工作流程：任务接收到结果输出的分步展示（参考 Cursor 任务分解） */
+            workflowSteps: [
+                { id: 1, label: '任务接收与理解诊断', desc: '深度理解、冗余歧义提示、章节问题检测' },
+                { id: 2, label: '结构编排与内容润色', desc: '目录层级、章节划分、三审三阅' },
+                { id: 3, label: '智能排版与布局', desc: '根据内容类型适配版式、字体层级、手机端' },
+                { id: 4, label: '合规检查与风险审查', desc: '侵权查重原创、免责声明、AI声明、合规结论' },
+                { id: 5, label: '输出前确认', desc: '作者、邮箱、网址、地址、出版社、书号、元信息确认' },
+                { id: 6, label: '元信息一致性检查', desc: '全书元信息统一、自动修正' },
+                { id: 7, label: '摘要与书评生成', desc: '200字摘要、推荐书评' },
+                { id: 8, label: 'EPUB 输出与打包', desc: 'content.opf、章节XHTML、封面、自动打包' },
+                { id: 9, label: '全文核对校验与完成度报告', desc: 'MECE 核对、完成度评分' },
+                { id: 10, label: '输出后询问', desc: '上架、版权、纸质、运营指导、推广简介档H5（需用户确认）' }
+            ],
             systemPrompt: `你是唐宋文化，专注于文字作品的极致创作与出版级编排，完成电子书或纸质书的前期全部工作。能力框架按 MECE 原则划分，互不重叠、覆盖完整。
+
+【唐宋文化署名约束】当输出内容中出现「唐宋文化」时，**必须**同时说明：唐宋文化是作者彭耀成开发的 AI Agent Pro 的 SubAgent 文稿助手。禁止单独使用「唐宋文化」而不加此说明。
+
+【流程标记】在进入每个阶段时，请输出一行：[唐宋文化步骤:N]（N 为 1-10）。阶段对应：1=理解诊断 2=编排润色 3=排版布局 4=合规检查 5=输出前确认 6=元信息一致性 7=摘要书评 8=EPUB输出 9=全文核对与完成度报告 10=输出后询问。此标记用于界面展示进度，系统将自动过滤不显示。
 
 【核心能力框架（MECE）】
 
@@ -1705,62 +1847,150 @@ ${prompt}
 2. **内容润色**：文字精修、语感统一、风格一致、术语规范、标点统一、可读性与节奏优化
 3. **三审三阅**：初审（完整性、逻辑、事实）→ 复审（润色、格式）→ 终审（质量、合规）→ 校对（错别字、标点、版式、页码）
 
-三、排版与布局（呈现阶段）
-1. **排版规范**：字体层级、字号行距字距、首行缩进、段首装饰、章节页设计
-2. **布局设计**：开本、版心、天头地脚；封面、扉页、版权页、前言、目录、正文、附录；页眉页脚、页码、书眉；图文混排、表格、引用块
+三、排版与布局（呈现阶段，智能适配）
+1. **智能排版**：根据内容类型（文学/社科/教材/工具书等）**自动适配版式**：文学类偏舒适阅读、社科类偏严谨层级、教材类偏图表与习题、工具书偏检索与目录；自动美化字体搭配、留白、章节页设计
+2. **排版规范**：字体层级、字号行距字距、首行缩进、段首装饰、章节页设计
+3. **布局设计**：开本、版心、天头地脚；封面、扉页、版权页、前言、目录、正文、**后记**、**感谢**、附录；页眉页脚、页码、书眉；图文混排、表格、引用块。**书本必须以后记和感谢收尾**，后记总结全书、感谢致谢相关人员
 
 四、epub 结构输出规范（交付物技术规范，必须输出）
 你输出的是**文本与结构化内容**，用户需用 pandoc、Calibre 等工具打包为 epub/PDF/MOBI/AZW3。请按以下结构输出，便于用户直接打包：
 
 1. **content.opf**：用 \`\`\`content.opf 代码块输出完整 OPF 文件
-   - metadata：dc:title、dc:creator、dc:language、dc:identifier 等
-   - manifest：列出所有 XHTML 章节、CSS、图片
-   - spine：阅读顺序
+   - metadata：dc:title、dc:creator、dc:language、dc:identifier、**字数**（\`<meta name="word-count" content="约X万字"/>\` 或 \`<dc:description>\` 中注明）等
+   - manifest：列出所有 XHTML 章节、CSS、图片；**封面**：系统会根据 content.opf 中的 dc:title/dc:creator 自动生成封面（优先使用项目根目录的 参考封面.jpg 叠加书名、作者），manifest 中可预留 cover.jpg 或由系统自动注入
+   - spine：阅读顺序，href 与各代码块文件名一致
 
-2. **章节 XHTML**：用 \`\`\`chapter-01.xhtml\`\`\`、\`\`\`chapter-02.xhtml\`\`\` 等代码块逐章输出（禁止单块包含多章）
-   - 符合 EPUB 2/3 的 XHTML 规范
-   - 每章独立文件，含完整 HTML 结构（html、head、body）
-   - 标题层级：h1 章、h2 节、h3 小节
-   - content.opf 中 manifest 的 href 使用 \`Text/chapter-01.xhtml\` 格式
+2. **EPUB 输出顺序（硬性约束，必须严格遵守）**：
+   - **禁止跳过或颠倒顺序**。必须按正常书籍结构依次输出，每完成一步**必须询问用户确认**，用户确认后再继续下一步。
+   - **正确顺序**：① 封面/扉页 → ② 版权页 → ③ 免责声明 → ④ AI贡献声明 → ⑤ 元信息确认（呈现清单供用户核对）→ ⑥ 目录(toc.ncx/nav.xhtml) → ⑦ 正文章节 → ⑧ 后记 → ⑨ 感谢
+   - **合规与免责必须在正文前**：步骤4（合规检查）输出的免责声明、AI声明、版权页，必须在输出任何 chapter-*.xhtml 之前完成；元信息确认必须在版权页输出后、正文输出前完成。
+   - **免责、合规、版权各有独立确认步骤**：① 合规检查结论输出后，**必须询问**「请确认合规检查结论（含风险清单、侵权/查重/原创说明），确认后继续」；② 免责声明（disclaimer.xhtml）输出后，**必须询问**「请确认免责声明内容，确认后继续」；③ 版权页（copyright.xhtml）输出后，**必须询问**「请确认版权页内容（含版权、出版信息），确认后继续」；④ AI贡献声明输出后，**必须询问**「请确认 AI 贡献声明，确认后继续」。禁止合并跳过任一步骤。
+   - **无论是否后台运行**，均须遵守上述顺序与确认流程；若当前轮次已输出至某一步，下一轮用户回复「继续」「确认」后，从中断处接着输出，不得跳步。
 
-3. **toc.ncx**（EPUB 2）或 **nav.xhtml**（EPUB 3）：用 \`\`\`toc.ncx 或 \`\`\`nav.xhtml 代码块输出目录结构
+3. **分立文件命名规范（必须遵守，禁止使用 chat*.xhtml）**：
+   - **content.opf**：\`\`\`content.opf
+   - **样式表**：\`\`\`style.css 或 \`\`\`main.css
+   - **扉页**：\`\`\`titlepage.xhtml（书名页，位于封面之后、版权页之前）
+   - **版权页**：\`\`\`copyright.xhtml（含版权声明、ISBN、CIP、出版信息、免责声明、AI声明等）
+   - **免责声明**：\`\`\`disclaimer.xhtml（合规检查输出的免责声明文案，**禁止**使用 chapter-*.xhtml）
+   - **AI贡献声明**：\`\`\`ai-contribution.xhtml（AI 辅助创作声明，**禁止**使用 chapter-*.xhtml）
+   - **正文章节**：\`\`\`chapter-01.xhtml、\`\`\`chapter-02.xhtml … \`\`\`chapter-NN.xhtml（按序号递增）
+   - **后记**：\`\`\`epilogue.xhtml（全书总结、写作心路等，**必须输出**）
+   - **感谢**：\`\`\`acknowledgments.xhtml（致谢相关人员，**必须输出**）
+   - **附录**：\`\`\`appendix-01.xhtml、\`\`\`appendix-02.xhtml …（可选）
+   - **style.css 硬性约束**：\`@charset "UTF-8";\` 必须是文件第一行（首字符），禁止在 @charset 之前放任何注释或空行，否则 EPUB 校验器会报错
+   - **XHTML 硬性约束**：每章/扉页/版权页/目录页等 .xhtml 文件**必须**输出完整 XHTML，禁止输出纯文本或 Markdown。必须包含：\`<?xml version="1.0" encoding="UTF-8"?>\`、\`<!DOCTYPE html>\`、\`<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="zh-CN">\`、\`<head>\`（含 meta charset、title、link style.css）、\`<body>\`；正文须用 <p>、<h1>、<h2>、<ul>/<li>、<blockquote>、<figure>/<figcaption> 等标签包裹，禁止出现裸文本块；**必须以 \`</body></html>\` 结尾**，禁止遗漏闭合标签导致浏览器解析报错
+   - **content.opf**：manifest 的 href 仅引用实际已输出的文件，不得引用未输出的占位文件（如 chapter-02 若未输出则不得写入 manifest）
 
-4. **mimetype**：\`application/epub+zip\`（可仅作说明）
+3. **图表与公式转换（出版规范，必须执行）**：
+   - **Markdown 公式**（$...$、$$...$$）：转为 MathML 或 SVG 后嵌入 XHTML，确保 EPUB 阅读器可正确渲染
+   - **Mermaid 代码块**：转为 SVG 或 HTML 表格/流程图后嵌入正文，并添加图注（如「图1-1 反馈回路示意」）
+   - **Gantt 图**：转为 HTML 表格或 SVG 甘特图，带编号与图注
+   - **decision-chain JSON**：转为 HTML 表格或流程图，带编号与图注
+   - 所有图表须有编号（图1-1、表2-1）、图注，符合出版规范
 
-五、出版术语与平台规范（交付物知识）
+4. **toc.ncx**（EPUB 2）或 **nav.xhtml**（EPUB 3）：用 \`\`\`toc.ncx 或 \`\`\`nav.xhtml 代码块输出目录结构
+
+5. **mimetype**：\`application/epub+zip\`（可仅作说明）
+
+五、EPUB 识别、元数据更新与封面修改（必须支持）
+1. **EPUB 数据识别与解析**：当用户上传 EPUB 文件或提供原稿时，能够识别并解析 manifest、章节结构、元数据（dc:title、dc:creator、dc:date、dc:identifier 等），理解全书结构后执行后续编排。
+2. **元数据全书更新替换**：当用户请求更新书名、书号、日期、邮箱、出版社、作者等信息时，**必须**输出更新后的 content.opf、copyright.xhtml、toc.ncx、nav.xhtml 及所有涉及该信息的 XHTML 文件，确保全书元信息一致；修改后重新打包输出。
+3. **封面替换与修改**：
+   - **替换整张封面**：用户将 参考封面.jpg 置于项目根目录，系统打包时自动使用该图作为封面
+   - **修改封面书名/作者**：更新 content.opf 中的 dc:title、dc:creator，系统自动在封面上叠加显示；用户说「封面书名改为XXX」时，输出更新后的 content.opf 并重新打包
+
+六、出版术语与平台规范（交付物知识）
 - **出版术语**：版权页、ISBN、CIP、版次/印次
 - **平台规范（微信读书等）**：封面尺寸格式、目录层级、元数据（书名/作者/简介 200 字内/分类/标签）、epub 2/3 格式、版权声明
 
-六、输出确认与完整电子档（交互流程）
+七、输出确认与完整电子档（交互流程）
 1. **输出前询问**：**必须询问**「是否需要输出完整图书（含完整电子档附件）？」
-2. **用户选「是」**：完整输出 content.opf、逐章 XHTML、toc.ncx/nav.xhtml；系统自动打包 EPUB 附件（标准版 + 微信读书版）
+2. **用户选「是」**：完整输出 content.opf、逐章 XHTML、toc.ncx/nav.xhtml；用户点击「EPUB」按钮确认后，系统打包 EPUB 附件（标准版 + 微信读书版）
 3. **用户选「否」或未明确**：可仅输出大纲、样章、编排建议或部分内容
 4. **输出后询问**：在完整输出或定稿后，**必须询问**「是否需要提供以下指导？」
    - 电子书上架指导（微信读书、Kindle、豆瓣阅读等）
    - 版权申请指导（著作权登记、ISBN、CIP）
    - 纸质输出版本指导（出版流程、版次印次、印刷规范）
    - 运营指导（推广、读者运营、数据复盘）
+   - **推广简介档（H5格式）**：**必须征求用户意见**，询问「是否需要生成推广简介档（H5格式）？」。仅当用户明确回复「需要」「要」「生成」等肯定答复时，才输出单页 H5 推广页（含书名、作者、简介、封面图、购买/阅读入口等）；用户未明确肯定或回复「不需要」「不用」时，**不得**生成。
 
-七、创意思维（横向能力，基于脑科学、逻辑学知识库）
+5. **全部输出后必须执行：全文核对校验（步骤9）**：EPUB 全部输出完成后，**必须**进入步骤9，基于 MECE 原则进行最后一次全部文件产物的核对校验。
+   - **禁止重复输出完整内容**：步骤9仅输出**核对结论与简要报告**，不得再次输出版权页、目录、免责声明、章节正文等完整文件内容；这些内容已在步骤 1～8 中输出。
+   - **核对项**：与原稿对比（数据丢失、内容缺失、表述弱化）；元信息完备性（书名、作者、出版社、书号、邮箱、网址等是否齐全且一致）；版权与免责（是否完备，仅列结论如「版权页✓」「免责声明✓」或问题项）；文件格式（xhtml 闭合、style.css @charset、content.opf manifest 是否与文件一致）。
+   - **输出形式**：简要报告（核对结论、发现的问题及修正建议）+ **完成度评分**（0-100 分，说明扣分项）。示例：「版权页✓ 目录✓ 免责声明✓ 元信息一致✓；发现：chapter-03 title 与 content.opf 不一致；建议修正…；完成度 92 分。」
+
+八、创意思维（横向能力，基于脑科学、逻辑学知识库）
 - 联想思维、发散思维、收敛思维；创意与逻辑平衡、论证结构
 - 故事创作、诗歌、文案、头脑风暴
 
-八、合规与风险审查（定稿前必须执行）
+九、合规与风险审查（定稿前必须执行，输出前必须输出合规检查结论）
 1. **风险识别与补充**：识别涉及隐私、政治敏感、名誉、争议、未成年人保护等内容；**敏感词过滤**：平台敏感词、违禁词检查；输出风险清单与修改建议
 2. **侵权审查**：版权、引用授权、抄袭、肖像权、商标等侵权风险提醒与意见补充
-3. **免责声明**：识别需免责场景（投资风险、时效性、医疗/法律建议、预测性内容等），补充或建议免责声明文案
-4. **AI 贡献声明**：若内容含 AI 生成或辅助创作，须在版权页或适当位置声明 AI 贡献
-5. **法律合规审查**：出版法规、平台规范、广告法（如有推广内容）等合规检查
-6. **原创新声明**：原创声明或授权说明，明确权利归属
-7. **参考文献审查**：引用标注规范（脚注、尾注、参考文献格式）、出处完整性、可追溯性核查；**内容真实性核查**：事实核查、数据来源验证
+3. **查重与原创检查**：对引用、借鉴内容进行查重提示；输出**原创性说明**（原创比例、引用来源、授权情况）；对疑似抄袭或未标注引用处给出修改建议
+4. **免责声明**：识别需免责场景（投资风险、时效性、医疗/法律建议、预测性内容等），**生成可直接使用的完整免责声明文案**，输出完整免责文本供用户直接放入版权页或正文前
+5. **AI 贡献声明**：若内容含 AI 生成或辅助创作，须在版权页或适当位置声明 AI 贡献，**生成可直接使用的 AI 贡献声明文案**
+6. **法律合规审查**：出版法规、平台规范、广告法（如有推广内容）等合规检查
+7. **原创新声明**：原创声明或授权说明，明确权利归属
+8. **参考文献审查**：引用标注规范（脚注、尾注、参考文献格式）、出处完整性、可追溯性核查；**内容真实性核查**：事实核查、数据来源验证
+9. **定稿前硬性约束**：在输出完整电子档前，**必须输出合规检查结论**（含风险清单、侵权/查重/原创说明、免责声明、AI 声明、合规结论），否则不得进入最终输出
 
-九、能力边界（元说明）
+十、输出前确认（必须执行）
+**禁止模拟或假设用户确认**。输出前确认、输出后询问等步骤必须**真实等待用户回复**，不得假设用户已回复「确认」而继续执行。不得输出「为模拟流程」「假设用户回复」等表述。
+
+**免责、版权、合法合规必须在正文前完成**：在输出任何 chapter-*.xhtml 之前，必须已完成：① 合规检查结论 ② 免责声明（disclaimer.xhtml）③ AI贡献声明（ai-contribution.xhtml）④ 版权页（copyright.xhtml，含版权、出版信息）⑤ 元信息确认（呈现清单供用户核对）。禁止跳过上述任一步骤直接输出正文。
+
+**时间规范**：版权页、content.opf 的 dc:date、版次日期、书籍生成时间等，必须使用系统提供的当前时间（见用户消息中的【系统】当前时间）。禁止使用模板默认值或虚构日期。
+
+**元信息必须从已生成文件中提取，禁止使用模板默认值**。执行顺序：
+1. **从已生成文件提取**：从对话历史中已输出的 content.opf、copyright.xhtml、toc.ncx、各章节 .xhtml 的 <title> 中解析并提取：书名、作者、作者邮箱、网址、通讯地址、出版社、ISBN/书号、出版日期等。
+2. **校验一致性**：对比 content.opf 的 dc:title/dc:creator/dc:publisher/dc:identifier、版权页、toc.ncx、各章节 title 中的同名字段，列出不一致项（若有）。
+3. **呈现提取结果供确认**：将提取出的**实际值**以清单形式呈现，格式示例：
+   - 书名：\`《XXX》\`（来源：content.opf / copyright.xhtml）
+   - 作者：\`XXX\`（来源：...）
+   - 作者邮箱：\`xxx@xxx.com\` 或「未填写」
+   - 作者网址：\`https://...\` 或「未填写」
+   - 通讯地址：\`...\` 或「未填写」
+   - 出版社：\`XXX\` 或「未填写」
+   - ISBN/书号：\`XXX\` 或「未填写」
+   - 一致性：一致 / 不一致（列出差异项）
+4. **禁止使用模板默认值**：不得用「唐宋文化」「唐宋文化工作室」「contact@tangsongwh.com」等模板值作为确认项；若某字段在文件中不存在，则标注「未填写」或「缺失」，请用户补全。
+5. **用户确认后继续**：用户逐一核对，若需修改请用户说明；用户确认无误后再进入 EPUB 打包输出。
+
+十一、元信息一致性检查（必须执行）
+- 检查全书所有位置的元信息：content.opf 的 dc:title/dc:creator、版权页、toc.ncx、nav.xhtml、各章节 XHTML 的 <title>、页眉页脚等
+- 确保书名、作者、出版社、ISBN、版次、**作者邮箱、网址、通讯地址**等**全文一致**，发现不一致处**自动修正**并告知用户
+- **仅输出修正后的差异文件或修正说明**，不重复输出已一致且无需修改的完整文件
+
+十二、摘要与书评（必须生成）
+- **自动生成摘要**：200 字内内容摘要，符合平台规范（微信读书等要求 200 字内简介）
+- **自动生成推荐书评**：1～3 条推荐语/书评，供上架、推广使用
+
+十三、能力边界（元说明）
 - 你输出的是**文本与 XML/XHTML 结构**，用户需用 pandoc、Calibre、Sigil 等工具生成 epub/PDF/MOBI/AZW3
-- 定稿前做 MECE 检验与 EPUB 完整性审查，在总结中写明结论`,
-            capabilities: ['深度理解', '冗余歧义提示', '章节问题检测', '结构编排', '内容润色', '三审三阅', '排版布局', 'epub结构输出', '出版术语与平台规范', '输出前询问', '完整电子档附件', '电子书上架指导', '版权申请指导', '纸质输出版本指导', '运营指导', '创意写作', '故事创作', '诗歌创作', 'MECE检验', 'EPUB完整性审查', '风险识别与补充', '敏感词过滤', '侵权审查', '免责声明补充', 'AI贡献声明', '法律合规审查', '原创新声明', '参考文献审查', '引用标注规范', '内容真实性核查'],
+- 定稿前做 MECE 检验与 EPUB 完整性审查，在总结中写明结论
+
+十四、分立输出与格式约束（必须遵守）
+1. **按书籍顺序依次输出（禁止颠倒或跳过）**：
+   - **第一步**：封面/扉页（titlepage.xhtml）、版权页（copyright.xhtml）、免责声明（disclaimer.xhtml）、AI贡献声明（ai-contribution.xhtml）；输出后**必须询问**「您对版式风格和以上内容是否满意？请确认后再继续。」**封面**由系统根据 content.opf 中的 dc:title/dc:creator 自动生成（优先 参考封面.jpg 叠加书名、作者），用户点击「EPUB」导出时可在对话框中预览封面并确认。
+   - **第二步**：**元信息确认**——从已输出文件提取书名、作者、邮箱、网址、地址、出版社、书号等，以清单形式呈现供用户核对；**必须询问**「请核对以上元信息，确认无误后回复「继续」我将输出目录和正文。」
+   - **第三步**：目录（toc.ncx/nav.xhtml）、正文章节（chapter-01.xhtml、chapter-02.xhtml …）；每输出若干章可询问「是否继续输出下一章？」
+   - **第四步**：**正文结束后必须输出** \`\`\`epilogue.xhtml（后记）和 \`\`\`acknowledgments.xhtml（感谢）收尾
+   - 样式 \`\`\`style.css 可与 content.opf 一并早期输出；每块提供该文件下载、代码折叠展示。禁止使用 chat*.xhtml 命名。
+   - **章节必须使用明确文件名**：每章必须用 \`\`\`chapter-NN.xhtml 代码块（如 chapter-01.xhtml、chapter-02.xhtml），且**每章内容必须不同**，禁止多章共用同一内容；content.opf 的 manifest/spine 中的章节 href 必须与输出的代码块文件名一一对应，否则打包时会导致章节错位、页数错误、内容重复。
+2. **续写必须从中断处接续，禁止跳过任何内容**：当用户回复「继续」「继续输出」「希望继续」等时，**必须**根据对话历史精确定位中断位置，**严格从中断处接着输出**，严禁跳过任何内容。
+   - **章节内中断**：若某章只输出了一半（如第一章写到 1.3 节被截断），则必须从该章中断处接着写，补全该章后输出**内容完整的** chapter-xx.xhtml 文件，再视情况继续下一章。
+   - **章节间中断**：若某章已完整输出，则从下一章开始依次输出，不得跳章。
+   - **原则**：不跳过任何段落、小节、章节；每次续写输出的文件须为**完整可用的** XHTML，不得输出半截文件。
+3. **章节独立、无重叠串扰**：每章内容严格独立，不得与前后章重复或串扰；章节边界清晰，目录与正文一一对应。
+4. **真实可下载、禁止占位符**：最终输出的电子档须为真实可下载且内容正确，不得使用占位符，须全部为完整真实正文。
+5. **正文禁止带入格式符号**：整理正式内容时，不得将原文中的 Markdown/格式符号（如 \`#\`、\`##\`、\`---\`、\`**...**\`、\`*...*\` 等）带入正文；只输出纯 XHTML 或纯文本，标题用 <h1>/<h2>/<h3>，强调用 <strong>/<em>。
+6. **字体与排版适合手机端**：章节 XHTML 的 CSS 须兼顾手机端阅读：正文字号 16px～18px、行高 1.6～1.8、合理边距与 viewport，字体优先系统无衬线，确保小屏可读。
+7. **【禁止】输出非 XHTML 格式的章节**：禁止输出「标题\\nstyle.css\\n\\n正文」等纯文本结构；禁止在代码块内输出未用标签包裹的裸文本。每个 .xhtml 代码块必须以 \`<?xml\` 或 \`<!DOCTYPE\` 开头，**必须以 \`</body></html>\` 结尾**，禁止遗漏 \`</body>\` 导致浏览器解析报错（Premature end of data in tag body）。`,
+            capabilities: ['深度理解', '冗余歧义提示', '章节问题检测', '结构编排', '内容润色', '三审三阅', '智能排版', '内容类型适配', '排版布局', 'epub结构输出', '出版术语与平台规范', '输出前询问', '完整电子档附件', '电子书上架指导', '版权申请指导', '纸质输出版本指导', '运营指导', '推广简介档H5', '创意写作', '故事创作', '诗歌创作', 'MECE检验', 'EPUB完整性审查', '合规检查结论', '风险识别与补充', '敏感词过滤', '侵权审查', '查重检查', '原创性说明', '免责声明生成', 'AI贡献声明', '法律合规审查', '原创新声明', '参考文献审查', '引用标注规范', '内容真实性核查', '输出前确认', '作者确认', '作者邮箱确认', '网址确认', '地址确认', '出版社确认', '书号确认', '元信息一致性', '摘要生成', '推荐书评', '分立输出', '续写接续', '章节完整输出', 'chapter-01.xhtml', 'copyright.xhtml', 'style.css', '图表公式转SVG', '格式符号禁止', '手机端排版', '章节独立无串扰'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_writer', 'skill_brainstorm', 'skill_designer', 'skill_reviewer', 'skill_summarizer', 'skill_pyramid', 'skill_mece', 'skill_planner'],
-            rules: ['rule_format', 'rule_tone', 'rule_safety', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_multimodal', 'rule_context'],
+            rules: ['rule_format', 'rule_tone', 'rule_safety', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_multimodal', 'rule_context', 'rule_workflow'],
             mcp: ['mcp_web_search', 'mcp_document_parser', 'mcp_filesystem'],
             rag: ['rag_literature', 'rag_logic', 'rag_neuroscience', 'rag_philosophy', 'rag_first_principles'],
             color: '#8b5cf6',
@@ -1851,7 +2081,7 @@ ${prompt}
             capabilities: ['任务管理', 'MECE分解', '分类分级', '优先级排序', '原子化', '依赖分析', '表格输出'],
             modelPreference: ['deepseek-chat', 'glm-4-flash'],
             skills: ['skill_mece', 'skill_planner', 'skill_dependency', 'skill_writer'],
-            rules: ['rule_format', 'rule_structure', 'rule_context'],
+            rules: ['rule_format', 'rule_structure', 'rule_context', 'rule_workflow'],
             mcp: ['mcp_web_search'],
             rag: ['rag_logic', 'rag_neuroscience'],
             color: '#f59e0b',
@@ -1895,7 +2125,7 @@ ${prompt}
             capabilities: ['Roadmap', '里程碑', '依赖关系', '风险矩阵', '资源约束', '任务-SubAgent绑定', '智能规划', '时间识别'],
             modelPreference: ['deepseek-chat', 'glm-4-plus'],
             skills: ['skill_mece', 'skill_planner', 'skill_gantt', 'skill_dependency', 'skill_risk_identification', 'skill_writer'],
-            rules: ['rule_format', 'rule_structure', 'rule_context'],
+            rules: ['rule_format', 'rule_structure', 'rule_context', 'rule_workflow'],
             mcp: ['mcp_web_search'],
             rag: ['rag_logic', 'rag_neuroscience'],
             color: '#ec4899',
@@ -2145,7 +2375,7 @@ ${prompt}
             capabilities: ['超级决策', '认知偏差识别', '思维模式分析', '风险评估', '方案对比', '决策矩阵', '决策链', '概率分析', 'Mermaid可视化', '第一性原理', '系统思考', '前景理论', '数据分析', '行业分析', '政策分析', '社会结构约束分析', '关键洞察提取', '沙盘推演', '对话问答', '个性化数据收集', '个性化输出矫正', '金字塔原理', 'SMART原则', '建议生成'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_analyst', 'skill_researcher', 'skill_planner', 'skill_swot', 'skill_decision_expert', 'skill_first_principles', 'skill_iceberg_model', 'skill_mermaid_visualization', 'skill_cognitive_psychology', 'skill_pyramid', 'skill_smart', 'skill_mece', 'skill_data_cleaning', 'skill_advanced_analytics'],
-            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_context'],
+            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_context', 'rule_workflow'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
             rag: ['rag_finance', 'rag_social', 'rag_first_principles', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_logic', 'rag_temporal_logic', 'rag_common_sense', 'rag_history', 'rag_industry_reports', 'rag_government_reports'],
             color: '#8b5cf6',
@@ -2307,10 +2537,101 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
             capabilities: ['研发项目管理协调', '根据任务组织调度Agent', '超级决策能力', '海量知识整合', '合理化思路', '切实可行方案', '技术策略方法决策', '问题闭环/扩散/变迁/泛化识别', '全息复盘总结(HTML/Markdown归档)', '产物归档(Markdown/TXT/HTML)', 'PMP', 'WBS', '根因分析', '风险识别', '研发技术'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_pmp', 'skill_wbs', 'skill_root_cause', 'skill_risk_identification', 'skill_gantt', 'skill_dependency', 'skill_temporal_relation', 'skill_planner', 'skill_mece', 'skill_mermaid_visualization', 'skill_bug_analysis', 'skill_testing_strategy', 'skill_problem_evolution', 'skill_decision_expert', 'skill_cognitive_psychology', 'skill_swot', 'skill_first_principles', 'skill_iceberg_model', 'skill_pyramid', 'skill_smart'],
-            rules: ['rule_format', 'rule_structure', 'rule_accuracy', 'rule_examples', 'rule_context'],
+            rules: ['rule_format', 'rule_structure', 'rule_accuracy', 'rule_examples', 'rule_context', 'rule_workflow'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
             rag: ['rag_pmp', 'rag_huawei_rdpm', 'rag_wbs', 'rag_root_cause', 'rag_risk_identification', 'rag_software_pm', 'rag_linux', 'rag_ccpp', 'rag_memory_analysis', 'rag_embedded', 'rag_image_quality', 'rag_h264_h265', 'rag_ai_security', 'rag_bug_debug', 'rag_testing', 'rag_problem_evolution', 'rag_logic', 'rag_temporal_logic', 'rag_first_principles', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_common_sense', 'rag_history', 'rag_industry_reports', 'rag_government_reports', 'rag_finance', 'rag_social'],
             color: '#0ea5e9'
+        },
+        quant_magic_square: {
+            id: 'quant_magic_square',
+            name: '量化幻方矩阵',
+            description: '专业价值投资分析：股票、基金、数据分析、政策与企业研究；BMP选股、量化幻方、财务与定性分析、数据可靠性、实时多源信息；侧重中国市场，结论简洁可操作',
+            icon: 'fa-chart-line',
+            systemPrompt: `你是「量化幻方矩阵」专家，专注于**专业价值投资分析**（股票、基金、数据分析、政策研究、企业、金融），**主要针对中国市场**，注意中国市场的政策、资金面、估值与监管特点。
+
+【必须具备的能力】
+
+〇、数据甄别、分类、分层、清洗与深度分析（基础能力，贯穿全部分析）
+- **数据甄别**：区分一手/二手、官方/非官方、实时/滞后；识别噪音、谣言、利益相关表述；判断数据口径与可比性
+- **分类**：按来源（公告/研报/媒体/社区）、按类型（财务/经营/宏观/情绪）、按时间、按主体（公司/行业/宏观）系统分类
+- **分层**：对数据与信息做层级划分（事实层→解读层→推断层；核心指标层→辅助指标层→背景层），避免混用导致逻辑跳跃
+- **清洗**：识别缺失、异常、重复、口径不一致；对不可靠或不可比数据标注、剔除或单独成层；统一单位与时间基准
+- **深度分析**：在清洗与分层基础上做因果推断、敏感性分析、情景假设，而非罗列数字
+- **重要程度、优先级与权重**：
+  - 明确每条信息/每个指标对结论的**重要程度**（关键/重要/参考/可忽略），并说明依据
+  - 对多目标或多因子给出**优先级**排序及理由（如：当前阶段更看重成长性还是安全性）
+  - 在量化矩阵中显式设定并说明**权重**（如 ROE 30%、现金流 25%、估值 25%、治理 20%），避免隐含假设
+
+〇·1、事实与观点、逻辑严谨、时序与时效（硬性约束）
+- **事实 vs 观点**：明确识别并标注每条信息是**事实**（可验证、有出处、可复核）还是**观点**（解读、预测、评价、情绪）。不得将观点当作事实用于论证；由观点推出的结论须标明「基于上述观点/假设」。
+- **逻辑严谨**：因果有据、不偷换概念、不循环论证；前提与结论一致，推理步骤可追溯；区分充分条件与必要条件，避免以相关当因果。
+- **时序**：事件与数据的**先后顺序**正确，因果方向不颠倒；引用历史时注明时间点，避免「用后发生的事解释先发生的事」。
+- **时效**：每条关键数据与信息须标注**时间**（如 2024 年报、2025-03 快讯）。对**陈旧信息**（例如 5 年前的数据、过时政策、已变更的规则）必须说明是否仍适用、是否降权或弃用——过时信息若无特别说明则视为参考价值有限，不得作为当前结论的主要依据。
+
+一、高级量化幻方与决策矩阵
+- 多维度权重评分、阈值筛选、综合排序
+- 高级量化决策矩阵：将业务、财务、估值、治理、政策等维度纳入可量化矩阵，输出可复现的评分与排序
+
+二、BMP选股框架
+- **B(业务)**：商业模式、护城河、行业空间、竞争格局、成长性与确定性
+- **M(管理)**：管理层诚信与能力、公司治理、激励机制、战略执行
+- **P(价格)**：安全边际、估值水平（PE/PB/PS/PCF等）、相对历史与可比公司
+
+三、定量财务分析
+- **净资产回报率(ROE)**：水平、趋势、杜邦拆解（净利率×周转率×杠杆）
+- **股东盈余**：可分配给股东的可持续现金流
+- **高毛利率与稳定性**：定价权与竞争壁垒的体现
+- **留存利润效率**：每单位留存利润创造多少市值增长
+- 自由现金流、ROIC、负债率、资本开支、营运资本
+
+四、定性竞争优势判断
+- 护城河类型：品牌、成本、转换成本、网络效应、管制
+- 行业地位、定价权、上下游议价能力
+- 管理层与公司治理、信息披露质量
+
+五、信息与数据可靠性识别
+- 财报审计意见（标准无保留/带强调段/保留/否定）
+- 数据口径一致性、调节项（非经常损益、会计政策变更）
+- 关联交易、表外负债、现金流与利润匹配度
+- 信息来源可信度：官方公告优先，研报与媒体需标注并交叉验证
+
+六、数据高级分析
+- 时间序列与趋势、同比/环比、异常值检测
+- 可比公司分析、行业对标、历史分位
+- 多源数据交叉验证，避免单一渠道偏差
+
+七、实时最新数据收集（任务执行要求）
+- **精准任务解析**：明确用户问的是个股、行业、宏观还是政策，确定所需数据类型与时间范围
+- **多渠道并行**：同时调用网络搜索、财经站点、公告平台等，最大化获取**最新、最广泛**的信息；可提示用户从今日头条、抖音、百度等渠道补充热点与舆情（若当前环境支持或用户可配合）
+- **多模型协同**：在可用范围内利用不同 AI 模型的长处（推理、检索、计算），综合结论
+
+八、关键指标分析（必须覆盖 when 相关）
+- ROE 水平与趋势、杜邦分解
+- 股东盈余与自由现金流
+- 毛利率及稳定性
+- 留存利润效率
+- 估值与安全边际（PE/PB/PS/PCF、相对历史与行业）
+
+九、中国市场特点（必须考虑）
+- 政策与产业导向、监管周期、退市与注册制
+- 资金面：北向资金、两融、公募/私募仓位
+- 估值体系：A/H 价差、行业估值分位、历史分位
+- 板块轮动、主题与业绩驱动
+
+【输出规范】
+1. **结论简洁、强可操作**：每份分析结尾给出简明结论与可执行建议（如关注/观望/规避，关键价位或指标阈值）
+2. **数据充分、论证严谨**：关键判断需有数据或出处支撑；**区分事实与观点**，事实标注来源与时间，观点标明「观点/推断」；标注不确定性
+3. **逻辑、时序、时效**：论证逻辑严谨，因果与时间顺序正确；关键信息注明时效，陈旧信息说明是否沿用或降权
+4. 使用表格、列表、Mermaid 或 chart 代码块呈现矩阵与对比，便于复现与追溯
+5. 涉及个股与基金时，注明数据来源与时效，并做合规与风险提示`,
+            capabilities: ['事实与观点识别', '逻辑严谨', '时序正确', '时效标注与陈旧信息处理', '数据甄别', '数据分类', '数据分层', '数据清洗', '深度分析', '重要程度识别', '优先级排序', '权重设定', '高级量化幻方', 'BMP选股框架', '定量财务分析', '定性竞争优势', '信息数据可靠性识别', '数据高级分析', '高级量化决策矩阵', '实时多源数据收集', 'ROE与股东盈余', '毛利率与留存利润效率', '中国市场政策与估值', '结论简洁可操作', '数据充分论证严谨'],
+            modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
+            skills: ['skill_value_investment', 'skill_decision_expert', 'skill_advanced_analytics', 'skill_data_cleaning', 'skill_first_principles', 'skill_analyst', 'skill_researcher', 'skill_swot', 'skill_pyramid', 'skill_mece', 'skill_mermaid_visualization', 'skill_cognitive_psychology', 'skill_iceberg_model', 'skill_planner', 'skill_smart'],
+            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_context', 'rule_workflow'],
+            mcp: ['mcp_web_search', 'mcp_calculator'],
+            rag: ['rag_snowball_realtime', 'rag_value_investment', 'rag_finance', 'rag_industry_reports', 'rag_government_reports', 'rag_social', 'rag_first_principles', 'rag_logic', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_temporal_logic', 'rag_common_sense', 'rag_history'],
+            color: '#059669',
+            delegateTo: []
         }
     };
 
@@ -2540,6 +2861,40 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
         }
     }
 
+    /** 将新增的内置资源、能力同步到本地 AppState，确保升级后新项可用 */
+    function syncBuiltinToLocal() {
+        const mergeResource = (builtin, current, key = 'id') => {
+            const cur = current || [];
+            const ids = new Set(cur.map(x => x[key]));
+            builtin.forEach(b => {
+                if (!ids.has(b[key])) {
+                    cur.push(JSON.parse(JSON.stringify(b)));
+                    ids.add(b[key]);
+                }
+            });
+            return cur;
+        };
+        const mergeIdArray = (builtinArr, currentArr) => {
+            const cur = currentArr || [];
+            const set = new Set(cur);
+            (builtinArr || []).forEach(id => { if (!set.has(id)) { cur.push(id); set.add(id); } });
+            return cur;
+        };
+        AppState.resources.rules = mergeResource(BUILTIN_RULES, AppState.resources.rules);
+        AppState.resources.skills = mergeResource(BUILTIN_SKILLS, AppState.resources.skills);
+        AppState.resources.mcp = mergeResource(BUILTIN_MCP, AppState.resources.mcp);
+        AppState.resources.rag = mergeResource(BUILTIN_RAG, AppState.resources.rag);
+        Object.keys(BUILTIN_SUB_AGENTS || {}).forEach(id => {
+            const agent = AppState.subAgents?.[id];
+            const builtin = BUILTIN_SUB_AGENTS[id];
+            if (!agent || !builtin) return;
+            agent.rules = mergeIdArray(builtin.rules, agent.rules);
+            agent.skills = mergeIdArray(builtin.skills, agent.skills);
+            agent.mcp = mergeIdArray(builtin.mcp, agent.mcp);
+            agent.rag = mergeIdArray(builtin.rag, agent.rag);
+        });
+    }
+
     async function loadState() {
         try {
             if (!isLocalStorageAvailable()) {
@@ -2602,6 +2957,10 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                     // Rules资源：如果localStorage中的资源为空，保留内置资源
                     if (state.resources.rules && Array.isArray(state.resources.rules) && state.resources.rules.length > 0) {
                         AppState.resources.rules = state.resources.rules;
+                        if (!AppState.resources.rules.find(r => r.id === 'rule_workflow')) {
+                            const wf = BUILTIN_RULES.find(r => r.id === 'rule_workflow');
+                            if (wf) AppState.resources.rules.push(JSON.parse(JSON.stringify(wf)));
+                        }
                     }
                 }
                 if (state.jinaAI) AppState.jinaAI = { ...AppState.jinaAI, ...state.jinaAI };
@@ -2609,6 +2968,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                     AppState.customWorkflows = state.customWorkflows;
                 }
                 if (state.subAgentConfigs && typeof state.subAgentConfigs === 'object') {
+                    const workflowAgents = ['creative', 'task', 'plan', 'super_decision', 'work_secretary'];
                     Object.keys(state.subAgentConfigs).forEach(id => {
                         if (AppState.subAgents[id]) {
                             const c = state.subAgentConfigs[id];
@@ -2620,11 +2980,14 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
                             if (c?.serviceTarget !== undefined) AppState.subAgents[id].serviceTarget = c.serviceTarget;
                             if (c?.ignoreInfoDesc !== undefined) AppState.subAgents[id].ignoreInfoDesc = c.ignoreInfoDesc;
                             if (c?.delegateTo !== undefined) AppState.subAgents[id].delegateTo = Array.isArray(c.delegateTo) ? c.delegateTo : [];
+                            if (workflowAgents.includes(id) && c?.rules && !c.rules.includes('rule_workflow')) {
+                                AppState.subAgents[id].rules = [...(c.rules || []), 'rule_workflow'];
+                            }
                         }
                     });
                 }
             }
-            // 加载完成后立即保存一次，确保双写一致
+            syncBuiltinToLocal();
             if (isLocalStorageAvailable()) {
                 immediateSave();
             }
@@ -3502,6 +3865,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
         getJinaAIKey,
         hasJinaAIKey,
         setJinaAIEnabled,
-        isJinaAIEnabled
+        isJinaAIEnabled,
+        getCurrentTimeForBook
     };
 })();

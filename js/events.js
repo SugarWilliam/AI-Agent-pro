@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.4.0 - 事件处理模块
+ * AI Agent Pro v8.5.0 - 事件处理模块
  * 未来科技感交互设计
  */
 
@@ -66,6 +66,7 @@
         }
         
         updateAgentName();
+        window.AIAgentUI?.updateCreativeWorkflowPreview?.();
         updateModeBadge();
         updateSearchButton();
         renderFileAttachments();
@@ -79,6 +80,10 @@
         if (btn) {
             const isEnabled = window.AppState.settings?.webSearchEnabled || false;
             btn.classList.toggle('active', isEnabled);
+        }
+        const bgBtn = document.getElementById('background-mode-btn');
+        if (bgBtn) {
+            bgBtn.classList.toggle('active', !!window.AppState?.settings?.backgroundModeEnabled);
         }
     }
 
@@ -116,7 +121,8 @@
             };
             modeBadge.textContent = modeNames[window.AppState.currentMode] || 'Chat';
         }
-        document.querySelectorAll('.mode-option').forEach(btn => {
+        // 仅更新有 data-mode 的按钮，避免覆盖后台/搜索/工具箱等按钮状态
+        document.querySelectorAll('.mode-option[data-mode]').forEach(btn => {
             const mode = window.AppState?.currentMode || 'chat';
             btn.classList.toggle('active', btn.dataset.mode === mode);
         });
@@ -219,6 +225,34 @@
         // 语音输入
         document.getElementById('voice-btn')?.addEventListener('click', startVoiceInput);
 
+        // 后台运行模式
+        document.getElementById('background-mode-btn')?.addEventListener('click', () => {
+            if (!window.AppState.settings) window.AppState.settings = {};
+            window.AppState.settings.backgroundModeEnabled = !window.AppState.settings.backgroundModeEnabled;
+            updateSearchButton();
+            window.AIAgentApp?.saveState?.();
+            window.AIAgentUI?.showToast?.(window.AppState.settings.backgroundModeEnabled ? '已开启后台运行' : '已关闭后台运行', 'info');
+        });
+
+        // 后台任务指示器关闭按钮：关闭后台模式并切回正常模式
+        document.getElementById('background-tasks-close-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!window.AppState.settings) window.AppState.settings = {};
+            window.AppState.settings.backgroundModeEnabled = false;
+            updateSearchButton();
+            window.AIAgentApp?.saveState?.();
+            window.AIAgentUI?.showToast?.('已关闭后台运行', 'info');
+        });
+
+        // Plan TODO 后台完成时刷新 UI
+        window.addEventListener('plan-todo-completed', (e) => {
+            const { planId } = e.detail || {};
+            if (planId) {
+                window.AIAgentUI?.showPlanDetail?.(planId);
+                window.AIAgentUI?.renderPlanManager?.();
+            }
+        });
+
         // 网络搜索
         document.getElementById('search-btn')?.addEventListener('click', toggleWebSearch);
 
@@ -282,6 +316,30 @@
         document.getElementById('subagent-btn')?.addEventListener('click', (e) => {
             e.stopPropagation();
             showSubAgentSelector();
+        });
+
+        // 唐宋文化工作流程预览折叠
+        document.getElementById('creative-workflow-toggle')?.addEventListener('click', () => {
+            const panel = document.getElementById('creative-workflow-preview');
+            const stepsEl = document.getElementById('creative-workflow-steps-preview');
+            const chevron = panel?.querySelector('.creative-workflow-chevron');
+            if (panel && stepsEl) {
+                const isCollapsed = stepsEl.style.display === 'none';
+                stepsEl.style.display = isCollapsed ? 'block' : 'none';
+                if (chevron) chevron.className = 'fas fa-chevron-' + (isCollapsed ? 'up' : 'down') + ' creative-workflow-chevron';
+            }
+        });
+
+        // 文件产物面板折叠（默认收起）
+        document.getElementById('deliverable-collector-toggle')?.addEventListener('click', (e) => {
+            if (e.target.closest('.deliverable-collector-select-all') || e.target.closest('.deliverable-collector-download-btn')) return;
+            const wrap = document.getElementById('deliverable-collector-list-wrap');
+            const chevron = document.getElementById('deliverable-collector-chevron');
+            if (wrap && chevron) {
+                const isCollapsed = wrap.classList.contains('deliverable-collector-collapsed');
+                wrap.classList.toggle('deliverable-collector-collapsed', !isCollapsed);
+                chevron.className = 'fas fa-chevron-' + (isCollapsed ? 'up' : 'down') + ' deliverable-collector-chevron';
+            }
         });
 
         // 工具项
@@ -349,6 +407,51 @@
                                 window.AIAgentUI.deleteMessage(messageId);
                             }
                             break;
+                        case 'generate-epub':
+                            window.AIAgentUI?.showEpubFormatDialog?.(messageId);
+                            break;
+                    }
+                    return;
+                }
+
+                // 处理确认/同意快捷按钮
+                const confirmBtn = e.target.closest('.confirm-quick-btn');
+                if (confirmBtn) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const reply = confirmBtn.dataset.reply;
+                    if (reply) {
+                        const wrap = confirmBtn.closest('.confirm-quick-btns');
+                        const cb = wrap?.querySelector('.confirm-auto-mode-cb');
+                        if (!window.AppState.settings) window.AppState.settings = {};
+                        window.AppState.settings.autoConfirmReply = reply;
+                        if (cb?.checked) {
+                            window.AppState.settings.autoConfirmEnabled = true;
+                            if ('Notification' in window && Notification.permission === 'default') {
+                                Notification.requestPermission();
+                            }
+                            window.AIAgentUI?.showToast?.('已进入无人模式，后续将自动发送「' + reply + '」', 'info');
+                        }
+                        window.AIAgentApp?.saveState?.();
+                        sendQuickReply(reply);
+                    }
+                    return;
+                }
+
+                // 处理「后续步骤使用相同方式」勾选
+                const autoModeCb = e.target.closest('.confirm-auto-mode-cb');
+                if (autoModeCb) {
+                    e.stopPropagation();
+                    if (!window.AppState.settings) window.AppState.settings = {};
+                    window.AppState.settings.autoConfirmEnabled = !!autoModeCb.checked;
+                    window.AIAgentApp?.saveState?.();
+                    if (autoModeCb.checked) {
+                        if ('Notification' in window && Notification.permission === 'default') {
+                            Notification.requestPermission();
+                        }
+                        window.AIAgentUI?.showToast?.('已开启，下次点击确认按钮后将进入无人模式', 'info');
+                    } else {
+                        window.AIAgentUI?.showToast?.('已关闭无人模式', 'info');
                     }
                     return;
                 }
@@ -430,6 +533,15 @@
                     e.preventDefault();
                     if (window.AIAgentUI?.downloadDeliverableCode) {
                         window.AIAgentUI.downloadDeliverableCode(deliverableDownloadBtn);
+                    }
+                    return;
+                }
+                const chapterToggleBtn = e.target.closest('.chapter-deliverable-toggle');
+                if (chapterToggleBtn) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (window.AIAgentUI?.toggleChapterDeliverable) {
+                        window.AIAgentUI.toggleChapterDeliverable(chapterToggleBtn);
                     }
                     return;
                 }
@@ -555,6 +667,7 @@
                         ? `Switched to ${name}, new chat started` : `已切换到: ${name}，已开启新会话`;
                     window.AIAgentUI?.showToast?.(msg, 'success');
                     updateAgentName();
+                    window.AIAgentUI?.updateCreativeWorkflowPreview?.();
                 }
             });
         });
@@ -583,7 +696,8 @@
     function switchMode(mode) {
         window.AppState.currentMode = mode;
         
-        document.querySelectorAll('.mode-option').forEach(btn => {
+        // 仅更新有 data-mode 的按钮，避免覆盖后台/搜索/工具箱等按钮状态
+        document.querySelectorAll('.mode-option[data-mode]').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.mode === mode);
         });
         
@@ -622,7 +736,7 @@
         ],
         creative: [
             { agentId: 'general', instruction: '搜集信息' },
-            { agentId: 'creative', instruction: '理解诊断→编排润色→排版布局；询问是否输出完整图书，选择是则完整输出 epub 附件；输出后询问上架/版权/纸质/运营指导' }
+            { agentId: 'creative', instruction: '理解诊断→编排润色→智能排版；EPUB 输出须按书籍顺序：封面/扉页→版权页→免责声明→AI声明→元信息确认→目录→正文→后记→感谢，每步须询问用户确认；合规检查结论→免责声明→AI声明须在正文前完成；使用 titlepage.xhtml、copyright.xhtml、disclaimer.xhtml、chapter-NN.xhtml、epilogue.xhtml、acknowledgments.xhtml、style.css 规范命名；元信息含字数；全部输出后 MECE 全文核对校验、完成度报告与评分；输出后询问上架/版权/纸质/运营指导；推广简介档H5 需征求用户意见后生成' }
         ]
     };
 
@@ -892,6 +1006,7 @@
 
         if ((window.AppState.messages || []).length === 0) {
             window.AIAgentUI?.showWelcomeScreen?.();
+            window.AIAgentUI?.renderDeliverableCollector?.();
         } else {
             window.AIAgentUI?.renderMessages?.();
         }
@@ -976,13 +1091,17 @@
             window.AIAgentUI?.showToast?.('请等待文件解析完成后再发送', 'info');
             return;
         }
+
+        const backgroundMode = !!window.AppState?.settings?.backgroundModeEnabled;
         
-        // 更新按钮状态为处理中
-        sendBtn.disabled = false;
-        sendBtn.classList.remove('send-btn-disabled');
-        sendBtn.classList.add('processing');
-        sendBtn.innerHTML = '<i class="fas fa-stop"></i>';
-        sendBtn.title = '点击取消';
+        // 更新按钮状态为处理中（后台模式不阻塞，不显示处理中）
+        if (!backgroundMode) {
+            sendBtn.disabled = false;
+            sendBtn.classList.remove('send-btn-disabled');
+            sendBtn.classList.add('processing');
+            sendBtn.innerHTML = '<i class="fas fa-stop"></i>';
+            sendBtn.title = '点击取消';
+        }
 
         // 创建新对话（如果没有）
         if (!window.AppState.currentChatId) {
@@ -1048,7 +1167,14 @@
                 }
             }
         }
-        const enableWebSearch = isWorkflow || autoWorkflow || (window.AppState.settings?.webSearchEnabled || false);
+        // 多轮对话时跳过网络搜索，直接基于对话继续（所有 SubAgent 一致）
+        const msgCount = (window.AppState.messages || []).length;
+        const isMultiTurn = msgCount >= 2;
+        const enableWebSearch = (isWorkflow || autoWorkflow || (window.AppState.settings?.webSearchEnabled || false)) && !isMultiTurn;
+        // A2A 多轮：后续轮次由主 Agent 控住上下文，不重复走整条 Workflow，避免信息流丢失；仅当首轮或用户显式 [Workflow:...] 时走链
+        if (autoWorkflow && isMultiTurn) {
+            workflowChainSteps = [];
+        }
         
         // 处理文件附件
         let attachments = [];
@@ -1075,6 +1201,14 @@
             attachments = parsedFiles.map(f => f.attachment);
         }
 
+        // 唐宋文化：注入当前时间（用于版权页、书籍生成时间、版次等），优先网络时间
+        if (window.AppState?.currentSubAgent === 'creative' && window.AIAgentApp?.getCurrentTimeForBook) {
+            try {
+                const nowStr = await window.AIAgentApp.getCurrentTimeForBook();
+                messageContent = `【系统】当前时间（用于版权页、书籍生成时间、版次等）：${nowStr}\n\n${messageContent}`;
+            } catch (_) { /* 忽略 */ }
+        }
+
         // 添加用户消息
         const userMessage = {
             id: 'msg_' + Date.now(),
@@ -1098,17 +1232,44 @@
         updateCurrentChat();
         window.AIAgentApp?.saveState?.();
 
+        // 后台模式：在后台执行，不阻塞 UI
+        if (backgroundMode && window.BackgroundTaskManager) {
+            const wfOpts = workflowChainSteps.length > 0 ? {
+                enableWebSearch,
+                ...(autoWorkflow && mainId ? {
+                    enableDynamicSchedule: true,
+                    mainAgentId: mainId,
+                    delegateIds: validDelegates || []
+                } : {})
+            } : {};
+            window.BackgroundTaskManager.runChatTask({
+                chatId: window.AppState.currentChatId,
+                messages: [...(window.AppState.messages || [])],
+                messageContent,
+                workflowChainSteps,
+                wfOpts,
+                subAgentId: window.AppState?.currentSubAgent,
+                enableWebSearch,
+                isWorkflow
+            });
+            window.AIAgentUI?.showToast?.('已提交后台任务', 'info');
+            return;
+        }
+
         // 创建流式消息元素
         window.AIAgentUI?.createStreamMessageElement?.();
 
         try {
             let response;
             if (workflowChainSteps.length > 0) {
-                const wfOpts = autoWorkflow && mainId ? {
-                    enableDynamicSchedule: true,
-                    mainAgentId: mainId,
-                    delegateIds: validDelegates || []
-                } : {};
+                const wfOpts = {
+                    enableWebSearch,
+                    ...(autoWorkflow && mainId ? {
+                        enableDynamicSchedule: true,
+                        mainAgentId: mainId,
+                        delegateIds: validDelegates || []
+                    } : {})
+                };
                 response = await window.LLMService?.runWorkflowChain?.(
                     workflowChainSteps,
                     messageContent,
@@ -1118,13 +1279,20 @@
                     wfOpts
                 );
             } else {
+                const isCreative = window.AppState?.currentSubAgent === 'creative';
+                const streamCb = isCreative && window.AIAgentUI?.createCreativeStreamWrapper
+                    ? window.AIAgentUI.createCreativeStreamWrapper(window.AIAgentUI.streamMessageUpdate)
+                    : window.AIAgentUI?.streamMessageUpdate;
                 response = await window.LLMService?.sendMessage?.(
                     window.AppState.messages,
                     window.AppState.currentModel,
                     enableWebSearch,
-                    window.AIAgentUI?.streamMessageUpdate,
+                    streamCb,
                     isWorkflow
                 );
+                if (isCreative && response?.content && window.AIAgentUI?.stripCreativeStepMarker) {
+                    response = { ...response, content: window.AIAgentUI.stripCreativeStepMarker(response.content) };
+                }
             }
 
             // 恢复按钮状态
@@ -1152,24 +1320,9 @@
 
             window.AppState.messages.push(aiMessage);
 
-            // 唐宋文化 / Workflow 末步为 creative：若消息包含可打包 EPUB 结构，自动生成 EPUB 附件
-            const lastStepCreative = workflowChainSteps?.length > 0 && workflowChainSteps[workflowChainSteps.length - 1]?.agentId === 'creative';
-            if ((window.AppState.currentSubAgent === 'creative' || lastStepCreative) && response?.content) {
-                try {
-                    const std = await window.AIAgentUI?.buildEpubAsAttachment?.(response.content, 'standard');
-                    const wx = await window.AIAgentUI?.buildEpubAsAttachment?.(response.content, 'wechat');
-                    const atts = [];
-                    if (std) atts.push(std);
-                    if (wx) atts.push(wx);
-                    if (atts.length > 0) {
-                        aiMessage.attachments = (aiMessage.attachments || []).concat(atts);
-                        window.AIAgentUI?.renderMessages?.();
-                    }
-                } catch (_) { /* 忽略 EPUB 打包失败 */ }
-            }
-
             updateCurrentChat();
             window.AIAgentApp?.saveState?.();
+            window.AIAgentUI?.renderDeliverableCollector?.();
 
         } catch (error) {
             // 恢复按钮状态（无论什么错误都要恢复）
@@ -1235,6 +1388,15 @@
         if (!textarea) return;
         textarea.style.height = 'auto';
         textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+    }
+
+    /** 快捷回复：填入内容并发送（用于确认/同意等快捷按钮） */
+    function sendQuickReply(text) {
+        const input = document.getElementById('message-input');
+        if (!input || !text) return;
+        input.value = String(text).trim();
+        autoResizeTextarea();
+        sendMessage();
     }
 
     function handleInputKeydown(e) {
@@ -1695,23 +1857,9 @@
 
             window.AppState.messages.push(aiMessage);
 
-            // 唐宋文化：若消息包含可打包 EPUB 结构，自动生成 EPUB 附件
-            if (window.AppState.currentSubAgent === 'creative' && response?.content) {
-                try {
-                    const std = await window.AIAgentUI?.buildEpubAsAttachment?.(response.content, 'standard');
-                    const wx = await window.AIAgentUI?.buildEpubAsAttachment?.(response.content, 'wechat');
-                    const atts = [];
-                    if (std) atts.push(std);
-                    if (wx) atts.push(wx);
-                    if (atts.length > 0) {
-                        aiMessage.attachments = (aiMessage.attachments || []).concat(atts);
-                        window.AIAgentUI?.renderMessages?.();
-                    }
-                } catch (_) { /* 忽略 EPUB 打包失败 */ }
-            }
-
             updateCurrentChat();
             window.AIAgentApp?.saveState?.();
+            window.AIAgentUI?.renderDeliverableCollector?.();
 
         } catch (error) {
             window.ErrorHandler?.handle(error, {
@@ -1809,6 +1957,7 @@
         createNewChat({ silent: true });
         window.AIAgentUI?.renderSubAgentList?.();
         updateAgentName();
+        window.AIAgentUI?.updateCreativeWorkflowPreview?.();
         const name = agent?.name || '通用助手';
         const msg = (window.AppState?.settings?.language === 'en')
             ? `Switched to ${name}, new chat started` : `已切换到 ${name}，已开启新会话`;
@@ -2069,6 +2218,11 @@
                     
                     <!-- 文件上传 -->
                     <div class="rag-tab-content active" data-tab="file">
+                        <div class="form-group">
+                            <label>知识库名称 <span class="required">*</span></label>
+                            <input type="text" id="rag-file-name" placeholder="输入知识库名称，或留空使用文件名">
+                            <small class="form-hint">新建知识库的名称，保存后可在「关联资源」中选用</small>
+                        </div>
                         <div class="file-upload-area" id="rag-file-dropzone">
                             <i class="fas fa-cloud-upload-alt"></i>
                             <p>拖拽文件到此处，或点击选择文件</p>
@@ -2209,15 +2363,50 @@
             const activeTab = dialog.querySelector('.rag-tab.active').dataset.tab;
             
             if (activeTab === 'file' && selectedFiles.length > 0) {
+                const ragName = dialog.querySelector('#rag-file-name')?.value?.trim()
+                    || (selectedFiles[0].name ? selectedFiles[0].name.replace(/\.[^.]+$/, '') : '导入的文档') + '_' + Date.now();
+                if (!window.AppState.resources) window.AppState.resources = {};
+                if (!window.AppState.resources.rag) window.AppState.resources.rag = [];
+                const newRagId = 'rag_' + Date.now();
+                const newRAG = {
+                    id: newRagId,
+                    name: ragName,
+                    description: '由上传文件创建',
+                    category: '其他',
+                    documents: [],
+                    protocol: 'rag://1.0',
+                    supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'html', 'url'],
+                    enabled: true,
+                    createdAt: Date.now()
+                };
+                window.AppState.resources.rag.push(newRAG);
                 for (const file of selectedFiles) {
                     try {
-                        await window.RAGManager?.parseDocument?.(file);
+                        const docInfo = await window.RAGManager?.parseDocument?.(file);
+                        if (docInfo && docInfo.id) {
+                            if (!newRAG.documents) newRAG.documents = [];
+                            newRAG.documents.push({
+                                id: docInfo.id,
+                                name: docInfo.name,
+                                type: docInfo.type,
+                                size: docInfo.size,
+                                uploadedAt: docInfo.uploadedAt,
+                                status: docInfo.status,
+                                vectorized: !!docInfo.vectorized,
+                                addedAt: Date.now()
+                            });
+                        }
                     } catch (error) {
                         window.Logger?.error(`RAG 解析失败: ${file.name}`, error);
                     }
                 }
+                newRAG.documentCount = (newRAG.documents || []).length;
+                window.AIAgentApp?.saveState?.();
                 window.AIAgentUI?.renderResources?.('rag');
                 AIAgentUI.closeModal('add-rag-dialog');
+                window.AIAgentUI?.showToast?.('知识库已创建并保存', 'success');
+            } else if (activeTab === 'file' && selectedFiles.length === 0) {
+                window.AIAgentUI?.showToast?.('请先选择要导入的文件', 'error');
             } else if (activeTab === 'url') {
                 const url = dialog.querySelector('#rag-url-input').value.trim();
                 const name = dialog.querySelector('#rag-url-name').value.trim();
@@ -3104,11 +3293,12 @@ tags: code, review, quality
     }
 
     // ==================== 暴露到全局 ====================
-    window.AIAgentEvents = {
+        window.AIAgentEvents = {
         initUI,
         loadChat,
         updateCurrentChat,
         sendMessage,
+        sendQuickReply,
         createNewChat,
         selectSubAgent,
         openSettings,

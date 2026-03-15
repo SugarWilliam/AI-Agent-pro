@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.4.0 - UI渲染模块
+ * AI Agent Pro v8.5.0 - UI渲染模块
  * 未来科技感UI
  */
 
@@ -100,6 +100,7 @@
         if (messages.length === 0) {
             welcomeScreen.style.display = 'flex';
             messagesList.style.display = 'none';
+            renderDeliverableCollector?.();
             return;
         }
 
@@ -113,6 +114,77 @@
         });
 
         scrollToBottom();
+        renderDeliverableCollector?.();
+    }
+
+    /** 检测内容是否表示任务结束或需用户介入（用于推送/响铃提醒） */
+    function isTaskEnd(content) {
+        if (!content || typeof content !== 'string') return false;
+        const t = content.slice(-600);
+        return /完成度报告|任务完成|全部输出完成|输出后询问|上架指导|版权申请|纸质出版|运营指导|推广简介|请指示下一步/i.test(t);
+    }
+
+    /** 无人模式：自动发送或通知。若已勾选「后续步骤使用相同方式」则延迟自动发送；否则若任务结束则通知 */
+    function tryAutoConfirmOrNotify(content) {
+        const settings = window.AppState?.settings || {};
+        if (settings.autoConfirmEnabled && settings.autoConfirmReply) {
+            const reply = settings.autoConfirmReply;
+            setTimeout(() => {
+                if (window.AIAgentEvents?.sendQuickReply) {
+                    window.AIAgentEvents.sendQuickReply(reply);
+                }
+            }, 1500);
+        }
+    }
+
+    /** 任务结束或需用户确认时：推送通知 + 响铃 */
+    function notifyTaskEndOrNeedUser() {
+        if (window.AppState?.settings?.notifyOnTaskEnd !== false) {
+            try {
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('AI Agent Pro', { body: '任务已完成或需要您确认' });
+                }
+            } catch (_) {}
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.value = 880;
+                osc.type = 'sine';
+                gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.3);
+            } catch (_) {}
+        }
+    }
+
+    /** 检测内容是否包含需要用户确认/同意的提示 */
+    function needsConfirmationButtons(content) {
+        if (!content || typeof content !== 'string') return false;
+        const t = content.slice(-800);
+        return /请确认|请指示|是否确认|是否同意|是否满意|确认后|同意后|确认无误|请确认后再继续|请核对|确认后继续|回复[「『]继续[」』]|回复[「『]确认[」』]|请回复|下一步工作方向|是否继续|是否需要|是否要|请选择|请指示/i.test(t);
+    }
+
+    /** 构建确认/同意快捷按钮 HTML（含「后续步骤使用相同方式」勾选） */
+    function buildConfirmationButtonsHtml() {
+        const btns = [
+            { label: '【确认】', reply: '确认' },
+            { label: '【同意】', reply: '同意' },
+            { label: '【继续】', reply: '继续' },
+            { label: '【是】', reply: '是' },
+            { label: '【否】', reply: '否' }
+        ];
+        const autoEnabled = !!window.AppState?.settings?.autoConfirmEnabled;
+        return `<div class="confirm-quick-btns">
+            ${btns.map(b => `<button type="button" class="confirm-quick-btn" data-reply="${escapeHtml(b.reply)}" title="快捷回复：${escapeHtml(b.reply)}">${escapeHtml(b.label)}</button>`).join('')}
+            <label class="confirm-auto-mode-wrap" title="勾选后，后续确认步骤将自动按本次选择依次发送，进入无人模式">
+                <input type="checkbox" class="confirm-auto-mode-cb" id="confirm-auto-mode-cb" ${autoEnabled ? 'checked' : ''}>
+                <span class="confirm-auto-mode-text">后续步骤使用相同方式</span>
+            </label>
+        </div>`;
     }
 
     function createMessageElement(msg) {
@@ -196,7 +268,8 @@
             contentHtml = displayContent ? escapeHtml(displayContent).replace(/\n/g, '<br>') : '';
         }
 
-        // 左下角操作按钮（打开、导出、复制）- 使用data属性而不是onclick
+        const hasEpub = !isUser && hasEpubContent(msg.content) && !(msg.attachments || []).some(a => a?.type === 'epub');
+        const confirmBtns = !isUser && needsConfirmationButtons(msg.content) ? buildConfirmationButtonsHtml() : '';
         const leftActions = `
             <button class="msg-action-btn" data-action="open" data-message-id="${msg.id}" title="打开">
                 <i class="fas fa-external-link-alt"></i>
@@ -207,6 +280,7 @@
             <button class="msg-action-btn" data-action="copy" data-message-id="${msg.id}" title="复制">
                 <i class="fas fa-copy"></i>
             </button>
+            ${hasEpub ? `<button class="msg-action-btn msg-action-epub" data-action="generate-epub" data-message-id="${msg.id}" title="生成 EPUB 附件"><i class="fas fa-book"></i> EPUB</button>` : ''}
         `;
         
         // 右侧操作按钮 - 使用data属性而不是onclick
@@ -231,6 +305,7 @@
                 ${attachmentsHtml}
                 ${thinkingHtml}
                 <div class="message-body">${contentHtml}</div>
+                ${confirmBtns}
                 <div class="message-actions">
                     <div class="message-actions-left">${leftActions}</div>
                     <div class="message-actions-right">${rightActions}</div>
@@ -270,6 +345,7 @@
                     <div class="workflow-step-progress" id="workflow-step-progress" style="display: none;">
                         <div class="workflow-steps" id="workflow-steps"></div>
                     </div>
+                    <div class="workflow-step-indicator" id="workflow-step-indicator" style="display: none;"></div>
                     <div class="thinking-indicator">
                         <span class="thinking-dot"></span>
                         <span class="thinking-dot"></span>
@@ -289,6 +365,19 @@
         // 存储搜索状态和 Workflow 步骤元素的引用
         window.currentSearchStatusEl = div.querySelector('#search-status');
         window.currentWorkflowProgressEl = div.querySelector('#workflow-step-progress');
+        window.currentWorkflowStepIndicatorEl = div.querySelector('#workflow-step-indicator');
+
+        // 唐宋文化：创建时即展示工作流程（全部待完成）+ 步骤指示条从 Step 1 开始
+        if (window.AppState?.currentSubAgent === 'creative') {
+            const steps = (window.AppState?.subAgents?.creative?.workflowSteps || []).map(s => ({
+                ...s,
+                status: 'pending'
+            }));
+            if (steps.length > 0) {
+                showCreativeWorkflowProgress(steps);
+                updateWorkflowStepIndicator(1, steps.length, steps[0]?.label || '', steps);
+            }
+        }
 
         scrollToBottom();
     }
@@ -408,12 +497,184 @@
         }
     }
 
+    /** 唐宋文化工作流程：分步展示（参考 Cursor 任务分解），步骤状态 pending|in_progress|done */
+    function showCreativeWorkflowProgress(stepsWithStatus) {
+        window.currentCreativeStepsWithStatus = stepsWithStatus;
+        if (!window.currentWorkflowProgressEl) return;
+        const container = window.currentWorkflowProgressEl.querySelector('#workflow-steps');
+        if (!container) return;
+        window.currentWorkflowProgressEl.style.display = 'block';
+        window.currentWorkflowProgressEl.classList.add('creative-workflow');
+        const thinkingIndicator = currentStreamMessageEl?.querySelector('.thinking-indicator');
+        if (thinkingIndicator) thinkingIndicator.style.display = 'none';
+        container.innerHTML = stepsWithStatus.map((s, i) => {
+            let icon = '<i class="far fa-circle search-step-icon"></i>';
+            let statusText = '';
+            if (s.status === 'done') {
+                icon = '<i class="fas fa-check-circle search-step-icon search-step-done" title="已完成"></i>';
+                statusText = '<span class="workflow-step-status-badge workflow-step-done-badge">✔ 已完成</span>';
+            } else if (s.status === 'in_progress') {
+                icon = '<i class="fas fa-spinner fa-spin search-step-icon search-step-spin" title="当前正在处理"></i>';
+                statusText = '<span class="workflow-step-status-badge workflow-step-current-badge">● 当前正在处理</span>';
+            } else {
+                statusText = '<span class="workflow-step-status-badge workflow-step-pending-badge">○ 待完成</span>';
+            }
+            const descHtml = s.desc ? `<div class="workflow-step-desc">${escapeHtml(s.desc)}</div>` : '';
+            return `<div class="workflow-step-item workflow-step-${s.status}" data-step-index="${i}">
+                ${icon}<div class="workflow-step-content">
+                    <div class="workflow-step-label-btn"><span class="workflow-step-label">步骤 ${i + 1}/${stepsWithStatus.length}：${escapeHtml(s.label)}</span> ${statusText}</div>
+                    ${descHtml}
+                </div>
+            </div>`;
+        }).join('');
+        scrollToBottom();
+        syncCreativeWorkflowPreviewStatus(stepsWithStatus);
+    }
+
+    /** 同步唐宋文化预览面板的步骤状态（输入区上方） */
+    function syncCreativeWorkflowPreviewStatus(stepsWithStatus) {
+        const stepsEl = document.getElementById('creative-workflow-steps-preview');
+        if (!stepsEl || !stepsWithStatus?.length) return;
+        const total = stepsWithStatus.length;
+        stepsEl.innerHTML = stepsWithStatus.map((s, i) => {
+            let statusBadge = '';
+            if (s.status === 'done') statusBadge = '<span class="creative-preview-done">✔</span>';
+            else if (s.status === 'in_progress') statusBadge = '<span class="creative-preview-current">●</span>';
+            else statusBadge = '<span class="creative-preview-pending">○</span>';
+            return `<div class="creative-workflow-preview-step creative-preview-${s.status}">
+                <span class="creative-workflow-preview-num">${i + 1}</span>
+                <div class="creative-workflow-preview-content">
+                    <span class="creative-workflow-preview-label">步骤 ${i + 1}/${total}：${escapeHtml(s.label)}</span>
+                    ${s.desc ? `<span class="creative-workflow-preview-desc">${escapeHtml(s.desc)}</span>` : ''}
+                </div>
+                ${statusBadge}
+            </div>`;
+        }).join('');
+    }
+
+    function parseCreativeStepMarker(content) {
+        if (!content || typeof content !== 'string') return [];
+        const found = [];
+        const re = /\[唐宋文化步骤\s*:\s*(\d+)\]/g;
+        let m;
+        while ((m = re.exec(content)) !== null) {
+            const n = parseInt(m[1], 10);
+            if (n >= 1 && n <= 99 && !found.includes(n)) found.push(n);
+        }
+        return found;
+    }
+
+    /** 当 AI 未输出 [唐宋文化步骤:N] 时，根据内容关键词推断当前步骤（兜底逻辑） */
+    function inferCreativeStepFromContent(content) {
+        if (!content || typeof content !== 'string' || content.length < 50) return 0;
+        const t = content;
+        // 步骤1 优先：开头常出现「理解」「通读」等，避免误判为步骤2
+        if (/理解|诊断|冗余|歧义|章节问题|编排建议|深度理解|通读/.test(t) && content.length < 500) return 1;
+        // 步骤2+ 需足够内容才推断，避免首句「结构编排与内容润色」即跳步
+        if (content.length < 400) return 1;
+        // 按步骤优先级匹配
+        if (/结构编排|目录层级|卒节|三审三阅|润色|章节划分/.test(t)) return 2;
+        if (/排版|版式|字体层级|布局设计|开本|版心/.test(t)) return 3;
+        if (/合规|风险审查|侵权|查重|免责声明|AI声明/.test(t)) return 4;
+        if (/输出前确认|作者.*邮箱|出版社|书号|元信息确认/.test(t)) return 5;
+        if (/元信息一致性|全书元信息|自动修正/.test(t)) return 6;
+        if (/摘要|书评|200字/.test(t)) return 7;
+        if (/content\.opf|EPUB|打包|chapter-\d+\.xhtml|manifest|spine/.test(t)) return 8;
+        if (/全文核对|MECE.*核对|完成度报告|完成度评分|核对校验|文件产物.*校验/.test(t)) return 9;
+        if (/输出后询问|上架|版权|纸质|运营指导|推广简介档|H5.*推广/.test(t)) return 10;
+        if (/理解|诊断|冗余|歧义|章节问题|编排建议|深度理解/.test(t)) return 1;
+        return 0;
+    }
+
+    function stripCreativeStepMarker(content) {
+        if (!content || typeof content !== 'string') return content;
+        return content.replace(/\[唐宋文化步骤\s*:\s*\d+\]/g, '').replace(/\n{3,}/g, '\n\n').trim();
+    }
+
+    /** 更新唐宋文化工作流程预览面板（选中唐宋文化时显示在输入区上方） */
+    function updateCreativeWorkflowPreview() {
+        const panel = document.getElementById('creative-workflow-preview');
+        const stepsEl = document.getElementById('creative-workflow-steps-preview');
+        if (!panel || !stepsEl) return;
+        const isCreative = window.AppState?.currentSubAgent === 'creative';
+        if (!isCreative) {
+            panel.style.display = 'none';
+            return;
+        }
+        const steps = window.AppState?.subAgents?.creative?.workflowSteps || [];
+        if (steps.length === 0) {
+            panel.style.display = 'none';
+            return;
+        }
+        panel.style.display = 'block';
+        stepsEl.innerHTML = steps.map((s, i) => `
+            <div class="creative-workflow-preview-step">
+                <span class="creative-workflow-preview-num">${i + 1}</span>
+                <div class="creative-workflow-preview-content">
+                    <span class="creative-workflow-preview-label">${escapeHtml(s.label)}</span>
+                    ${s.desc ? `<span class="creative-workflow-preview-desc">${escapeHtml(s.desc)}</span>` : ''}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    /** 更新步骤指示条：含所有步骤预览 + 当前 Step x / total 醒目展示 */
+    function updateWorkflowStepIndicator(currentStep, totalSteps, label, allSteps) {
+        const el = window.currentWorkflowStepIndicatorEl;
+        if (!el) return;
+        if (currentStep < 1 || currentStep > totalSteps) {
+            el.style.display = 'none';
+            return;
+        }
+        el.style.display = 'block';
+        el.className = 'workflow-step-indicator workflow-step-indicator-active';
+        el.innerHTML = `<div class="workflow-step-indicator-main"><span class="workflow-step-indicator-badge">Step ${currentStep} / ${totalSteps}</span><span class="workflow-step-indicator-label">${escapeHtml(label || '')}</span></div>`;
+    }
+
+    /** 创建唐宋文化专用的流式回调：解析步骤标记、更新进度、过滤标记后传给原始 streamMessageUpdate */
+    function createCreativeStreamWrapper(originalStreamUpdate) {
+        const steps = (window.AppState?.subAgents?.creative?.workflowSteps || []).map(s => ({
+            ...s,
+            status: 'pending'
+        }));
+        let lastStep = 0;
+        const totalSteps = steps.length;
+        return function creativeStreamUpdate(content) {
+            const stepNums = parseCreativeStepMarker(content);
+            if (stepNums.length > 0) {
+                const maxStep = Math.max(...stepNums);
+                if (maxStep > lastStep) lastStep = maxStep;
+            } else {
+                // 兜底：AI 未输出标记时，根据内容关键词推断当前步骤（推断在步骤 N 即 1..N-1 已完成）
+                const inferred = inferCreativeStepFromContent(content);
+                if (inferred > 0) lastStep = Math.max(lastStep, inferred - 1);
+            }
+            // 已解析 [唐宋文化步骤:N] 表示步骤 1..N 已完成，步骤 N+1 进行中
+            const stepsWithStatus = steps.map((s, i) => ({
+                ...s,
+                status: i + 1 <= lastStep ? 'done' : (i + 1 === lastStep + 1 ? 'in_progress' : 'pending')
+            }));
+            showCreativeWorkflowProgress(stepsWithStatus);
+            const currentStepNum = lastStep + 1;
+            const currentLabel = currentStepNum <= totalSteps ? steps[currentStepNum - 1]?.label : '';
+            updateWorkflowStepIndicator(currentStepNum, totalSteps, currentLabel, steps);
+            const stripped = stripCreativeStepMarker(content);
+            if (originalStreamUpdate) originalStreamUpdate(stripped);
+        };
+    }
+
+    let _deliverableRefreshTimer = null;
     function streamMessageUpdate(content) {
         if (!currentStreamContentEl) return;
 
         const thinkingIndicator = currentStreamMessageEl?.querySelector('.thinking-indicator');
         if (thinkingIndicator) {
             thinkingIndicator.style.display = 'none';
+        }
+
+        if (content && /```(?:content\.opf|chapter-\d+\.xhtml|copyright\.xhtml)/i.test(content)) {
+            clearTimeout(_deliverableRefreshTimer);
+            _deliverableRefreshTimer = setTimeout(() => renderDeliverableCollector?.(content), 500);
         }
 
         // 达到字数上限时切换新气泡，防止长上下文断开
@@ -475,6 +736,8 @@
 
         // 操作按钮仅加在最后一个气泡
         if (messageBody) {
+            const aggContent = (getAggregatedEpubContent?.() || '') + '\n\n---\n\n' + (finalContent || '');
+            const hasEpub = hasEpubContent(aggContent);
             const leftActions = `
                 <button class="msg-action-btn" data-action="open" data-message-id="${msgId}" title="打开">
                     <i class="fas fa-external-link-alt"></i>
@@ -485,6 +748,7 @@
                 <button class="msg-action-btn" data-action="copy" data-message-id="${msgId}" title="复制">
                     <i class="fas fa-copy"></i>
                 </button>
+                ${hasEpub ? `<button class="msg-action-btn msg-action-epub" data-action="generate-epub" data-message-id="${msgId}" title="生成 EPUB 附件（需用户确认）"><i class="fas fa-book"></i> EPUB</button>` : ''}
             `;
             const rightActions = `
                 <button class="msg-action-btn" data-action="speak" data-message-id="${msgId}" title="语音播放"><i class="fas fa-volume-up"></i></button>
@@ -503,6 +767,27 @@
                 <div class="message-actions-right">${rightActions}</div>
             `;
             messageBody.appendChild(actionsDiv);
+            if (needsConfirmationButtons(finalContent)) {
+                const autoEnabled = !!window.AppState?.settings?.autoConfirmEnabled;
+                const confirmEl = document.createElement('div');
+                confirmEl.className = 'confirm-quick-btns';
+                confirmEl.innerHTML = [
+                    { label: '【确认】', reply: '确认' },
+                    { label: '【同意】', reply: '同意' },
+                    { label: '【继续】', reply: '继续' },
+                    { label: '【是】', reply: '是' },
+                    { label: '【否】', reply: '否' }
+                ].map(b => `<button type="button" class="confirm-quick-btn" data-reply="${escapeHtml(b.reply)}" title="快捷回复：${escapeHtml(b.reply)}">${escapeHtml(b.label)}</button>`).join('') +
+                    `<label class="confirm-auto-mode-wrap" title="勾选后，后续确认步骤将自动按本次选择依次发送，进入无人模式">
+                        <input type="checkbox" class="confirm-auto-mode-cb" ${autoEnabled ? 'checked' : ''}>
+                        <span class="confirm-auto-mode-text">后续步骤使用相同方式</span>
+                    </label>`;
+                messageBody.insertBefore(confirmEl, actionsDiv);
+                tryAutoConfirmOrNotify(finalContent);
+            }
+            if (isTaskEnd(finalContent)) {
+                notifyTaskEndOrNeedUser();
+            }
         }
 
         // 为所有续写气泡统一设置 messageId，便于复制/删除时识别整条消息
@@ -530,6 +815,29 @@
 
     // ==================== EPUB 解析与打包 ====================
     /**
+     * 检查内容是否包含可打包的 EPUB 结构（opf + 至少一章）
+     * @param {string} content
+     * @returns {boolean}
+     */
+    function hasEpubContent(content) {
+        if (!content || typeof content !== 'string') return false;
+        const blocks = extractEpubBlocksFromContent(content);
+        return !!(blocks.opf && Object.keys(blocks.chapters).length > 0);
+    }
+
+    /**
+     * 聚合当前对话中所有 AI 消息内容，用于多轮对话时 EPUB 完整打包
+     * @returns {string}
+     */
+    function getAggregatedEpubContent() {
+        const messages = window.AppState?.messages || [];
+        return messages
+            .filter(m => m?.role === 'assistant' && m?.content)
+            .map(m => String(m.content))
+            .join('\n\n---\n\n');
+    }
+
+    /**
      * 从消息内容中解析 EPUB 相关代码块
      * @param {string} content - 消息正文
      * @returns {{ opf: string, toc: string, nav: string, css: string, chapters: Record<string, string> }}
@@ -553,19 +861,91 @@
                 result.toc = code;
             } else if (lang === 'nav.xhtml' || (lang === 'nav' && /nav|toc|epub/i.test(code))) {
                 result.nav = code;
-            } else if (lang === 'style.css' || (lang === 'css' && /@page|epub|chapter|body\s*\{/i.test(code))) {
+            } else if (lang === 'style.css' || lang === 'main.css' || (lang === 'css' && /@page|epub|chapter|body\s*\{/i.test(code))) {
                 result.css = code;
-            } else if (/^chapter-\d+(\.xhtml)?$/i.test(lang)) {
-                const key = /\.xhtml$/i.test(lang) ? lang : lang + '.xhtml';
-                result.chapters[key] = code;
+            } else if (/^chapter-\d+(\.xhtml)?$/i.test(lang) || /^chat\d+\.xhtml$/i.test(lang)) {
+                const t = code.slice(0, 800);
+                var isH5Promo = /<html|<!DOCTYPE/i.test(t) && /推广简介|推广页|H5|单页.*推广|购买.*入口|阅读.*入口|meta\s+name=["']viewport["']|推广.*档|H5.*格式|响应式.*单页|社交分享/i.test(t);
+                if (!isH5Promo) {
+                    var contentKey = null;
+                    if (/免责声明|免责条款|投资有风险|不构成.*建议|仅供参考/i.test(t)) contentKey = 'disclaimer.xhtml';
+                    else if (/AI\s*贡献声明|AI\s*辅助创作|人工智能.*参与|机器.*生成/i.test(t)) contentKey = 'ai-contribution.xhtml';
+                    else if (/版权页|版权声明|版权所有|ISBN|CIP\s*数据/i.test(t) && !/章节|第[一二三四五六七八九十\d]+章/.test(t)) contentKey = 'copyright.xhtml';
+                    if (contentKey) {
+                        result.chapters[contentKey] = code;
+                    } else {
+                        var key;
+                        if (/^chapter-\d+(\.xhtml)?$/i.test(lang)) {
+                            key = /\.xhtml$/i.test(lang) ? lang : lang + '.xhtml';
+                        } else {
+                            var chatMatch = lang.match(/chat(\d+)\.xhtml/i);
+                            var num = chatMatch ? chatMatch[1] : String(Object.keys(result.chapters).length + 1);
+                            key = 'chapter-' + num.padStart(2, '0') + '.xhtml';
+                        }
+                        var existing = result.chapters[key];
+                        if (existing && /<body|<\/body>/i.test(code)) {
+                            var prevBody = existing.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                            var newBody = code.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                            if (prevBody && newBody) {
+                                var bodyAttrMatch = existing.match(/<body([^>]*)>/i);
+                                result.chapters[key] = existing.replace(/<body[^>]*>[\s\S]*?<\/body>/i, '<body' + (bodyAttrMatch ? bodyAttrMatch[1] : '') + '>' + prevBody[1].trim() + '\n' + newBody[1].trim() + '</body>');
+                            } else {
+                                result.chapters[key] = code;
+                            }
+                        } else {
+                            result.chapters[key] = code;
+                        }
+                    }
+                }
             } else if (/^appendix-\d+(\.xhtml)?$/i.test(lang)) {
                 const key = /\.xhtml$/i.test(lang) ? lang : lang + '.xhtml';
-                result.chapters[key] = code;
+                const existing = result.chapters[key];
+                if (existing && /<body|<\/body>/i.test(code)) {
+                    const prevBody = existing.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                    const newBody = code.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                    if (prevBody && newBody) {
+                        const bodyAttrMatch = existing.match(/<body([^>]*)>/i);
+                        const merged = existing.replace(/<body[^>]*>[\s\S]*?<\/body>/i, '<body' + (bodyAttrMatch ? bodyAttrMatch[1] : '') + '>' + prevBody[1].trim() + '\n' + newBody[1].trim() + '</body>');
+                        result.chapters[key] = merged;
+                    } else {
+                        result.chapters[key] = code;
+                    }
+                } else {
+                    result.chapters[key] = code;
+                }
+            } else if (lang === 'titlepage.xhtml' || lang === 'titlepage') {
+                result.chapters['titlepage.xhtml'] = code;
             } else if (lang === 'copyright.xhtml' || lang === 'copyright') {
                 result.chapters['copyright.xhtml'] = code;
+            } else if (lang === 'disclaimer.xhtml' || lang === 'disclaimer') {
+                result.chapters['disclaimer.xhtml'] = code;
+            } else if (lang === 'ai-contribution.xhtml' || lang === 'ai-contribution') {
+                result.chapters['ai-contribution.xhtml'] = code;
+            } else if (lang === 'epilogue.xhtml' || lang === 'epilogue') {
+                result.chapters['epilogue.xhtml'] = code;
+            } else if (lang === 'acknowledgments.xhtml' || lang === 'acknowledgments') {
+                result.chapters['acknowledgments.xhtml'] = code;
             } else if (lang === 'xhtml' && /<html|<!DOCTYPE/i.test(code)) {
-                const fallback = 'chapter-' + String(Object.keys(result.chapters).length + 1).padStart(2, '0') + '.xhtml';
-                result.chapters[fallback] = code;
+                const t = code.slice(0, 800);
+                var isH5Xhtml = /推广简介|推广页|H5|单页.*推广|购买.*入口|阅读.*入口|meta\s+name=["']viewport["']|推广.*档|H5.*格式|响应式.*单页|社交分享/i.test(t);
+                if (!isH5Xhtml) {
+                    var key = null;
+                    if (/免责声明|免责条款|投资有风险|不构成.*建议|仅供参考/i.test(t)) key = 'disclaimer.xhtml';
+                    else if (/AI\s*贡献声明|AI\s*辅助创作|人工智能.*参与|机器.*生成/i.test(t)) key = 'ai-contribution.xhtml';
+                    else if (/版权页|版权声明|版权所有|ISBN|CIP\s*数据/i.test(t) && !/章节|第[一二三四五六七八九十\d]+章/.test(t)) key = 'copyright.xhtml';
+                    if (key) {
+                        result.chapters[key] = code;
+                    } else {
+                        var existingChapters = Object.keys(result.chapters).filter(function(k) { return /^chapter-\d+\.xhtml$/.test(k); });
+                        var maxNum = 0;
+                        for (var i = 0; i < existingChapters.length; i++) {
+                            var match = existingChapters[i].match(/\d+/);
+                            var n = match ? parseInt(match[0], 10) : 0;
+                            if (n > maxNum) maxNum = n;
+                        }
+                        result.chapters['chapter-' + String(maxNum + 1).padStart(2, '0') + '.xhtml'] = code;
+                    }
+                }
             }
         }
 
@@ -584,12 +964,203 @@
         return result;
     }
 
+    /** 根据文件名返回简要说明 */
+    function getFileDescription(filename) {
+        if (!filename) return '';
+        const map = {
+            'content.opf': '元数据',
+            'toc.ncx': '目录',
+            'nav.xhtml': '导航',
+            'style.css': '样式表',
+            'titlepage.xhtml': '扉页',
+            'copyright.xhtml': '版权页',
+            'disclaimer.xhtml': '免责声明',
+            'ai-contribution.xhtml': 'AI贡献声明',
+            'epilogue.xhtml': '后记',
+            'acknowledgments.xhtml': '感谢'
+        };
+        if (map[filename]) return map[filename];
+        const chMatch = filename.match(/^chapter-(\d+)\.xhtml$/i);
+        if (chMatch) return '正文第' + parseInt(chMatch[1], 10) + '章';
+        const apMatch = filename.match(/^appendix-(\d+)\.xhtml$/i);
+        if (apMatch) return '附录' + parseInt(apMatch[1], 10);
+        return '';
+    }
+
+    /**
+     * 从当前对话消息中收集可下载的文件产物（扁平列表）
+     * @param {string} [contentOverride] - 可选，流式输出时的累积内容，用于实时刷新
+     * @returns {{ filename: string, content: string, ext: string }[]}
+     */
+    function collectDeliverableFilesFromMessages(contentOverride) {
+        const agg = contentOverride || getAggregatedEpubContent?.() || '';
+        if (!agg) return [];
+        const blocks = extractEpubBlocksFromContent(agg);
+        const list = [];
+        if (blocks.opf) list.push({ filename: 'content.opf', content: blocks.opf, ext: 'opf' });
+        if (blocks.toc) list.push({ filename: 'toc.ncx', content: blocks.toc, ext: 'ncx' });
+        if (blocks.nav) list.push({ filename: 'nav.xhtml', content: blocks.nav, ext: 'xhtml' });
+        if (blocks.css) list.push({ filename: 'style.css', content: blocks.css, ext: 'css' });
+        const prefixOrder = ['titlepage.xhtml', 'copyright.xhtml', 'disclaimer.xhtml', 'ai-contribution.xhtml'];
+        const suffixOrder = ['epilogue.xhtml', 'acknowledgments.xhtml'];
+        const chapterKeys = Object.keys(blocks.chapters || {}).sort((a, b) => {
+            const aPrefix = prefixOrder.indexOf(a);
+            const bPrefix = prefixOrder.indexOf(b);
+            const aSuffix = suffixOrder.indexOf(a);
+            const bSuffix = suffixOrder.indexOf(b);
+            if (aPrefix >= 0 && bPrefix >= 0) return aPrefix - bPrefix;
+            if (aPrefix >= 0) return -1;
+            if (bPrefix >= 0) return 1;
+            if (aSuffix >= 0 && bSuffix >= 0) return aSuffix - bSuffix;
+            if (aSuffix >= 0) return 1;
+            if (bSuffix >= 0) return -1;
+            const aNum = parseInt(a.replace(/\D/g, ''), 10) || 0;
+            const bNum = parseInt(b.replace(/\D/g, ''), 10) || 0;
+            if (aNum !== bNum) return aNum - bNum;
+            return String(a).localeCompare(b);
+        });
+        chapterKeys.forEach(k => {
+            const content = blocks.chapters[k];
+            if (content) list.push({ filename: k, content, ext: 'xhtml' });
+        });
+        return list;
+    }
+
+    /**
+     * 渲染文件产物收集面板（输入框上方），支持复选批量下载
+     * @param {string} [streamContent] - 可选，流式输出时的累积内容，用于实时刷新
+     */
+    function renderDeliverableCollector(streamContent) {
+        const panel = document.getElementById('deliverable-collector');
+        const listEl = document.getElementById('deliverable-collector-list');
+        const downloadBtn = document.getElementById('deliverable-collector-download-btn');
+        if (!panel || !listEl || !downloadBtn) return;
+        const agg = streamContent ? (getAggregatedEpubContent?.() || '') + '\n\n---\n\n' + (streamContent || '') : null;
+        const files = collectDeliverableFilesFromMessages?.(agg) || [];
+        if (files.length === 0) {
+            panel.style.display = 'none';
+            return;
+        }
+        panel.style.display = 'block';
+        listEl.innerHTML = files.map((f, i) => {
+            const label = getFileDescription(f.filename);
+            const descHtml = label ? `<span class="deliverable-collector-desc">${escapeHtml(label)}</span>` : '';
+            return `<label class="deliverable-collector-item" data-index="${i}">
+                <input type="checkbox" class="deliverable-collector-cb" data-index="${i}">
+                <span class="deliverable-collector-custom-cb"></span>
+                ${descHtml}<span class="deliverable-collector-filename" title="${escapeHtml(f.filename)}">${escapeHtml(f.filename)}</span>
+            </label>`;
+        }).join('');
+        const countEl = document.getElementById('deliverable-collector-count');
+        if (countEl) countEl.textContent = `${files.length} 个文件`;
+        downloadBtn.disabled = false;
+        const selectAllCb = document.getElementById('deliverable-collector-select-all-cb');
+        if (selectAllCb) {
+            selectAllCb.checked = false;
+            selectAllCb.indeterminate = false;
+            selectAllCb.onchange = () => {
+                const checked = selectAllCb.checked;
+                listEl.querySelectorAll('.deliverable-collector-cb').forEach(cb => { cb.checked = checked; });
+            };
+        }
+        listEl.querySelectorAll('.deliverable-collector-cb').forEach(cb => {
+            cb.onchange = () => {
+                if (!selectAllCb) return;
+                const total = listEl.querySelectorAll('.deliverable-collector-cb').length;
+                const checked = listEl.querySelectorAll('.deliverable-collector-cb:checked').length;
+                selectAllCb.checked = checked === total;
+                selectAllCb.indeterminate = checked > 0 && checked < total;
+            };
+        });
+        downloadBtn.onclick = async () => {
+            const checked = listEl.querySelectorAll('.deliverable-collector-cb:checked');
+            if (checked.length === 0) {
+                showToast?.('请至少勾选一个文件', 'error');
+                return;
+            }
+            const currentFiles = collectDeliverableFilesFromMessages?.() || [];
+            const mimeMap = { md: 'text/markdown;charset=utf-8', markdown: 'text/markdown;charset=utf-8', txt: 'text/plain;charset=utf-8', html: 'text/html;charset=utf-8', xhtml: 'application/xhtml+xml;charset=utf-8', css: 'text/css;charset=utf-8', ncx: 'application/x-dtbncx+xml;charset=utf-8', opf: 'application/oebps-package+xml;charset=utf-8' };
+            for (let i = 0; i < checked.length; i++) {
+                const cb = checked[i];
+                const idx = parseInt(cb.dataset.index, 10);
+                const f = currentFiles[idx];
+                if (!f || !f.content) continue;
+                const isXmlType = ['opf', 'ncx', 'xhtml'].includes(f.ext);
+                const blobContent = isXmlType ? f.content : '\uFEFF' + f.content;
+                const blob = new Blob([blobContent], { type: mimeMap[f.ext] || 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = f.filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                if (i < checked.length - 1) await new Promise(r => setTimeout(r, 150));
+            }
+            showToast?.(`已下载 ${checked.length} 个文件`, 'success');
+        };
+    }
+
     /**
      * 将解析结果打包为 EPUB 并返回附件对象
      * @param {string} content - 消息正文
      * @param {'standard'|'wechat'} epubType - 标准版或微信专版
      * @returns {Promise<{ type: string, name: string, data: string, size: number }|null>}
      */
+    function extractTitleFromOpf(opfStr) {
+        if (!opfStr) return null;
+        const m = opfStr.match(/<dc:title[^>]*>([^<]+)<\/dc:title>/i) || opfStr.match(/<meta\s+name="dc:title"\s+content="([^"]+)"/i);
+        return m ? m[1].trim() : null;
+    }
+
+    function extractAuthorFromOpf(opfStr) {
+        if (!opfStr) return null;
+        const m = opfStr.match(/<dc:creator[^>]*>([^<]+)<\/dc:creator>/i) || opfStr.match(/<meta\s+name="dc:creator"\s+content="([^"]+)"/i);
+        return m ? m[1].trim() : null;
+    }
+
+    /** 过滤 opf：移除 manifest/spine 中不存在的文件引用，避免章节错位、页数错误 */
+    function filterOpfToAvailableFiles(opfStr, haveHrefs) {
+        if (!opfStr || !haveHrefs || haveHrefs.size === 0) return opfStr;
+        const have = (href) => {
+            const base = (href || '').split('/').pop();
+            return haveHrefs.has(base) || haveHrefs.has(href);
+        };
+        let out = opfStr;
+        const idToHref = {};
+        out = out.replace(/<item\s+([^>]+)id=["']([^"']+)["']([^>]*)href=["']([^"']+)["']([^>]*)>/gi, (m, a, id, b, href, c) => {
+            const base = href.split('/').pop();
+            if (have(base) || have(href)) {
+                idToHref[id] = href;
+                return m;
+            }
+            return '';
+        });
+        out = out.replace(/<item\s+([^>]+)href=["']([^"']+)["']([^>]*)id=["']([^"']+)["']([^>]*)>/gi, (m, a, href, b, id, c) => {
+            const base = href.split('/').pop();
+            if (have(base) || have(href)) {
+                idToHref[id] = href;
+                return m;
+            }
+            return '';
+        });
+        out = out.replace(/<itemref\s+[^>]*idref=["']([^"']+)["'][^>]*\/?>/gi, (m, idref) => {
+            return idToHref[idref] ? m : '';
+        });
+        return out;
+    }
+
+    /** 生成 EPUB 文件名：书名_作者[-后缀].epub，非法字符替换为下划线 */
+    function buildEpubFilename(title, author, epubType) {
+        const t = (title || '电子书').replace(/[/\\:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 50);
+        const a = (author || '未知作者').replace(/[/\\:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 30);
+        const base = `${t}_${a}`;
+        const suffixMap = { standard: '', wechat: '-微信读书', douban: '-豆瓣阅读', kindle: '-Kindle' };
+        const suffix = suffixMap[epubType] || '';
+        return `${base}${suffix}.epub`;
+    }
+
     async function buildEpubAsAttachment(content, epubType) {
         if (typeof JSZip === 'undefined') return null;
         const blocks = extractEpubBlocksFromContent(content);
@@ -597,7 +1168,10 @@
 
         const zip = new JSZip();
         const opfPath = 'OEBPS/content.opf';
-        const suffix = epubType === 'wechat' ? '-微信读书' : '';
+        const validTypes = ['standard', 'wechat', 'douban', 'kindle'];
+        const type = validTypes.includes(epubType) ? epubType : 'standard';
+        const haveHrefs = new Set(Object.keys(blocks.chapters).map(k => k.replace(/^.*\//, '')));
+        let opfContent = filterOpfToAvailableFiles(blocks.opf, haveHrefs);
 
         zip.file('mimetype', 'application/epub+zip', { compression: 'STORE' });
         zip.file('META-INF/container.xml', `<?xml version="1.0" encoding="UTF-8"?>
@@ -607,16 +1181,70 @@
   </rootfiles>
 </container>`);
 
+        const DEFAULT_MOBILE_CSS = 'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:17px;line-height:1.75;margin:1em;max-width:100%;-webkit-text-size-adjust:100%}p{margin:1em 0;text-indent:2em}h1,h2,h3{font-weight:600;margin:0.75em 0}table{border-collapse:collapse;width:100%;overflow-x:auto}img{max-width:100%;height:auto}';
         const files = {};
         files[opfPath] = blocks.opf;
-        if (blocks.toc) files['OEBPS/toc.ncx'] = blocks.toc;
-        if (blocks.nav) files['OEBPS/nav.xhtml'] = blocks.nav;
-        if (blocks.css) files['OEBPS/style.css'] = blocks.css;
+        const chapterHrefs = Object.keys(blocks.chapters).filter(k => /\.xhtml$/.test(k));
+        const fallbackTocNcx = `<?xml version="1.0" encoding="UTF-8"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+  <head><meta name="dtb:uid" content="epub-build-${Date.now()}"/></head>
+  <docTitle><text>电子书</text></docTitle>
+  <navMap>
+${chapterHrefs.map((href, i) => `    <navPoint id="nav-${i + 1}" playOrder="${i + 1}"><navLabel><text>${href.replace(/\.xhtml$/i, '')}</text></navLabel><content src="${href}"/></navPoint>`).join('\n')}
+  </navMap>
+</ncx>`;
+        files['OEBPS/toc.ncx'] = blocks.toc || fallbackTocNcx;
+        if (blocks.nav) files['OEBPS/nav.xhtml'] = ensureXhtmlStructure(blocks.nav);
+        files['OEBPS/style.css'] = blocks.css || DEFAULT_MOBILE_CSS;
 
-        for (const [href, body] of Object.entries(blocks.chapters)) {
-            const path = href.includes('/') ? 'OEBPS/' + href : 'OEBPS/Text/' + href;
-            files[path] = body;
+        /** 规范化 XHTML 结构，确保 EPUB 阅读器能正确解析（XML 声明、DOCTYPE、UTF-8 编码） */
+        function ensureXhtmlStructure(body) {
+            if (!body || typeof body !== 'string') return body;
+            let s = body.trim().replace(/^\uFEFF/, ''); // 移除 BOM
+            const xmlDecl = '<?xml version="1.0" encoding="UTF-8"?>';
+            if (!/<\?xml\s+version=/i.test(s)) {
+                s = xmlDecl + '\n' + s;
+            } else if (!/encoding=["']UTF-8["']/i.test(s)) {
+                s = s.replace(/<\?xml[^?]*\?>/i, xmlDecl);
+            }
+            if (!/<!DOCTYPE\s+html/i.test(s)) {
+                s = s.replace(/^(<\?xml[^?]*\?>\s*)/i, '$1<!DOCTYPE html>\n');
+                if (!/<!DOCTYPE\s+html/i.test(s)) s = xmlDecl + '\n<!DOCTYPE html>\n' + s.replace(/^<\?xml[^?]*\?>\s*/i, '');
+            }
+            return s;
         }
+        for (const [href, body] of Object.entries(blocks.chapters)) {
+            const path = 'OEBPS/' + (href.startsWith('Text/') ? href : href);
+            files[path] = ensureXhtmlStructure(body);
+        }
+
+        const title = extractTitleFromOpf(blocks.opf);
+        const author = extractAuthorFromOpf(blocks.opf);
+        // 若 opf 中无字数，自动计算并注入
+        if (!/word-count|字数|character-count/i.test(opfContent)) {
+            let totalChars = 0;
+            for (const body of Object.values(blocks.chapters)) {
+                const text = (body || '').replace(/<[^>]+>/g, '').replace(/\s+/g, '');
+                totalChars += text.length;
+            }
+            const wan = (totalChars / 10000).toFixed(1);
+            const metaWordCount = `  <meta name="word-count" content="${totalChars}"/>\n  <meta name="word-count-wan" content="约${wan}万字"/>`;
+            opfContent = opfContent.replace(/(<\/metadata>)/i, metaWordCount + '\n  $1');
+        }
+        if (window.BookCover?.getDefaultCoverBlob) {
+            try {
+                // 使用参考封面时必须在打包时叠加书名、作者，不得直接使用原图
+                const coverBlob = await window.BookCover.getDefaultCoverBlob(title, author ? `${author} · 著` : '');
+                if (coverBlob) {
+                    zip.file('OEBPS/cover.jpg', coverBlob, { binary: true });
+                    if (!/id=["']cover["']|href=["']cover\.jpg["']/i.test(opfContent)) {
+                        opfContent = opfContent.replace(/(<manifest[^>]*>)/i, '$1\n    <item id="cover" href="cover.jpg" media-type="image/jpeg"/>');
+                        opfContent = opfContent.replace(/(<spine[^>]*>)/i, '$1\n    <itemref idref="cover"/>');
+                    }
+                }
+            } catch (_) { /* 封面生成失败则跳过 */ }
+        }
+        files[opfPath] = opfContent;
 
         for (const [path, body] of Object.entries(files)) {
             zip.file(path, body);
@@ -625,11 +1253,12 @@
         const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
         const size = blob.size;
         if (size < 3072) return null;
+        const filename = buildEpubFilename(title, author, type);
         return new Promise((resolve) => {
             const reader = new FileReader();
             reader.onload = () => resolve({
                 type: 'epub',
-                name: `电子书${suffix}.epub`,
+                name: filename,
                 data: reader.result,
                 size
             });
@@ -647,7 +1276,23 @@
         const a = document.createElement('a');
         a.href = dataUrl;
         a.download = filename || '电子书.epub';
+        a.style.display = 'none';
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
+    }
+
+    /** 构建分立文件块 HTML：与章节一致，折叠 + 标签 + 按文件名下载 */
+    function buildDeliverableFileBlock(codeHtml, fileLabel, ext, fileName, defaultCollapsed) {
+        const collapsedClass = defaultCollapsed ? ' collapsed' : '';
+        return `<div class="deliverable-code-wrapper chapter-deliverable-wrapper${collapsedClass}">
+            <div class="deliverable-code-toolbar">
+                <span class="deliverable-code-label"><i class="fas fa-file-code"></i> ${escapeHtml(fileLabel)}</span>
+                <button type="button" class="btn-icon chapter-deliverable-toggle" title="展开/折叠"><i class="fas fa-chevron-${defaultCollapsed ? 'down' : 'up'}"></i></button>
+                <button type="button" class="deliverable-download-btn" data-ext="${escapeHtml(ext)}" data-filename="${escapeHtml(fileName)}" title="下载 ${escapeHtml(fileName)}"><i class="fas fa-download"></i> 下载</button>
+            </div>
+            <div class="chapter-deliverable-body">${codeHtml}</div>
+        </div>`;
     }
 
     // ==================== Markdown渲染 ====================
@@ -668,11 +1313,16 @@
             return `\x00DIAGRAM${diagramBlocks.length - 1}\x00`;
         });
 
-        // 保存通用代码块，避免被其他规则处理
-        // 特殊处理：```json 块若含 project-dashboard 结构（project/owner + timeline/top_risks/status），按仪表板渲染
+        // 保存通用代码块，避免被其他规则处理（lang 支持 chat01.xhtml、chapter-01.xhtml、content.opf、toc.ncx 等）
         const codeBlocks = [];
-        text = text.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
+        let chapterXhtmlIndex = 0;
+        let deliverableFileIndex = 0;
+        text = text.replace(/```\s*([\w.-]+)?\s*\n([\s\S]*?)```/g, (match, lang, code) => {
             const trimmed = code.trim();
+            const normalizedLang = (lang || '').trim().toLowerCase();
+            const isChapterXhtml = /^(xhtml|html|chapter-\d+\.xhtml|chat\d+\.xhtml|appendix-\d+\.xhtml)$/.test(normalizedLang);
+            const isNamedFile = /\./.test(normalizedLang) && /^[\w.-]+$/.test(normalizedLang);
+            if (isChapterXhtml) chapterXhtmlIndex += 1;
             if (lang === 'json' || !lang) {
                 let jsonStr = trimmed.replace(/^\s*project-dashboard\s*/i, '').trim();
                 if (jsonStr.startsWith('{')) {
@@ -703,11 +1353,87 @@
                     } catch (_) { /* 解析失败则按代码块显示 */ }
                 }
             }
-            const deliverableExt = { md: 'md', markdown: 'md', txt: 'txt', html: 'html' }[String(lang || '').toLowerCase()];
+            const deliverableExt = { md: 'md', markdown: 'md', txt: 'txt', html: 'html' }[normalizedLang];
             const codeHtml = `<pre class="code-block"><code class="language-${lang || 'text'}">${escapeHtml(trimmed)}</code></pre>`;
-            const blockHtml = deliverableExt
-                ? `<div class="deliverable-code-wrapper"><div class="deliverable-code-toolbar"><span class="deliverable-code-label">${deliverableExt === 'md' ? 'Markdown' : deliverableExt === 'txt' ? '纯文本' : 'HTML'}</span><button class="deliverable-download-btn" data-ext="${deliverableExt}" title="下载为 .${deliverableExt}"><i class="fas fa-download"></i> 下载</button></div>${codeHtml}</div>`
-                : codeHtml;
+            let blockHtml;
+            // EPUB 相关：style.css、toc.ncx、nav.xhtml 及简写 css/ncx/nav，均带下载按钮且默认折叠
+            const isEpubStyle = /^(style\.css|main\.css)$/.test(normalizedLang) || (normalizedLang === 'css' && /[{}\s@:;]|body\s*\{|chapter|epub|@page/i.test(trimmed));
+            const isEpubToc = /^(toc\.ncx)$/.test(normalizedLang) || (normalizedLang === 'ncx' && /ncx|navPoint|navLabel|content\s+src/i.test(trimmed));
+            const isEpubNav = /^(nav\.xhtml)$/.test(normalizedLang) || (normalizedLang === 'nav' && /<nav|toc|epub|href=.*\.xhtml/i.test(trimmed));
+            /** 根据内容推断文件类型，避免免责声明/版权/AI声明等被误标为章节 */
+            const inferContentType = (content) => {
+                const t = (content || '').slice(0, 1200);
+                // 推广简介档 H5：优先识别，避免误标为 chapter-01.xhtml；格式为 .html 非 .xhtml
+                if (/<html|<!DOCTYPE|<!doctype/i.test(t) && (
+                    /推广简介|推广页|H5|单页.*推广|购买.*入口|阅读.*入口|meta\s+name=["']viewport["']|viewport.*width/i.test(t) ||
+                    /推广.*档|H5.*格式|响应式.*单页|社交分享/i.test(t)
+                )) {
+                    const bookMatch = t.match(/《([^》]+)》/);
+                    const baseName = bookMatch ? `推广简介-${bookMatch[1]}` : '推广简介';
+                    return { label: '推广简介档H5', fileName: baseName + '.html', ext: 'html' };
+                }
+                if (/免责声明|免责条款|投资有风险|不构成.*建议|仅供参考/i.test(t)) return { label: '免责声明', fileName: 'disclaimer.xhtml' };
+                if (/AI\s*贡献声明|AI\s*辅助创作|人工智能.*参与|机器.*生成/i.test(t)) return { label: 'AI贡献声明', fileName: 'ai-contribution.xhtml' };
+                if (/版权页|版权声明|版权所有|ISBN|CIP\s*数据|出版信息/i.test(t) && !/章节|第[一二三四五六七八九十\d]+章/.test(t)) return { label: '版权页', fileName: 'copyright.xhtml' };
+                if (/扉页|书名页|(书名|著作名)[\s\S]{0,150}(作者|著)/i.test(t) && !/版权|ISBN|CIP|免责|AI\s*贡献|章节/.test(t)) return { label: '扉页', fileName: 'titlepage.xhtml' };
+                if (/^[\s\S]{0,200}(后记|跋)\s*$/m.test(t) || (/后记|跋\s*$/m.test(t) && t.length < 600)) return { label: '后记', fileName: 'epilogue.xhtml' };
+                if (/^[\s\S]{0,200}(感谢|致谢)\s*$/m.test(t) || (/感谢|致谢\s*$/m.test(t) && t.length < 600)) return { label: '感谢', fileName: 'acknowledgments.xhtml' };
+                return null;
+            };
+            const inferred = inferContentType(trimmed);
+            if (isEpubStyle) {
+                blockHtml = buildDeliverableFileBlock(codeHtml, 'style.css', 'css', 'style.css', true);
+            } else if (isEpubToc) {
+                blockHtml = buildDeliverableFileBlock(codeHtml, 'toc.ncx', 'ncx', 'toc.ncx', true);
+            } else if (isEpubNav) {
+                blockHtml = buildDeliverableFileBlock(codeHtml, 'nav.xhtml', 'xhtml', 'nav.xhtml', true);
+            } else if (inferred && (isChapterXhtml || isNamedFile)) {
+                const ext = inferred.ext || 'xhtml';
+                blockHtml = buildDeliverableFileBlock(codeHtml, inferred.label + ' - ' + inferred.fileName, ext, inferred.fileName, true);
+            } else if (/^(titlepage\.xhtml|titlepage)$/.test(normalizedLang)) {
+                blockHtml = buildDeliverableFileBlock(codeHtml, '扉页 - titlepage.xhtml', 'xhtml', 'titlepage.xhtml', true);
+            } else if (/^(copyright\.xhtml|copyright)$/.test(normalizedLang)) {
+                blockHtml = buildDeliverableFileBlock(codeHtml, '版权页 - copyright.xhtml', 'xhtml', 'copyright.xhtml', true);
+            } else if (/^(epilogue\.xhtml|epilogue)$/.test(normalizedLang)) {
+                blockHtml = buildDeliverableFileBlock(codeHtml, '后记 - epilogue.xhtml', 'xhtml', 'epilogue.xhtml', true);
+            } else if (/^(acknowledgments\.xhtml|acknowledgments)$/.test(normalizedLang)) {
+                blockHtml = buildDeliverableFileBlock(codeHtml, '感谢 - acknowledgments.xhtml', 'xhtml', 'acknowledgments.xhtml', true);
+            } else if (/^(disclaimer\.xhtml|disclaimer)$/.test(normalizedLang)) {
+                blockHtml = buildDeliverableFileBlock(codeHtml, '免责声明 - disclaimer.xhtml', 'xhtml', 'disclaimer.xhtml', true);
+            } else if (/^(ai-contribution\.xhtml|ai-contribution)$/.test(normalizedLang)) {
+                blockHtml = buildDeliverableFileBlock(codeHtml, 'AI贡献声明 - ai-contribution.xhtml', 'xhtml', 'ai-contribution.xhtml', true);
+            } else if (isChapterXhtml) {
+                let num, fileName, fileLabel;
+                if (/^chapter-(\d+)\.xhtml$/.test(normalizedLang)) {
+                    num = normalizedLang.match(/chapter-(\d+)\.xhtml/i)[1];
+                    fileName = 'chapter-' + String(num).padStart(2, '0') + '.xhtml';
+                    fileLabel = '章节' + parseInt(num, 10) + ' - ' + fileName;
+                } else if (/^chat(\d+)\.xhtml$/.test(normalizedLang)) {
+                    num = normalizedLang.match(/chat(\d+)\.xhtml/i)[1];
+                    fileName = 'chapter-' + String(num).padStart(2, '0') + '.xhtml';
+                    fileLabel = '章节' + parseInt(num, 10) + ' - ' + fileName;
+                } else if (/^appendix-(\d+)\.xhtml$/.test(normalizedLang)) {
+                    num = normalizedLang.match(/appendix-(\d+)\.xhtml/i)[1];
+                    fileName = 'appendix-' + String(num).padStart(2, '0') + '.xhtml';
+                    fileLabel = '附录' + parseInt(num, 10) + ' - ' + fileName;
+                } else {
+                    num = String(chapterXhtmlIndex);
+                    fileName = 'chapter-' + String(num).padStart(2, '0') + '.xhtml';
+                    fileLabel = '章节' + chapterXhtmlIndex + ' - ' + fileName;
+                }
+                blockHtml = buildDeliverableFileBlock(codeHtml, fileLabel, 'xhtml', fileName, true);
+            } else if (isNamedFile) {
+                const fileName = normalizedLang;
+                const ext = (fileName.split('.').pop() || 'txt').toLowerCase();
+                blockHtml = buildDeliverableFileBlock(codeHtml, fileName, ext, fileName, true);
+            } else if (deliverableExt) {
+                deliverableFileIndex += 1;
+                const fileName = '文档-' + deliverableFileIndex + '.' + deliverableExt;
+                const fileLabel = (deliverableExt === 'md' ? 'Markdown' : deliverableExt === 'txt' ? '纯文本' : 'HTML') + ' - ' + fileName;
+                blockHtml = buildDeliverableFileBlock(codeHtml, fileLabel, deliverableExt, fileName, true);
+            } else {
+                blockHtml = codeHtml;
+            }
             codeBlocks.push(blockHtml);
             return `\x00CODEBLOCK${codeBlocks.length - 1}\x00`;
         });
@@ -837,7 +1563,23 @@
         // 移除孤儿闭合标签（如 AI 返回的 "有异常</strong>" 中多余的 </strong>）
         text = removeOrphanClosingTags(text);
 
+        // 防止 AI 输出的相对路径（如 style.css、OEBPS/style.css）触发 404 请求
+        text = sanitizeRelativeResourceUrls(text);
+
         return text;
+    }
+
+    /** 将相对路径的 link/img/iframe/script 转为展示用 span，避免触发 404 */
+    function sanitizeRelativeResourceUrls(html) {
+        if (!html || typeof html !== 'string') return html;
+        const isAbsolute = (url) => /^(https?:|data:|#|\/\/)/.test(String(url || '').trim());
+        const toSpan = (url) => `<span class="sanitized-resource" title="本地路径: ${escapeHtml(url)}"><code>${escapeHtml(url)}</code></span>`;
+        let out = html;
+        out = out.replace(/<link[^>]*href=["']([^"']+)["'][^>]*\/?>/gi, (m, url) => isAbsolute(url) ? m : toSpan(url));
+        out = out.replace(/<img[^>]*src=["']([^"']+)["'][^>]*\/?>/gi, (m, url) => isAbsolute(url) ? m : toSpan(url));
+        out = out.replace(/<iframe[^>]*src=["']([^"']+)["'][^>]*\/?>/gi, (m, url) => isAbsolute(url) ? m : toSpan(url));
+        out = out.replace(/<script[^>]*src=["']([^"']+)["'][^>]*>/gi, (m, url) => isAbsolute(url) ? m : toSpan(url));
+        return out;
     }
 
     /** 移除孤儿闭合标签，修复 "xxx有异常</strong>" 等显示异常 */
@@ -2756,10 +3498,16 @@ ${alertHtml}
     // 渲染H5内容
     function renderH5Content(content) {
         let htmlContent = content;
-        const isFullHtml = /<!DOCTYPE\s+html[\s\S]*<\/html>\s*$/i.test(content.trim());
-        if (content.includes('<!DOCTYPE html>') || content.includes('<html')) {
-            htmlContent = content;
-        } else {
+        // 若内容含代码块，优先提取 ```html / ```h5 / ```xhtml 中的完整 HTML，避免混入说明文字
+        if (content.includes('```')) {
+            const match = content.match(/```(?:html|h5|xhtml)?\s*\n([\s\S]*?)```/);
+            if (match) {
+                const extracted = match[1].trim();
+                if (/<!DOCTYPE\s+html|<\s*html/i.test(extracted)) htmlContent = extracted;
+            }
+        }
+        const isFullHtml = /<!DOCTYPE\s+html[\s\S]*<\/html>\s*$/i.test(htmlContent.trim());
+        if (!isFullHtml && !content.includes('<!DOCTYPE') && !content.includes('<html')) {
             htmlContent = renderMarkdown(content);
         }
 
@@ -2899,28 +3647,44 @@ ${alertHtml}
         }
     }
 
-    /** 下载交付物代码块（md/txt/html） */
+    /** 下载交付物代码块（md/txt/html/xhtml 等），支持 data-filename 指定文件名，输出有效可用的真实文件 */
     function downloadDeliverableCode(btn) {
         const wrapper = btn.closest('.deliverable-code-wrapper');
         if (!wrapper) return;
         const codeEl = wrapper.querySelector('.code-block code');
         const content = codeEl?.textContent?.trim() || '';
-        const ext = btn.dataset.ext || 'md';
+        const ext = (btn.dataset.ext || 'md').toLowerCase();
+        const filename = btn.dataset.filename;
         if (!content) {
             showToast?.('内容为空', 'error');
             return;
         }
-        const mimeMap = { md: 'text/markdown;charset=utf-8', txt: 'text/plain;charset=utf-8', html: 'text/html;charset=utf-8' };
-        const blob = new Blob(['\uFEFF' + content], { type: mimeMap[ext] || 'text/plain;charset=utf-8' });
+        const mimeMap = { md: 'text/markdown;charset=utf-8', markdown: 'text/markdown;charset=utf-8', txt: 'text/plain;charset=utf-8', html: 'text/html;charset=utf-8', xhtml: 'application/xhtml+xml;charset=utf-8', css: 'text/css;charset=utf-8', ncx: 'application/x-dtbncx+xml;charset=utf-8', opf: 'application/oebps-package+xml;charset=utf-8' };
+        // XML 类文件（opf/ncx/xhtml）不加 BOM，避免 EPUB 校验器报错；其他类型加 BOM 便于 UTF-8 识别
+        const isXmlType = ['opf', 'ncx', 'xhtml'].includes(ext);
+        const blobContent = isXmlType ? content : '\uFEFF' + content;
+        const blob = new Blob([blobContent], { type: mimeMap[ext] || 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `交付物-${Date.now()}.${ext}`;
+        a.download = filename && filename.length > 0 ? filename : `交付物-${Date.now()}.${ext}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        showToast(`已下载为 .${ext}`, 'success');
+        showToast(filename ? `已下载 ${filename}` : `已下载为 .${ext}`, 'success');
+    }
+
+    /** 展开/折叠章节交付物代码块 */
+    function toggleChapterDeliverable(btn) {
+        const wrapper = btn.closest('.chapter-deliverable-wrapper');
+        if (!wrapper) return;
+        wrapper.classList.toggle('collapsed');
+        const icon = btn.querySelector('i.fas');
+        if (icon) {
+            icon.classList.toggle('fa-chevron-down', wrapper.classList.contains('collapsed'));
+            icon.classList.toggle('fa-chevron-up', !wrapper.classList.contains('collapsed'));
+        }
     }
 
     // ==================== 多模态输出操作 ====================
@@ -5280,6 +6044,12 @@ ${ex.content}`).join('\n\n')}
     }
 
     async function executeTodo(planId, todoId) {
+        const backgroundMode = !!window.AppState?.settings?.backgroundModeEnabled;
+        if (backgroundMode && window.BackgroundTaskManager) {
+            window.BackgroundTaskManager.runPlanTodoTask(planId, todoId, window.AppState.messages || []);
+            showToast('已提交后台执行', 'info');
+            return;
+        }
         showToast('正在执行任务...', 'info');
         try {
             await window.PlanManager.executeTodo(planId, todoId, window.AppState.messages || []);
@@ -5384,6 +6154,154 @@ ${ex.content}`).join('\n\n')}
                 if (langSelect) langSelect.value = normalized;
             }
         }
+    }
+
+    /** 显示 EPUB 导出对话框：首选唐宋文化 EPUB 导出（显著下载指引），次选散装 ZIP 供其他工具打包 */
+    function showEpubFormatDialog(messageId) {
+        const msg = window.AppState?.messages?.find(m => m.id === messageId);
+        if (!msg?.content) {
+            showToast?.('消息内容为空', 'error');
+            return;
+        }
+        if ((msg.attachments || []).some(a => a?.type === 'epub')) {
+            showToast?.('该消息已有 EPUB 附件，可直接点击下载', 'info');
+            return;
+        }
+        const existing = document.getElementById('epub-format-dialog');
+        if (existing) existing.remove();
+        const dialog = document.createElement('div');
+        dialog.className = 'modal active';
+        dialog.id = 'epub-format-dialog';
+        dialog.innerHTML = `
+            <div class="modal-content" style="max-width: 480px;">
+                <div class="modal-header">
+                    <h3><i class="fas fa-book"></i> 唐宋文化 EPUB 导出</h3>
+                    <button class="modal-close" onclick="AIAgentUI.closeModal('epub-format-dialog')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="epub-cover-preview-section" id="epub-cover-preview-section" style="margin-bottom: 1rem; display: none;">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: var(--text-primary);"><i class="fas fa-image"></i> 封面预览</div>
+                        <div class="epub-cover-preview-wrap" style="text-align: center; padding: 12px; background: var(--bg-tertiary); border-radius: 8px; margin-bottom: 8px;">
+                            <img id="epub-cover-preview-img" alt="封面预览" style="max-width: 180px; max-height: 240px; object-fit: contain; border-radius: 4px;">
+                        </div>
+                        <p style="font-size: 0.75rem; color: var(--text-tertiary); margin-bottom: 8px;">系统将根据 content.opf 中的书名、作者生成封面（优先使用 参考封面.jpg 叠加）。确认无误后导出。</p>
+                    </div>
+                    <div class="epub-export-primary" style="background: linear-gradient(135deg, rgba(139,92,246,0.15), rgba(59,130,246,0.1)); border: 1px solid rgba(139,92,246,0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: var(--text-primary);"><i class="fas fa-download" style="color: var(--accent);"></i> 首选：唐宋文化一键导出 EPUB</div>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 10px;">系统自动打包 content.opf、章节、封面等为完整 EPUB，文件命名为 <strong>书名_作者</strong>，可直接上架微信读书等平台。</p>
+                        <div class="epub-format-options" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+                            <label class="epub-format-item" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="epub-format" value="standard" checked> 标准版</label>
+                            <label class="epub-format-item" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="epub-format" value="wechat"> 微信读书</label>
+                            <label class="epub-format-item" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="epub-format" value="douban"> 豆瓣阅读</label>
+                            <label class="epub-format-item" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="epub-format" value="kindle"> Kindle</label>
+                        </div>
+                        <button class="btn-primary" id="epub-format-generate-btn" style="width: 100%; font-size: 1rem; padding: 10px 16px;">
+                            <i class="fas fa-download"></i> 立即导出 EPUB 并下载
+                        </button>
+                    </div>
+                    <div class="epub-export-secondary" style="border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;"><i class="fas fa-file-archive"></i> 次选：下载散装文件 ZIP</div>
+                        <p style="font-size: 0.75rem; color: var(--text-tertiary); margin-bottom: 8px;">若需自行用 Calibre、Sigil、pandoc 等工具打包，可下载散装文件集合（content.opf、章节 xhtml、style.css 等），解压后自行生成 EPUB。</p>
+                        <button class="btn-secondary" id="epub-zip-download-btn" style="width: 100%;">
+                            <i class="fas fa-file-archive"></i> 下载散装文件 ZIP
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn-secondary" onclick="AIAgentUI.closeModal('epub-format-dialog')">关闭</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(dialog);
+        document.body.style.overflow = 'hidden';
+
+        (async () => {
+            const epubContent = getAggregatedEpubContent?.() || msg.content;
+            const blocks = extractEpubBlocksFromContent?.(epubContent);
+            if (blocks?.opf && window.BookCover?.getDefaultCoverBlob) {
+                const title = extractTitleFromOpf?.(blocks.opf) || '电子书';
+                const author = extractAuthorFromOpf?.(blocks.opf) ? `${extractAuthorFromOpf(blocks.opf)} · 著` : '';
+                try {
+                    const blob = await window.BookCover.getDefaultCoverBlob(title, author);
+                    if (blob) {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            const img = dialog.querySelector('#epub-cover-preview-img');
+                            const section = dialog.querySelector('#epub-cover-preview-section');
+                            if (img && section) {
+                                img.src = reader.result;
+                                section.style.display = 'block';
+                            }
+                        };
+                        reader.readAsDataURL(blob);
+                    }
+                } catch (_) {}
+            }
+        })();
+
+        dialog.querySelector('#epub-format-generate-btn').addEventListener('click', async () => {
+            const checked = dialog.querySelectorAll('input[name="epub-format"]:checked');
+            if (checked.length === 0) {
+                showToast?.('请至少选择一种格式', 'error');
+                return;
+            }
+            const formats = Array.from(checked).map(c => c.value);
+            closeModal('epub-format-dialog');
+            const epubContent = getAggregatedEpubContent?.() || msg.content;
+            const atts = [];
+            for (let i = 0; i < formats.length; i++) {
+                const att = await buildEpubAsAttachment?.(epubContent, formats[i]);
+                if (att) {
+                    atts.push(att);
+                    if (downloadEpubAttachment && att.data) {
+                        downloadEpubAttachment(att.data, att.name || '电子书.epub');
+                        if (i < formats.length - 1) await new Promise(r => setTimeout(r, 300));
+                    }
+                }
+            }
+            if (atts.length > 0) {
+                msg.attachments = (msg.attachments || []).concat(atts);
+                renderMessages?.();
+                window.AIAgentApp?.saveState?.();
+                showToast?.(`已生成 ${atts.length} 个 EPUB 文件，请查看浏览器下载目录`, 'success');
+            } else {
+                showToast?.('无法生成 EPUB，请确认内容包含 content.opf 和章节', 'error');
+            }
+        });
+
+        dialog.querySelector('#epub-zip-download-btn').addEventListener('click', async () => {
+            if (typeof JSZip === 'undefined') {
+                showToast?.('ZIP 功能不可用，请刷新页面重试', 'error');
+                return;
+            }
+            const agg = getAggregatedEpubContent?.() || msg.content;
+            const files = collectDeliverableFilesFromMessages?.(agg) || [];
+            if (files.length === 0) {
+                showToast?.('无可打包的散装文件', 'error');
+                return;
+            }
+            const zip = new JSZip();
+            const mimeMap = { md: 'text/markdown;charset=utf-8', markdown: 'text/markdown;charset=utf-8', txt: 'text/plain;charset=utf-8', html: 'text/html;charset=utf-8', xhtml: 'application/xhtml+xml;charset=utf-8', css: 'text/css;charset=utf-8', ncx: 'application/x-dtbncx+xml;charset=utf-8', opf: 'application/oebps-package+xml;charset=utf-8' };
+            files.forEach(f => {
+                const isXml = ['opf', 'ncx', 'xhtml'].includes(f.ext);
+                const content = isXml ? f.content : '\uFEFF' + f.content;
+                zip.file(f.filename, content, { createFolders: false });
+            });
+            const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'epub散装文件.zip';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast?.('已下载散装文件 ZIP，解压后用 Calibre/Sigil 等工具打包', 'success');
+        });
+
+        dialog.addEventListener('click', (e) => {
+            if (e.target === dialog) closeModal('epub-format-dialog');
+        });
     }
 
     function closeModal(modalId) {
@@ -5587,6 +6505,11 @@ ${ex.content}`).join('\n\n')}
         // Workflow 步骤进展
         showWorkflowStepProgress,
         hideWorkflowStepProgress,
+        // 唐宋文化工作流程
+        showCreativeWorkflowProgress,
+        createCreativeStreamWrapper,
+        stripCreativeStepMarker,
+        updateCreativeWorkflowPreview,
         // 计划模式
         renderPlanManager,
         renderPlanCard,
@@ -5621,12 +6544,18 @@ ${ex.content}`).join('\n\n')}
         previewH5,
         downloadH5,
         downloadDeliverableCode,
+        toggleChapterDeliverable,
         downloadAsPDF,
         downloadAsDOC,
         downloadAsCSV,
         downloadEpubAttachment,
         buildEpubAsAttachment,
+        showEpubFormatDialog,
         extractEpubBlocksFromContent,
+        getAggregatedEpubContent,
+        hasEpubContent,
+        collectDeliverableFilesFromMessages,
+        renderDeliverableCollector,
         // 输出格式相关
         detectOutputFormat,
         renderContentByFormat
