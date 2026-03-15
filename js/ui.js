@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.5.0 - UI渲染模块
+ * AI Agent Pro v8.5.1 - UI渲染模块
  * 未来科技感UI
  */
 
@@ -3716,6 +3716,7 @@ ${alertHtml}
         }
     }
 
+    /** 下载 H5/HTML 报告块（仅内容，不含思考过程；适用于所有助手） */
     function downloadH5(btn) {
         const container = btn.closest('.h5-output-container');
         const h5Id = container?.getAttribute('data-h5-id');
@@ -4159,24 +4160,13 @@ ${alertHtml}
         }
     }
 
+    /** 仅报告内容，不包含 AI 思考过程（适用于所有助手的导出/下载） */
     function formatAsMarkdown(msg) {
-        let content = '';
-        if (msg.thinking) {
-            content += `## 思考过程\n\n${msg.thinking}\n\n---\n\n`;
-        }
-        content += `## ${msg.role === 'user' ? '用户' : 'AI'}\n\n${msg.content}`;
-        return content;
+        return `## ${msg.role === 'user' ? '用户' : 'AI'}\n\n${msg.content}`;
     }
 
+    /** 仅报告内容，不包含 AI 思考过程（适用于所有助手的导出/下载） */
     function formatAsHTML(msg) {
-        const thinkingSection = msg.thinking ? `
-            <div class="thinking-section">
-                <h3>思考过程</h3>
-                <pre>${escapeHtml(msg.thinking)}</pre>
-            </div>
-            <hr>
-        ` : '';
-        
         return '\uFEFF' + `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -4189,13 +4179,9 @@ ${alertHtml}
         .header { border-bottom: 1px solid #eee; padding-bottom: 16px; margin-bottom: 24px; }
         .header h1 { margin: 0; font-size: 1.5rem; }
         .header time { color: #999; font-size: 0.875rem; }
-        .thinking-section { background: #f8f9fa; padding: 16px; border-radius: 8px; margin-bottom: 24px; }
-        .thinking-section h3 { margin-top: 0; color: #666; font-size: 1rem; }
-        .thinking-section pre { white-space: pre-wrap; word-wrap: break-word; font-family: monospace; font-size: 0.875rem; color: #555; }
         .message-content { line-height: 1.8; }
         .message-content pre { background: #f4f4f4; padding: 16px; border-radius: 8px; overflow-x: auto; }
         .message-content code { font-family: 'Consolas', 'Monaco', monospace; }
-        hr { border: none; border-top: 1px solid #eee; margin: 24px 0; }
     </style>
 </head>
 <body>
@@ -4204,7 +4190,6 @@ ${alertHtml}
             <h1>${msg.role === 'user' ? '用户消息' : 'AI回复'}</h1>
             <time>${new Date(msg.timestamp).toLocaleString('zh-CN')}</time>
         </div>
-        ${thinkingSection}
         <div class="message-content">
             ${renderContentByFormat(renderMarkdown(msg.content), msg.outputFormat || detectOutputFormat(msg.content))}
         </div>
@@ -4213,17 +4198,9 @@ ${alertHtml}
 </html>`;
     }
 
+    /** 仅报告内容，不包含 AI 思考过程 */
     function formatAsText(msg) {
-        let content = '';
-        content += `角色: ${msg.role === 'user' ? '用户' : 'AI'}\n`;
-        content += `时间: ${new Date(msg.timestamp).toLocaleString('zh-CN')}\n`;
-        content += `===================\n\n`;
-        if (msg.thinking) {
-            content += `[思考过程]\n${msg.thinking}\n\n`;
-            content += `===================\n\n`;
-        }
-        content += `${msg.content}`;
-        return content;
+        return `角色: ${msg.role === 'user' ? '用户' : 'AI'}\n时间: ${new Date(msg.timestamp).toLocaleString('zh-CN')}\n===================\n\n${msg.content}`;
     }
 
     function formatAsJSON(msg) {

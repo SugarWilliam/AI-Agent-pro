@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.5.0 - 事件处理模块
+ * AI Agent Pro v8.5.1 - 事件处理模块
  * 未来科技感交互设计
  */
 
@@ -2782,13 +2782,10 @@ tags: code, review, quality
         md += `> 导出时间: ${new Date().toLocaleString('zh-CN')}\n\n`;
         md += `---\n\n`;
 
+        // 仅报告内容，不包含 AI 思考过程（适用于所有助手）
         messages.forEach(msg => {
             const role = msg.role === 'user' ? '**我**' : '**AI**';
-            md += `## ${role}\n\n${msg.content}\n\n`;
-            if (msg.thinking) {
-                md += `> **思考过程**: ${msg.thinking}\n\n`;
-            }
-            md += `---\n\n`;
+            md += `## ${role}\n\n${msg.content}\n\n---\n\n`;
         });
 
         const blob = new Blob([md], { type: 'text/markdown' });
@@ -2823,7 +2820,6 @@ tags: code, review, quality
         .user { background: #e3f2fd; }
         .assistant { background: #f5f5f5; }
         .header { font-weight: bold; margin-bottom: 10px; }
-        .thinking { color: #666; font-style: italic; margin: 10px 0; padding: 10px; background: #fafafa; border-left: 3px solid #2196f3; }
     </style>
 </head>
 <body>
@@ -2831,12 +2827,12 @@ tags: code, review, quality
     <p>导出时间: ${new Date().toLocaleString('zh-CN')}</p>
     <hr>`;
 
+        // 仅报告内容，不包含 AI 思考过程（适用于所有助手）
         messages.forEach(msg => {
             html += `
     <div class="message ${msg.role}">
         <div class="header">${msg.role === 'user' ? '我' : 'AI'}</div>
         <div>${msg.content.replace(/\n/g, '<br>')}</div>
-        ${msg.thinking ? `<div class="thinking">思考: ${msg.thinking}</div>` : ''}
     </div>`;
         });
 
@@ -2856,8 +2852,56 @@ tags: code, review, quality
         showExportSuccessDialog(filename, 'HTML');
     }
 
+    /** 导出当前对话为 PDF：仅报告内容（无思考过程），通过浏览器打印另存为 PDF */
     function exportToPDF() {
-        window.AIAgentUI?.showToast?.('PDF导出功能需要后端支持', 'info');
+        const messages = window.AppState.messages || [];
+        if (messages.length === 0) {
+            window.AIAgentUI?.showToast?.('没有可导出的内容', 'error');
+            return;
+        }
+        const filename = `对话_${Date.now()}.html`;
+        let html = '\uFEFF' + `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>对话记录 - AI Agent Pro</title>
+    <style>
+        body { font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
+        .message { margin: 20px 0; padding: 15px; border-radius: 8px; }
+        .user { background: #e3f2fd; }
+        .assistant { background: #f5f5f5; }
+        .header { font-weight: bold; margin-bottom: 10px; }
+        .meta { color: #666; font-size: 0.875rem; margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+    <h1>对话记录</h1>
+    <p class="meta">导出时间: ${new Date().toLocaleString('zh-CN')}</p>
+    <hr>`;
+        messages.forEach(msg => {
+            const role = msg.role === 'user' ? '我' : 'AI';
+            const time = msg.timestamp ? new Date(msg.timestamp).toLocaleString('zh-CN') : '';
+            html += `
+    <div class="message ${msg.role}">
+        <div class="header">${role}${time ? ' · ' + time : ''}</div>
+        <div>${String(msg.content || '').replace(/\n/g, '<br>')}</div>
+    </div>`;
+        });
+        html += `
+</body>
+</html>`;
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            window.AIAgentUI?.showToast?.('请允许弹窗后重试', 'error');
+            return;
+        }
+        printWindow.document.write(html);
+        printWindow.document.close();
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.onafterprint = () => printWindow.close();
+            window.AIAgentUI?.showToast?.('请选择「另存为 PDF」保存', 'info');
+        }, 500);
     }
 
     function showExportSuccessDialog(filename, format) {

@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.5.0 - LLM服务
+ * AI Agent Pro v8.5.1 - LLM服务
  * 多模态输入输出支持
  */
 
@@ -571,6 +571,13 @@ ${rows}
         buildEnhancedSystemPrompt({ subAgent, skillPrompts, rulesPrompt, mcpResults, ragContext, outputFormat, isWorkflow = false, agentCardsPrompt = '' }) {
             const ragContextStr = typeof ragContext === 'string' ? ragContext : (ragContext?.context ?? '');
             let prompt = `你是「${subAgent.name}」，${subAgent.description}\n\n`;
+            // 量化幻方：注入当前日期与时间，并重申禁止占位/模拟、强制实时数据
+            if (subAgent.id === 'quant_magic_square') {
+                const now = new Date();
+                const beijingStr = now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\//g, '-');
+                prompt += `【当前日期与时间】${beijingStr}（北京时间）。输出报告时，「本报告生成/更新时间」及数据时间标注须以此为准；不得将报告时间或数据时间写成已过时的年份（如 2025）除非确为历史数据来源日期。\n`;
+                prompt += `【约束重申】禁止输出占位符、模拟报告或模拟数据；须先通过 RAG 与网络搜索获取实时数据后再生成报告，报告中引用的数据须来自本次检索并注明来源。\n\n`;
+            }
             if (subAgent.id === 'work_secretary') {
                 const target = subAgent.serviceTarget?.trim();
                 const ignoreDesc = subAgent.ignoreInfoDesc?.trim();
