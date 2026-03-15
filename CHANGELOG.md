@@ -1,6 +1,25 @@
 # 更新日志
 
-本文档记录 AI Agent Pro 的版本变更。
+本文档记录 AI Agent Pro 的版本变更。各版本发布说明汇总见 [docs/RELEASES.md](docs/RELEASES.md)。
+
+---
+
+## [8.5.1] - 2026-03-15
+
+### 导出与下载：仅报告、不含思考过程（全助手）
+
+- **单条消息**：导出/下载（Markdown、HTML、TXT、PDF）仅包含报告内容，不包含 AI 思考过程；`formatAsMarkdown`、`formatAsHTML`、`formatAsText` 及单条 PDF 已统一为报告 only。
+- **对话导出**：导出 Markdown、导出 HTML 仅包含每条消息的报告内容；**导出 PDF** 改为可用：打开仅报告内容的 HTML 并调起打印，用户选择「另存为 PDF」即可。
+- **H5**：下载 H5 报告块仍为内容块本身，不含思考过程。设计文档见 docs/DESIGN.md 第 14 章及 DESIGN_QUANT_MAGIC_SQUARE.md。
+
+### 量化幻方设计文档
+
+- 设计文档增加：助手调用逻辑（2.4）、技能使用说明（3.2.7）、导出与下载全助手通用说明（1.4）、投资免责声明（文首）。
+- 版本与维护说明更新为 v8.5.1。
+
+### 版本号统一为 8.5.1
+
+- app.js（VERSION）、index.html（title、splash、brand）、js 模块头（app/ui/events/rag/llm/sync/plan）、release.sh 默认、CHANGELOG、RELEASE_READINESS、DEPLOYMENT、DESIGN_QUANT_MAGIC_SQUARE、唐宋文化设计、助手能力全集、DESIGN_A2A、review-test、README 徽章。
 
 ---
 
@@ -32,7 +51,7 @@
 ### 文档与发布准备
 
 - 版本号统一为 8.5.0（app.js、index.html、js 模块头、release.sh 默认、CHANGELOG、RELEASE_READINESS、DEPLOYMENT、唐宋文化设计.md）。
-- 助手能力全集.md 增加「量化幻方矩阵」能力列表与统计；RELEASE_v8.5.0.md、CHANGELOG 补充 8.5.0 完整变更。
+- 助手能力全集.md 增加「量化幻方矩阵」能力列表与统计；发布说明见 docs/RELEASES.md，CHANGELOG 补充 8.5.0 完整变更。
 
 ---
 
@@ -361,6 +380,7 @@
 
 ---
 
+[8.5.1]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.1
 [8.5.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.0
 [8.4.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.4.0
 [8.3.3]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.3
