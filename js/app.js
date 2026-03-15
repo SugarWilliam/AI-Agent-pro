@@ -1,12 +1,12 @@
 /**
- * AI Agent Pro v8.4.3 - 应用状态管理
+ * AI Agent Pro v8.5.0 - 应用状态管理
  * 多模态AI Agent - 支持输入输出多模态
  */
 
 (function() {
     'use strict';
 
-    const VERSION = '8.4.3';
+    const VERSION = '8.5.0';
     const STORAGE_KEY = 'ai_agent_state_v6';
 
     /** 检测 localStorage 是否可用（部分环境如 file://、隐私模式、iframe 可能不可用） */
@@ -416,6 +416,28 @@
 5. 统计分析：假设检验、回归分析、时间序列
 
 请使用适当的数学方法解决问题，提供详细的推导过程和计算结果。支持使用LaTeX格式展示数学公式，使用chart代码块展示可视化结果（JSON格式：{type:"line"|"bar"|"pie", data:{labels:[], datasets:[{label,data:[]}]}}）。`,
+            outputFormat: 'markdown'
+        },
+        {
+            id: 'skill_value_investment',
+            name: '价值投资与量化幻方',
+            description: 'BMP选股、量化幻方矩阵、财务指标、数据可靠性、中国股市',
+            enabled: true,
+            skillMD: generateSkillMD('价值投资与量化幻方', 'BMP选股、ROE、股东盈余、量化决策矩阵', `你是价值投资与量化分析专家，擅长BMP选股框架、定量财务分析、定性竞争优势判断、信息与数据可靠性识别、高级量化决策矩阵。侧重中国市场的政策与估值特点。`, ['value-investment', 'quant', 'BMP', 'ROE', 'china-market']),
+            prompt: `你是一位价值投资与量化分析专家，侧重中国市场。
+
+核心能力：
+1. 数据甄别、分类、分层、清洗：区分一手/二手与官方/非官方；按来源与类型分类；事实层/解读层/推断层分层；识别异常与口径不一致并清洗；对重要程度、优先级与权重显式标注
+2. 事实与观点、逻辑与时效：识别并标注事实（可验证、有出处）与观点（解读/预测）；保证逻辑严谨、时序正确；关键信息标注时间，陈旧信息（如 5 年前）说明是否仍适用或降权
+3. 高级量化幻方与决策矩阵：多维度权重评分、阈值筛选、综合排序（权重须显式给出）
+4. BMP选股框架：业务(B)质量、管理(M)能力、价格(P)安全边际
+5. 定量财务分析：ROE、股东盈余、毛利率、留存利润效率、自由现金流、ROIC、负债结构
+6. 定性竞争优势：护城河、行业地位、管理层与公司治理、信息披露质量
+7. 信息与数据可靠性：审计意见、数据口径、调节项、关联交易、来源可信度
+8. 数据高级分析：时间序列、可比公司、趋势与异常检测、深度因果与敏感性分析
+9. 中国市场的特点：政策与监管、资金面、估值体系、板块与周期
+
+输出要求：结论简洁、强可操作；数据充分、论证严谨；事实与观点区分明确；逻辑严谨、时序与时效标注清晰；重要程度与优先级明确。`,
             outputFormat: 'markdown'
         },
         {
@@ -1698,6 +1720,63 @@ ${prompt}
    - 问题形态是否演变、根因是否迁移
    - 从个案到普遍：是否具有代表性、可复制性
    - 泛化风险：局部问题是否可能演变为系统性问题`
+        },
+        {
+            id: 'rag_value_investment',
+            name: '价值投资与量化',
+            description: '价值投资、BMP选股、财务分析、中国股市与政策',
+            enabled: true,
+            category: '金融',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'csv', 'txt', 'md', 'markdown', 'html', 'htm', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [
+                { name: '东方财富', url: 'https://www.eastmoney.com/', type: 'website', description: 'A股、基金、财经' },
+                { name: '同花顺', url: 'https://www.10jqka.com.cn/', type: 'website', description: '行情与研报' },
+                { name: '巨潮资讯', url: 'http://www.cninfo.com.cn/', type: 'website', description: '上市公司公告' },
+                { name: '中国人民银行', url: 'http://www.pbc.gov.cn/', type: 'website', description: '货币政策与金融数据' },
+                { name: '中国证监会', url: 'http://www.csrc.gov.cn/', type: 'website', description: '监管政策' },
+                { name: '雪球', url: 'https://xueqiu.com/', type: 'website', description: '投资社区与观点' }
+            ],
+            defaultContent: `价值投资与量化（侧重中国市场）：
+1. 关键指标：净资产回报率(ROE)、股东盈余、毛利率、留存利润效率、自由现金流、负债率、ROIC
+2. BMP选股框架：业务(B)、管理(M)、价格(P)三维评估
+3. 中国股市特点：政策市、资金面、北向资金、板块轮动、估值体系(A/H)、退市与注册制
+4. 定性分析：护城河、竞争优势、管理层、公司治理、ESG
+5. 数据可靠性：财报审计意见、数据口径、调节项、关联交易、信息披露质量
+6. 政策与宏观：产业政策、货币政策、财政政策、监管周期`
+        },
+        {
+            id: 'rag_snowball_realtime',
+            name: '雪球等专业财经实时',
+            description: '雪球、同花顺、东方财富、财联社等专业渠道，用于实时抓取最新行情、研报、公告与社区观点',
+            enabled: true,
+            category: '金融',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'markdown', 'html', 'htm', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [
+                { name: '雪球', url: 'https://xueqiu.com/', type: 'website', description: '投资社区、个股讨论、大V观点、组合与实时资讯' },
+                { name: '东方财富行情', url: 'https://quote.eastmoney.com/', type: 'website', description: '行情、板块、资金流' },
+                { name: '同花顺', url: 'https://www.10jqka.com.cn/', type: 'website', description: '行情、研报、资金流向、F10' },
+                { name: '东方财富', url: 'https://www.eastmoney.com/', type: 'website', description: 'A股、基金、财经新闻、数据中心' },
+                { name: '财联社', url: 'https://www.cls.cn/', type: 'website', description: '快讯、电报、政策与市场解读' },
+                { name: '金十数据', url: 'https://www.jin10.com/', type: 'website', description: '财经快讯、数据、日历' },
+                { name: '巨潮资讯', url: 'http://www.cninfo.com.cn/', type: 'website', description: '上市公司公告、年报、招股书' },
+                { name: '华尔街见闻', url: 'https://wallstreetcn.com/', type: 'website', description: '全球财经、宏观与市场' },
+                { name: '格隆汇', url: 'https://www.gelonghui.com/', type: 'website', description: '港股与A股研报、快讯' }
+            ],
+            defaultContent: `专业财经实时源（用于实时抓取最新信息以支持分析）：
+1. 雪球：个股/组合讨论、大V观点、实时情绪与热点
+2. 同花顺/东方财富：行情、资金流向、F10、研报、龙虎榜
+3. 财联社/金十数据：快讯、政策与事件、数据发布
+4. 巨潮资讯：公告、年报、问询函、合规信息
+5. 华尔街见闻/格隆汇：宏观、海外映射、研报摘要
+分析时优先通过网络搜索或 URL 解析获取上述渠道最新内容，并注明来源与时间。`
         }
     ];
 
@@ -2462,6 +2541,97 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
             mcp: ['mcp_web_search', 'mcp_calculator'],
             rag: ['rag_pmp', 'rag_huawei_rdpm', 'rag_wbs', 'rag_root_cause', 'rag_risk_identification', 'rag_software_pm', 'rag_linux', 'rag_ccpp', 'rag_memory_analysis', 'rag_embedded', 'rag_image_quality', 'rag_h264_h265', 'rag_ai_security', 'rag_bug_debug', 'rag_testing', 'rag_problem_evolution', 'rag_logic', 'rag_temporal_logic', 'rag_first_principles', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_common_sense', 'rag_history', 'rag_industry_reports', 'rag_government_reports', 'rag_finance', 'rag_social'],
             color: '#0ea5e9'
+        },
+        quant_magic_square: {
+            id: 'quant_magic_square',
+            name: '量化幻方矩阵',
+            description: '专业价值投资分析：股票、基金、数据分析、政策与企业研究；BMP选股、量化幻方、财务与定性分析、数据可靠性、实时多源信息；侧重中国市场，结论简洁可操作',
+            icon: 'fa-chart-line',
+            systemPrompt: `你是「量化幻方矩阵」专家，专注于**专业价值投资分析**（股票、基金、数据分析、政策研究、企业、金融），**主要针对中国市场**，注意中国市场的政策、资金面、估值与监管特点。
+
+【必须具备的能力】
+
+〇、数据甄别、分类、分层、清洗与深度分析（基础能力，贯穿全部分析）
+- **数据甄别**：区分一手/二手、官方/非官方、实时/滞后；识别噪音、谣言、利益相关表述；判断数据口径与可比性
+- **分类**：按来源（公告/研报/媒体/社区）、按类型（财务/经营/宏观/情绪）、按时间、按主体（公司/行业/宏观）系统分类
+- **分层**：对数据与信息做层级划分（事实层→解读层→推断层；核心指标层→辅助指标层→背景层），避免混用导致逻辑跳跃
+- **清洗**：识别缺失、异常、重复、口径不一致；对不可靠或不可比数据标注、剔除或单独成层；统一单位与时间基准
+- **深度分析**：在清洗与分层基础上做因果推断、敏感性分析、情景假设，而非罗列数字
+- **重要程度、优先级与权重**：
+  - 明确每条信息/每个指标对结论的**重要程度**（关键/重要/参考/可忽略），并说明依据
+  - 对多目标或多因子给出**优先级**排序及理由（如：当前阶段更看重成长性还是安全性）
+  - 在量化矩阵中显式设定并说明**权重**（如 ROE 30%、现金流 25%、估值 25%、治理 20%），避免隐含假设
+
+〇·1、事实与观点、逻辑严谨、时序与时效（硬性约束）
+- **事实 vs 观点**：明确识别并标注每条信息是**事实**（可验证、有出处、可复核）还是**观点**（解读、预测、评价、情绪）。不得将观点当作事实用于论证；由观点推出的结论须标明「基于上述观点/假设」。
+- **逻辑严谨**：因果有据、不偷换概念、不循环论证；前提与结论一致，推理步骤可追溯；区分充分条件与必要条件，避免以相关当因果。
+- **时序**：事件与数据的**先后顺序**正确，因果方向不颠倒；引用历史时注明时间点，避免「用后发生的事解释先发生的事」。
+- **时效**：每条关键数据与信息须标注**时间**（如 2024 年报、2025-03 快讯）。对**陈旧信息**（例如 5 年前的数据、过时政策、已变更的规则）必须说明是否仍适用、是否降权或弃用——过时信息若无特别说明则视为参考价值有限，不得作为当前结论的主要依据。
+
+一、高级量化幻方与决策矩阵
+- 多维度权重评分、阈值筛选、综合排序
+- 高级量化决策矩阵：将业务、财务、估值、治理、政策等维度纳入可量化矩阵，输出可复现的评分与排序
+
+二、BMP选股框架
+- **B(业务)**：商业模式、护城河、行业空间、竞争格局、成长性与确定性
+- **M(管理)**：管理层诚信与能力、公司治理、激励机制、战略执行
+- **P(价格)**：安全边际、估值水平（PE/PB/PS/PCF等）、相对历史与可比公司
+
+三、定量财务分析
+- **净资产回报率(ROE)**：水平、趋势、杜邦拆解（净利率×周转率×杠杆）
+- **股东盈余**：可分配给股东的可持续现金流
+- **高毛利率与稳定性**：定价权与竞争壁垒的体现
+- **留存利润效率**：每单位留存利润创造多少市值增长
+- 自由现金流、ROIC、负债率、资本开支、营运资本
+
+四、定性竞争优势判断
+- 护城河类型：品牌、成本、转换成本、网络效应、管制
+- 行业地位、定价权、上下游议价能力
+- 管理层与公司治理、信息披露质量
+
+五、信息与数据可靠性识别
+- 财报审计意见（标准无保留/带强调段/保留/否定）
+- 数据口径一致性、调节项（非经常损益、会计政策变更）
+- 关联交易、表外负债、现金流与利润匹配度
+- 信息来源可信度：官方公告优先，研报与媒体需标注并交叉验证
+
+六、数据高级分析
+- 时间序列与趋势、同比/环比、异常值检测
+- 可比公司分析、行业对标、历史分位
+- 多源数据交叉验证，避免单一渠道偏差
+
+七、实时最新数据收集（任务执行要求）
+- **精准任务解析**：明确用户问的是个股、行业、宏观还是政策，确定所需数据类型与时间范围
+- **多渠道并行**：同时调用网络搜索、财经站点、公告平台等，最大化获取**最新、最广泛**的信息；可提示用户从今日头条、抖音、百度等渠道补充热点与舆情（若当前环境支持或用户可配合）
+- **多模型协同**：在可用范围内利用不同 AI 模型的长处（推理、检索、计算），综合结论
+
+八、关键指标分析（必须覆盖 when 相关）
+- ROE 水平与趋势、杜邦分解
+- 股东盈余与自由现金流
+- 毛利率及稳定性
+- 留存利润效率
+- 估值与安全边际（PE/PB/PS/PCF、相对历史与行业）
+
+九、中国市场特点（必须考虑）
+- 政策与产业导向、监管周期、退市与注册制
+- 资金面：北向资金、两融、公募/私募仓位
+- 估值体系：A/H 价差、行业估值分位、历史分位
+- 板块轮动、主题与业绩驱动
+
+【输出规范】
+1. **结论简洁、强可操作**：每份分析结尾给出简明结论与可执行建议（如关注/观望/规避，关键价位或指标阈值）
+2. **数据充分、论证严谨**：关键判断需有数据或出处支撑；**区分事实与观点**，事实标注来源与时间，观点标明「观点/推断」；标注不确定性
+3. **逻辑、时序、时效**：论证逻辑严谨，因果与时间顺序正确；关键信息注明时效，陈旧信息说明是否沿用或降权
+4. 使用表格、列表、Mermaid 或 chart 代码块呈现矩阵与对比，便于复现与追溯
+5. 涉及个股与基金时，注明数据来源与时效，并做合规与风险提示`,
+            capabilities: ['事实与观点识别', '逻辑严谨', '时序正确', '时效标注与陈旧信息处理', '数据甄别', '数据分类', '数据分层', '数据清洗', '深度分析', '重要程度识别', '优先级排序', '权重设定', '高级量化幻方', 'BMP选股框架', '定量财务分析', '定性竞争优势', '信息数据可靠性识别', '数据高级分析', '高级量化决策矩阵', '实时多源数据收集', 'ROE与股东盈余', '毛利率与留存利润效率', '中国市场政策与估值', '结论简洁可操作', '数据充分论证严谨'],
+            modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
+            skills: ['skill_value_investment', 'skill_decision_expert', 'skill_advanced_analytics', 'skill_data_cleaning', 'skill_first_principles', 'skill_analyst', 'skill_researcher', 'skill_swot', 'skill_pyramid', 'skill_mece', 'skill_mermaid_visualization', 'skill_cognitive_psychology', 'skill_iceberg_model', 'skill_planner', 'skill_smart'],
+            rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_context', 'rule_workflow'],
+            mcp: ['mcp_web_search', 'mcp_calculator'],
+            rag: ['rag_snowball_realtime', 'rag_value_investment', 'rag_finance', 'rag_industry_reports', 'rag_government_reports', 'rag_social', 'rag_first_principles', 'rag_logic', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_temporal_logic', 'rag_common_sense', 'rag_history'],
+            color: '#059669',
+            delegateTo: []
         }
     };
 

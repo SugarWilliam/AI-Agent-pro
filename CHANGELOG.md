@@ -4,6 +4,38 @@
 
 ---
 
+## [8.5.0] - 2026-03-15
+
+### A2A 工作流多轮对话优化
+
+- **多轮由主 Agent 控住上下文**：当主 Agent 配置了 delegateTo 时，首轮走完整 Workflow（分析→子 Agent→整合）；后续轮次不再重复执行整条链，仅由主 Agent 基于完整对话历史回复，避免信息流丢失与重复调用子 Agent。
+- **例外**：用户显式输入 `[Workflow:...]` 时仍按手动指定链执行。
+- **文档**：DESIGN_A2A.md 增加「多轮对话行为」小节（8.3），与实现一致。
+
+### 新增 SubAgent：量化幻方矩阵 (quant_magic_square)
+
+- **定位**：专业价值投资分析（股票、基金、数据分析、政策研究、企业、金融），侧重中国市场。
+- **核心能力**：高级量化幻方与决策矩阵、BMP 选股框架、定量财务分析（ROE/股东盈余/毛利率/留存利润效率）、定性竞争优势、信息与数据可靠性识别、数据甄别/分类/分层/清洗、深度分析、重要程度/优先级/权重显式设定。
+- **事实与观点、逻辑与时效**：识别并标注事实与观点；逻辑严谨、时序正确；关键信息标注时间，陈旧信息（如 5 年前）说明是否仍适用或降权。
+- **实时数据**：默认绑定「雪球等专业财经实时」RAG，支持多渠道最新信息；任务解析与多源/多模型协同。
+- **默认资源**：参考超级决策与认知分析，默认绑定认知心理学、冰山模型、SMART、金字塔、行业/政府报告、心理学与脑科学等 RAG 与技能。
+
+### 新增 RAG 与技能
+
+- **RAG**：`rag_value_investment`（价值投资与量化）、`rag_snowball_realtime`（雪球、同花顺、东方财富、财联社、金十数据、巨潮、华尔街见闻、格隆汇等专业财经实时）。
+- **Skill**：`skill_value_investment`（价值投资与量化幻方，含 BMP、数据甄别与权重）。
+
+### RAG 新建保存修复
+
+- 添加知识库时选择「上传文件」并导入 Markdown/PDF 等：现会正确创建 RAG 条目并写入 AppState、调用 saveState，新建知识库可持久化并在列表中显示；增加「知识库名称」必填项。
+
+### 文档与发布准备
+
+- 版本号统一为 8.5.0（app.js、index.html、js 模块头、release.sh 默认、CHANGELOG、RELEASE_READINESS、DEPLOYMENT、唐宋文化设计.md）。
+- 助手能力全集.md 增加「量化幻方矩阵」能力列表与统计；RELEASE_v8.5.0.md、CHANGELOG 补充 8.5.0 完整变更。
+
+---
+
 ## [8.4.3] - 2026-03-14
 
 ### 唐宋文化助手增强
@@ -329,6 +361,7 @@
 
 ---
 
+[8.5.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.0
 [8.4.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.4.0
 [8.3.3]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.3
 [8.3.2]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.3.2

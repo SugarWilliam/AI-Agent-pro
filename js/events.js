@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.4.3 - 事件处理模块
+ * AI Agent Pro v8.5.0 - 事件处理模块
  * 未来科技感交互设计
  */
 
@@ -667,6 +667,7 @@
                         ? `Switched to ${name}, new chat started` : `已切换到: ${name}，已开启新会话`;
                     window.AIAgentUI?.showToast?.(msg, 'success');
                     updateAgentName();
+                    window.AIAgentUI?.updateCreativeWorkflowPreview?.();
                 }
             });
         });
@@ -1170,6 +1171,10 @@
         const msgCount = (window.AppState.messages || []).length;
         const isMultiTurn = msgCount >= 2;
         const enableWebSearch = (isWorkflow || autoWorkflow || (window.AppState.settings?.webSearchEnabled || false)) && !isMultiTurn;
+        // A2A 多轮：后续轮次由主 Agent 控住上下文，不重复走整条 Workflow，避免信息流丢失；仅当首轮或用户显式 [Workflow:...] 时走链
+        if (autoWorkflow && isMultiTurn) {
+            workflowChainSteps = [];
+        }
         
         // 处理文件附件
         let attachments = [];
@@ -2213,6 +2218,11 @@
                     
                     <!-- 文件上传 -->
                     <div class="rag-tab-content active" data-tab="file">
+                        <div class="form-group">
+                            <label>知识库名称 <span class="required">*</span></label>
+                            <input type="text" id="rag-file-name" placeholder="输入知识库名称，或留空使用文件名">
+                            <small class="form-hint">新建知识库的名称，保存后可在「关联资源」中选用</small>
+                        </div>
                         <div class="file-upload-area" id="rag-file-dropzone">
                             <i class="fas fa-cloud-upload-alt"></i>
                             <p>拖拽文件到此处，或点击选择文件</p>
@@ -2353,15 +2363,50 @@
             const activeTab = dialog.querySelector('.rag-tab.active').dataset.tab;
             
             if (activeTab === 'file' && selectedFiles.length > 0) {
+                const ragName = dialog.querySelector('#rag-file-name')?.value?.trim()
+                    || (selectedFiles[0].name ? selectedFiles[0].name.replace(/\.[^.]+$/, '') : '导入的文档') + '_' + Date.now();
+                if (!window.AppState.resources) window.AppState.resources = {};
+                if (!window.AppState.resources.rag) window.AppState.resources.rag = [];
+                const newRagId = 'rag_' + Date.now();
+                const newRAG = {
+                    id: newRagId,
+                    name: ragName,
+                    description: '由上传文件创建',
+                    category: '其他',
+                    documents: [],
+                    protocol: 'rag://1.0',
+                    supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'html', 'url'],
+                    enabled: true,
+                    createdAt: Date.now()
+                };
+                window.AppState.resources.rag.push(newRAG);
                 for (const file of selectedFiles) {
                     try {
-                        await window.RAGManager?.parseDocument?.(file);
+                        const docInfo = await window.RAGManager?.parseDocument?.(file);
+                        if (docInfo && docInfo.id) {
+                            if (!newRAG.documents) newRAG.documents = [];
+                            newRAG.documents.push({
+                                id: docInfo.id,
+                                name: docInfo.name,
+                                type: docInfo.type,
+                                size: docInfo.size,
+                                uploadedAt: docInfo.uploadedAt,
+                                status: docInfo.status,
+                                vectorized: !!docInfo.vectorized,
+                                addedAt: Date.now()
+                            });
+                        }
                     } catch (error) {
                         window.Logger?.error(`RAG 解析失败: ${file.name}`, error);
                     }
                 }
+                newRAG.documentCount = (newRAG.documents || []).length;
+                window.AIAgentApp?.saveState?.();
                 window.AIAgentUI?.renderResources?.('rag');
                 AIAgentUI.closeModal('add-rag-dialog');
+                window.AIAgentUI?.showToast?.('知识库已创建并保存', 'success');
+            } else if (activeTab === 'file' && selectedFiles.length === 0) {
+                window.AIAgentUI?.showToast?.('请先选择要导入的文件', 'error');
             } else if (activeTab === 'url') {
                 const url = dialog.querySelector('#rag-url-input').value.trim();
                 const name = dialog.querySelector('#rag-url-name').value.trim();
