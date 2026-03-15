@@ -430,14 +430,18 @@
 1. 数据甄别、分类、分层、清洗：区分一手/二手与官方/非官方；按来源与类型分类；事实层/解读层/推断层分层；识别异常与口径不一致并清洗；对重要程度、优先级与权重显式标注
 2. 事实与观点、逻辑与时效：识别并标注事实（可验证、有出处）与观点（解读/预测）；保证逻辑严谨、时序正确；关键信息标注时间，陈旧信息（如 5 年前）说明是否仍适用或降权
 3. 高级量化幻方与决策矩阵：多维度权重评分、阈值筛选、综合排序（权重须显式给出）
-4. BMP选股框架：业务(B)质量、管理(M)能力、价格(P)安全边际
-5. 定量财务分析：ROE、股东盈余、毛利率、留存利润效率、自由现金流、ROIC、负债结构
+4. BMP选股框架：业务(B)质量、管理(M)能力、价格(P)安全边际；估值须含**动态PE、PEG**（成长股必看）及相对历史/行业
+5. 定量财务分析：ROE、股东盈余、毛利率、留存利润效率、**现金流与盈利质量深化**（经营现金流与净利润匹配、资本开支计划、FCF/净利润、OCF/净利润、最新公告与年报）
 6. 定性竞争优势：护城河、行业地位、管理层与公司治理、信息披露质量
 7. 信息与数据可靠性：审计意见、数据口径、调节项、关联交易、来源可信度
 8. 数据高级分析：时间序列、可比公司、趋势与异常检测、深度因果与敏感性分析
 9. 中国市场的特点：政策与监管、资金面、估值体系、板块与周期
+10. **估值深度**：静态/动态PE、PEG；PE Band 下轨可参考历史PE分位，但须评估算法局限，优先考虑盈利稳定性调整、earnings yield band、ROE锚定合理PE区间；周期股宜用PB或周期分位
+11. **短期支撑位**：结合**成交量**（量价、换手）、**均线**（MA5/10/20/60）等具体技术指标给出支撑区间并注明数据来源
+12. **行业差异化**：制造业/互联网/周期/金融/消费等采用不同侧重方法与关键指标
+13. **行业与经济周期**：识别位置、判断方向、衡量幅度、管理时间（再评估节点）
 
-输出要求：结论简洁、强可操作；数据充分、论证严谨；事实与观点区分明确；逻辑严谨、时序与时效标注清晰；重要程度与优先级明确。**须基于 RAG/网络检索得到的实时数据输出，不得使用占位符、模拟数据或模拟报告。**`,
+输出要求：结论简洁、强可操作；数据充分、论证严谨；事实与观点区分明确；逻辑严谨、时序与时效标注清晰；重要程度与优先级明确。**须基于 RAG/网络检索得到的实时数据输出，不得使用占位符、模拟数据或模拟报告。**分析中如需更多数据可**随时调用全部 RAG 与网络搜索**，必要时可**向用户反馈并请求补充信息**后再继续分析。`,
             outputFormat: 'markdown'
         },
         {
@@ -1958,6 +1962,113 @@ ${prompt}
 分析时**必须**优先通过网络搜索或 URL 解析获取上述渠道最新内容，并注明来源与时间。禁止使用占位符或模拟数据；报告中的数据须来自实际检索结果。`
         },
         {
+            id: 'rag_data_api_finance',
+            name: '免费金融与行情数据API',
+            description: '免费、开源或免费额度内的行情与宏观数据API：AkShare、BaoStock、Tushare Pro、Yahoo Finance、CoinGecko、CryptoCompare 等；仅供知识参考，实际数据需用户自行调用验证',
+            enabled: true,
+            category: '金融',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'markdown', 'html', 'htm', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [
+                { name: 'AkShare', url: 'https://akshare.akfamily.xyz/', type: 'website', description: '开源免费 Python 库，A股/基金/期货/债券/宏观/舆情等' },
+                { name: 'BaoStock', url: 'https://baostock.com/', type: 'website', description: '免费 A 股数据接口' },
+                { name: 'Tushare', url: 'https://tushare.pro/', type: 'website', description: 'Tushare Pro 需注册，有免费积分额度' },
+                { name: 'Yahoo Finance', url: 'https://finance.yahoo.com/', type: 'website', description: '免费行情（如通过 yfinance）' },
+                { name: 'CoinGecko API', url: 'https://www.coingecko.com/en/api', type: 'website', description: '加密货币数据，免费 tier' },
+                { name: 'CryptoCompare', url: 'https://www.cryptocompare.com/cryptopian/api', type: 'website', description: '加密货币，免费 tier' }
+            ],
+            defaultContent: `免费/合规金融与行情数据 API（仅供知识参考；实际可用性需用户自行验证，本应用不直接调用）：
+
+一、A 股与国内宏观（免费或免费额度）
+1. AkShare：开源免费（MIT），Python。覆盖 A 股、基金、期货、债券、宏观、行业、舆情等。文档与示例见 akshare.akfamily.xyz。使用前请确认当前版本与接口可用性。
+2. BaoStock：免费 A 股数据接口，可获取行情、基本面等。使用前请确认官网与接口可用性。
+3. Tushare Pro：需注册，有免费积分与调用限制；适合个人学习与有限频次获取。使用须遵守其服务条款与积分规则。
+
+二、海外行情与宏观
+4. Yahoo Finance：可通过 yfinance 等免费获取行情与部分基本面；公开数据，使用须遵守其 ToS。
+5. Quandl / NASDAQ Data Link：部分数据集免费，多数为付费；仅建议在确认免费数据集范围内使用。
+
+三、加密货币（免费 tier，合规自担）
+6. CoinGecko API：免费 tier 有限额，用于币价与基础数据。
+7. CryptoCompare：免费 API 有限额。
+8. CoinMarketCap：免费 API 有严格限额与 ToS，建议用户自行查阅当前条款后再使用。
+
+不接入说明：聚宽(JoinQuant) 等以商业/实盘为主；智兔数服等未验证免费与 ToS，暂不列入。报告中对数据来源的引用须注明「用户可自行通过上述 API 获取并验证」，不得编造 API 返回结果。
+
+本项目对部分数据源做过基础连通性验证，详见 scripts/verify_data_apis.py 及运行结果 scripts/verify_data_apis_result.txt；验证日期以脚本输出为准。`
+        },
+        {
+            id: 'rag_data_api_official',
+            name: '官方与免费开放数据',
+            description: '国家统计局国家数据、信用中国等官方免费开放数据源',
+            enabled: true,
+            category: '金融',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'markdown', 'html', 'htm', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [
+                { name: '国家数据', url: 'https://data.stats.gov.cn/', type: 'website', description: '国家统计局官方数据，免费公开' },
+                { name: '信用中国', url: 'https://www.creditchina.gov.cn/', type: 'website', description: '信用信息公示与查询' }
+            ],
+            defaultContent: `官方与免费开放数据源（仅供知识参考；实际数据需用户自行访问或通过其开放接口获取并验证）：
+
+1. 国家数据（data.stats.gov.cn）：国家统计局官方数据平台，提供国民经济、人口、就业、价格、贸易等统计数据的查询与部分下载。免费公开，适合宏观与行业基本面参考。使用须遵守网站使用规定。
+2. 信用中国（creditchina.gov.cn）：行政许可与行政处罚、红黑名单等信用信息公示。免费公开查询，适合企业信用与合规参考。
+
+说明：QuestMobile、极光、猎聘、Boss 直聘研究院、清博、知微、融文、YCharts、魔镜、SEMrush、SimilarWeb、易观、Forrester 等为商业或企业级数据产品，非免费开放，本 RAG 不接入。Statista 等仅极有限免费版，不单独列入。报告引用数据时须注明来源与「用户自行验证可用性」。
+
+本项目对部分官方数据源做过基础连通性验证，详见 scripts/verify_data_apis.py 及 scripts/verify_data_apis_result.txt；验证日期以脚本输出为准。`
+        },
+        {
+            id: 'rag_sse',
+            name: '上交所官方数据',
+            description: '上海证券交易所公告、行情、披露、统计等官方数据源',
+            enabled: true,
+            category: '金融',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'markdown', 'html', 'htm', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [
+                { name: '上交所', url: 'https://www.sse.com.cn/', type: 'website', description: '上海证券交易所官网' },
+                { name: '上交所披露', url: 'http://www.sse.com.cn/disclosure/', type: 'website', description: '公告与披露' },
+                { name: '上交所数据', url: 'http://www.sse.com.cn/market/', type: 'website', description: '市场数据与统计' }
+            ],
+            defaultContent: `上海证券交易所（SSE）官方数据与披露（仅供知识参考；实际数据需用户自行访问或通过其公开接口/公告获取并验证）：
+
+1. 官网与披露：上交所（sse.com.cn）提供上市公司公告、监管问询、财报披露、IPO 与再融资、交易规则与统计。沪市主板、科创板上市公司公告与披露以官方披露为准。
+2. 市场数据：行情、指数、成交统计、融资融券、沪港通、科创板数据等可在官网市场数据栏目查询。数据口径与发布时间以官网为准。
+3. 使用要求：分析沪市标的时，**在数据源可连通的前提下须优先引用 RAG 与检索得到的上交所/披露数据**，以保持样本足够多、足够实时、足够专业；引用时注明来源与时间。`
+        },
+        {
+            id: 'rag_szse',
+            name: '深交所官方数据',
+            description: '深圳证券交易所公告、行情、披露、统计等官方数据源',
+            enabled: true,
+            category: '金融',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'markdown', 'html', 'htm', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [
+                { name: '深交所', url: 'https://www.szse.cn/', type: 'website', description: '深圳证券交易所官网' },
+                { name: '深交所披露', url: 'http://www.szse.cn/disclosure/', type: 'website', description: '公告与披露' },
+                { name: '深交所数据', url: 'http://www.szse.cn/market/', type: 'website', description: '市场数据与统计' }
+            ],
+            defaultContent: `深圳证券交易所（SZSE）官方数据与披露（仅供知识参考；实际数据需用户自行访问或通过其公开接口/公告获取并验证）：
+
+1. 官网与披露：深交所（szse.cn）提供上市公司公告、监管问询、财报披露、IPO 与再融资、交易规则与统计。深市主板、创业板上市公司公告与披露以官方披露为准。
+2. 市场数据：行情、指数、成交统计、融资融券、深港通、创业板数据等可在官网市场数据栏目查询。数据口径与发布时间以官网为准。
+3. 使用要求：分析深市标的时，**在数据源可连通的前提下须优先引用 RAG 与检索得到的深交所/披露数据**，以保持样本足够多、足够实时、足够专业；引用时注明来源与时间。`
+        },
+        {
             id: 'rag_cn_analysis_framework',
             name: 'CN分析框架',
             description: '中国本土化投资方法论：质量价值改造、多因子、周期择时、核心-卫星、专精特新、全天候与政策β+质量α+行为γ',
@@ -2875,14 +2986,15 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
 二、BMP选股框架
 - **B(业务)**：商业模式、护城河、行业空间、竞争格局、成长性与确定性
 - **M(管理)**：管理层诚信与能力、公司治理、激励机制、战略执行
-- **P(价格)**：安全边际、估值水平（PE/PB/PS/PCF等）、相对历史与可比公司
+- **P(价格)**：安全边际、估值水平（**静态PE、动态PE**（滚动/预期）、**PEG**（PE/盈利增速，成长股必看）、PE/PB/PS/PCF 等）、相对历史与可比公司
 
 三、定量财务分析
 - **净资产回报率(ROE)**：水平、趋势、杜邦拆解（净利率×周转率×杠杆）
 - **股东盈余**：可分配给股东的可持续现金流
 - **高毛利率与稳定性**：定价权与竞争壁垒的体现
 - **留存利润效率**：每单位留存利润创造多少市值增长
-- 自由现金流、ROIC、负债率、资本开支、营运资本
+- **现金流与盈利质量（须深化）**：**经营现金流(OCF)** 与净利润的匹配度、**资本开支计划**（最新披露的 Capex 与扩产节奏）、自由现金流(FCF)、FCF/净利润、OCF/净利润、资本开支/折旧、营运资本变动；结合目标公司最新公告与年报，使盈利质量判断维度更丰富
+- 自由现金流、ROIC、负债率、营运资本
 
 四、定性竞争优势判断
 - 护城河类型：品牌、成本、转换成本、网络效应、管制
@@ -2911,7 +3023,8 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
 - **双重决策体系**：报告中须将**量化矩阵**与**情景概率**结合，形成「量化矩阵 + 情景概率」的双重决策体系；结论与建议须同时体现矩阵评分与情景概率；**按季度更新**数据与复核逻辑，并在报告中注明上次更新与本次更新时点
 
 八、强支撑位与多层次退出
-- **强支撑位的具体量化标准**（须明确给出）：如 **PE Band 下轨**（历史 PE 区间的下分位）、**布林带下轨**、**历史回撤分位**（如最大回撤的 80% 分位）、重要均线或成交量支撑；可结合个股与行业选择适用指标并给出数值或区间
+- **估值参考：PE Band 下轨**。当前常用算法为**历史 PE 区间的下分位**（如 20% 分位），具备一定参考价值，但存在局限（盈利波动大时 PE 失真、周期股易失效）。**更高参考价值的做法**：在历史 PE 分位基础上，(1) 结合**盈利稳定性**（盈利波动率、连续正盈利年数）做调整，盈利越稳定历史 PE 下轨参考性越强；(2) 可补充** earnings yield band**（盈利收益率 E/P 的上下轨）与** ROE 锚定的合理 PE 区间**（如可持续 ROE 对应的合理 PE 带）；(3) 周期股宜用 PB 或行业周期分位替代单纯 PE 下轨。报告中若使用 PE Band 下轨须注明算法与局限，并视情况采用上述增强方法。
+- **短期支撑位（须更精准）**：须结合**技术面**数据提升精准度：**成交量**（放量/缩量、量价配合、关键价位换手）、**均线**（MA5/MA10/MA20/MA60 等多周期均线支撑与拐点）、布林带下轨、历史回撤分位、关键前低与平台。给出具体数值或区间并注明数据来源与时间。
 - **多层次退出机制**：设计分级退出（如目标位分批止盈、止损线、时间止损、逻辑止损）；每层触发条件与比例须可执行、可回测
 - **重大决策与行为护栏（可选，不替代上述量化标准）**：涉及重大仓位或战略转向时，可调用「重大决策预验尸与二阶思维」执行二阶思维与预验尸分析；报告与结论可用「AI魔鬼代言人」做鲁棒性测试。行为约束（大跌>20%检查清单+48h冷静期、涨幅>100%再平衡、投资决策日与情绪自评）仅作行为护栏，详见绑定技能与 RAG「决策与行为协议」。
 
@@ -2920,24 +3033,32 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
 - **对冲方案设计**：针对持仓或情景风险，给出可操作的对冲方案（如股指/行业ETF/期权、多空组合、仓位约束），并说明对冲成本与效果权衡
 
 十、实时最新数据收集（**强制执行**，不可跳过）
-- **必须先调用再输出**：在撰写报告或给出带具体数值的结论之前，**必须**先调用已绑定的 RAG（雪球实时、价值投资、行业报告、政府报告等）与**网络搜索**，获取与问题相关的**当前最新**信息；未完成检索不得输出依赖该数据的报告内容。
+- **必须先调用再输出**：在撰写报告或给出带具体数值的结论之前，**必须**先调用已绑定的 RAG（雪球实时、价值投资、上交所/深交所官方、行业报告、政府报告等）与**网络搜索**，获取与问题相关的**当前最新**信息；未完成检索不得输出依赖该数据的报告内容。
+- **可连通时须用 RAG 数据**：当数据源可连通时，**必须**使用 RAG 与检索得到的数据撰写报告，以保持样本足够多、足够实时、足够专业；不得在可获得数据的情况下仍仅凭训练数据或泛泛而谈。
 - **禁止仅靠训练数据**：不得仅凭模型训练数据生成报告；不得用占位符、模拟数据或「示例」数值填充报告；关键数据须来自本次 RAG/网络检索结果并注明来源与时间。
 - **精准任务解析**：明确用户问的是个股、行业、宏观还是政策，确定所需数据类型与时间范围，据此定向检索。
-- **多渠道并行**：同时调用网络搜索、财经站点、公告平台等，最大化获取**最新、最广泛**的信息；若某渠道不可用，须在报告中说明数据范围与局限，不得用虚构数据补全。
+- **多渠道并行**：同时调用网络搜索、财经站点、公告平台、交易所披露等，最大化获取**最新、最广泛**的信息；若某渠道不可用，须在报告中说明数据范围与局限，不得用虚构数据补全。
 - **无法获取时的处理**：若当前环境无法获取某类实时数据，须明确写出「未能获取到 XXX 的实时数据」，仅可给出方法论、框架或建议用户自行补充的渠道，**不得输出占位或模拟数据**。
+- **随时补充检索与向用户索要**：分析过程中若发现需要更多数据或信息，**可随时再次调用全部 RAG 与网络搜索**获取；若仍无法满足分析需要，可**明确向用户反馈并请求补充**（如提供公告链接、关键数据或时间范围），再基于补充信息继续分析。
 
 十一、关键指标分析（必须覆盖 when 相关）
 - ROE 水平与趋势、杜邦分解
-- 股东盈余与自由现金流
+- 股东盈余与自由现金流、经营现金流与资本开支计划（盈利质量）
 - 毛利率及稳定性
 - 留存利润效率
-- 估值与安全边际（PE/PB/PS/PCF、相对历史与行业）
+- **估值与安全边际（深度）**：**静态 PE、动态 PE**（滚动 TTM/预期）、**PEG**（PE/盈利增速，成长股必看）、PE/PB/PS/PCF、相对历史与行业分位
 
 十二、中国市场特点（必须考虑）
 - 政策与产业导向、监管周期、退市与注册制
 - 资金面：北向资金、两融、公募/私募仓位
 - 估值体系：A/H 价差、行业估值分位、历史分位
 - 板块轮动、主题与业绩驱动
+
+十二·1、行业差异化分析（必须按行业侧重）
+- **不同行业采用不同侧重方法与逻辑**，不得套用同一模板。例如：**制造业**侧重产能利用率、资本开支周期、毛利率与周转率、供应链与库存；**互联网/科技**侧重用户与变现、单位经济、监管与数据合规、估值用 PS/EV/DAU 等；**周期性行业**（钢铁、有色、化工、地产链等）侧重周期位置、供需与库存、价格弹性、PB 与 ROE 拐点；**金融**侧重资产质量、息差、资本充足与政策；**消费**侧重品牌、渠道、同店与复购。报告中须先明确标的所属行业，再选用对应分析框架与关键指标。
+
+十二·2、行业周期与经济周期（必须强化）
+- **四维分析**：**识别位置**（当前处于行业/经济周期的哪个阶段）、**判断方向**（上行/下行/拐点）、**衡量幅度**（景气度或估值偏离历史/中位的程度）、**管理时间**（预期持续期、关键观测节点与再评估时点）。结合库存周期、政策周期、盈利周期与资金周期，在报告中给出周期定位结论及对仓位与估值的含义。
 
 十三、中国本土化分析框架（CN分析框架，必须结合使用）
 - **推荐体系**：**政策β + 质量α + 行为γ**。顶层用**政策周期定位**决定权益仓位（0–100%）；中层用**质量价值筛选**（ROE质量+财务安全+治理结构，结合中国特色质量价值改造）；底层用**行为金融择时**（逆向、资金流向、情绪极端）。须与量化矩阵、情景概率、BMP 等结合，形成统一结论。
@@ -2953,12 +3074,12 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
 5. **逻辑、时序、时效**：论证逻辑严谨，因果与时间顺序正确；关键信息注明时效，陈旧信息说明是否沿用或降权
 6. 使用表格、列表、Mermaid 或 chart 代码块呈现矩阵与对比，便于复现与追溯
 7. 涉及个股与基金时，注明数据来源与时效，并做合规与风险提示`,
-            capabilities: ['事实与观点识别', '逻辑严谨', '时序正确', '时效标注与陈旧信息处理', '数据甄别', '数据分类', '数据分层', '数据清洗', '深度分析', '重要程度识别', '优先级排序', '权重设定', '数据档案事实层解读层推断层', '高级量化幻方', 'BMP选股框架', '定量财务分析', '定性竞争优势', '信息数据可靠性识别', '数据高级分析', '高级量化决策矩阵', '情景动态概率模型', '多时间维度沙盘推演', '量化矩阵与情景概率双重决策体系', '强支撑位量化标准', '多层次退出机制', '策略回测', '对冲方案设计', '依赖关系分析', '时序关系分析', 'CN分析框架', '政策β质量α行为γ', '中国特色质量价值', '中国A股多因子', '中国周期与择时', '中国版核心-卫星', '专精特新与小盘策略', '中国全天候', '重大决策预验尸与二阶思维', 'AI魔鬼代言人报告鲁棒性测试', '行为约束协议', '实时多源数据收集', 'RAG与网络精准全面调用', 'ROE与股东盈余', '毛利率与留存利润效率', '中国市场政策与估值', '结论简洁可操作', '数据充分论证严谨', '报告来源与时间注明'],
+            capabilities: ['事实与观点识别', '逻辑严谨', '时序正确', '时效标注与陈旧信息处理', '数据甄别', '数据分类', '数据分层', '数据清洗', '深度分析', '重要程度识别', '优先级排序', '权重设定', '数据档案事实层解读层推断层', '高级量化幻方', 'BMP选股框架', '定量财务分析', '现金流与盈利质量深化', '定性竞争优势', '信息数据可靠性识别', '数据高级分析', '估值深度动态PE与PEG', 'PE Band下轨与增强算法', '短期支撑位成交量均线技术面', '行业差异化分析', '行业周期与经济周期四维分析', '高级量化决策矩阵', '情景动态概率模型', '多时间维度沙盘推演', '量化矩阵与情景概率双重决策体系', '强支撑位量化标准', '多层次退出机制', '策略回测', '对冲方案设计', '依赖关系分析', '时序关系分析', 'CN分析框架', '政策β质量α行为γ', '中国特色质量价值', '中国A股多因子', '中国周期与择时', '中国版核心-卫星', '专精特新与小盘策略', '中国全天候', '重大决策预验尸与二阶思维', 'AI魔鬼代言人报告鲁棒性测试', '行为约束协议', '实时多源数据收集', '可连通时须用RAG数据', '随时调用全部RAG与网络并可向用户索要补充', 'RAG与网络精准全面调用', 'ROE与股东盈余', '毛利率与留存利润效率', '中国市场政策与估值', '结论简洁可操作', '数据充分论证严谨', '报告来源与时间注明'],
             modelPreference: ['deepseek-reasoner', 'glm-4-plus', 'gpt-4o'],
             skills: ['skill_value_investment', 'skill_decision_expert', 'skill_advanced_analytics', 'skill_data_cleaning', 'skill_first_principles', 'skill_analyst', 'skill_researcher', 'skill_swot', 'skill_pyramid', 'skill_mece', 'skill_mermaid_visualization', 'skill_cognitive_psychology', 'skill_iceberg_model', 'skill_planner', 'skill_smart', 'skill_dependency', 'skill_temporal_relation', 'skill_scenario_dynamic_probability', 'skill_multi_temporal_sandbox', 'skill_backtest', 'skill_cn_quality_value', 'skill_cn_multifactor', 'skill_cn_cycle_timing', 'skill_cn_core_satellite', 'skill_cn_smallcap_specialized', 'skill_cn_allweather', 'skill_decision_premortem', 'skill_devil_advocate', 'skill_behavior_guardrails'],
             rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_context', 'rule_workflow'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
-            rag: ['rag_cn_analysis_framework', 'rag_decision_behavior_protocols', 'rag_snowball_realtime', 'rag_value_investment', 'rag_finance', 'rag_industry_reports', 'rag_government_reports', 'rag_social', 'rag_first_principles', 'rag_logic', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_temporal_logic', 'rag_common_sense', 'rag_history'],
+            rag: ['rag_cn_analysis_framework', 'rag_decision_behavior_protocols', 'rag_snowball_realtime', 'rag_value_investment', 'rag_data_api_finance', 'rag_data_api_official', 'rag_sse', 'rag_szse', 'rag_finance', 'rag_industry_reports', 'rag_government_reports', 'rag_social', 'rag_first_principles', 'rag_logic', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_temporal_logic', 'rag_common_sense', 'rag_history'],
             color: '#059669',
             delegateTo: []
         }

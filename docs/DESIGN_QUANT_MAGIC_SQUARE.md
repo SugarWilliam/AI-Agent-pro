@@ -111,18 +111,20 @@
 | - | **【禁止与强制执行】** | **禁止**：占位符、模拟报告、模拟数据、占位模拟；**强制执行**：实时最新数据收集（须先 RAG/网络检索再输出，数据须来自本次检索并注明来源；无法获取时须说明并仅给方法框架） | 硬性约束，见 systemPrompt 首段 |
 | 〇·1 | 事实与观点、逻辑严谨、时序与时效 | 硬性约束；事实 vs 观点；时效与陈旧信息 | rule_accuracy；贯穿各 skill |
 | 一 | 高级量化幻方与决策矩阵 | 多维度权重评分、阈值筛选、综合排序 | skill_value_investment, skill_decision_expert |
-| 二 | BMP选股框架 | B(业务)/M(管理)/P(价格) | skill_value_investment, skill_cn_quality_value |
-| 三 | 定量财务分析 | ROE、股东盈余、毛利率、留存利润效率等 | skill_value_investment, skill_advanced_analytics |
+| 二 | BMP选股框架 | B(业务)/M(管理)/P(价格)；估值含**动态PE、PEG** | skill_value_investment, skill_cn_quality_value |
+| 三 | 定量财务分析 | ROE、股东盈余、毛利率、留存利润效率；**现金流与盈利质量深化**（OCF、资本开支计划、FCF/净利润等） | skill_value_investment, skill_advanced_analytics |
 | 四 | 定性竞争优势判断 | 护城河、行业地位、定价权、治理 | skill_value_investment, skill_swot |
 | 五 | 信息与数据可靠性识别 | 审计意见、口径、关联交易、来源可信度 | skill_value_investment |
 | 六 | 数据高级分析 | 时间序列、可比公司、异常值、多源交叉验证 | skill_advanced_analytics, skill_analyst, skill_researcher |
 | 六·1 | 数据档案 | 事实层/解读层/推断层；来源与时间 | 与〇分层一致，强调「档案」落地 |
 | 七 | 情景动态概率与双重决策体系 | 初始概率、KDI 权重、多时间维度沙盘、量化矩阵+情景概率、按季度更新 | skill_scenario_dynamic_probability, skill_multi_temporal_sandbox |
-| 八 | 强支撑位与多层次退出 | 强支撑位量化标准、多层次退出机制；**重大决策与行为护栏（可选）** | skill_behavior_guardrails；预验尸/魔鬼代言人/行为约束见绑定 skill 与 RAG「决策与行为协议」 |
+| 八 | 强支撑位与多层次退出 | **PE Band 下轨**（算法与更高参考价值做法）；**短期支撑位**结合成交量、均线等技术面；多层次退出；**重大决策与行为护栏（可选）** | skill_behavior_guardrails；预验尸/魔鬼代言人/行为约束见绑定 skill 与 RAG「决策与行为协议」 |
 | 九 | 策略回测与对冲 | 回测设计、绩效指标、稳健性；对冲方案 | skill_backtest |
-| 十 | 实时最新数据收集 | RAG 与网络必须精准全面调用；多渠道并行 | 绑定 RAG（雪球实时、价值投资、行业/政府报告等）+ mcp_web_search |
-| 十一 | 关键指标分析 | ROE、股东盈余、毛利率、留存利润、估值与安全边际 | 与三、二呼应 |
+| 十 | 实时最新数据收集 | RAG 与网络必须精准全面调用；**可连通时须用 RAG 数据**；**随时可再次调用全部 RAG 与网络**，必要时**向用户反馈并请求补充信息** | 绑定 RAG（含上交所/深交所官方、雪球实时等）+ mcp_web_search |
+| 十一 | 关键指标分析 | ROE、股东盈余、毛利率、留存利润；**估值深度**（动态PE、PEG）；**现金流与盈利质量** | 与三、二呼应 |
 | 十二 | 中国市场特点 | 政策、资金面、估值体系、板块轮动 | rag_cn_analysis_framework, skill_cn_* |
+| 十二·1 | 行业差异化分析 | **不同行业不同侧重**：制造业/互联网/周期/金融/消费等对应方法与关键指标 | skill_value_investment |
+| 十二·2 | 行业周期与经济周期 | **四维**：识别位置、判断方向、衡量幅度、管理时间；库存/政策/盈利/资金周期 | skill_cn_cycle_timing, skill_value_investment |
 | 十三 | 中国本土化分析框架（CN分析框架） | 政策β+质量α+行为γ；本土化方法论；实施节奏；关键原则 | 须调用 CN 框架 RAG 与 6 个 CN 技能 |
 | - | 【输出规范】 | 结论清晰、数据来源与时间、本报告时间、可读性、合规提示 | 通用约束 |
 
@@ -134,7 +136,7 @@
 
 | id | 名称 | 职责 | 与其它资源关系 |
 |----|------|------|----------------|
-| skill_value_investment | 价值投资与量化幻方 | BMP、数据甄别/分层、事实与观点、高级量化幻方、中国市场 | 与 rag_value_investment 互补；与 skill_cn_quality_value 为通用 vs 中国改造 |
+| skill_value_investment | 价值投资与量化幻方 | BMP、动态PE/PEG、现金流与盈利质量深化、PE Band 与短期支撑位（成交量/均线）、行业差异化、周期四维、随时调用 RAG/网络并可向用户索要补充 | 与 rag_value_investment 互补；与 skill_cn_quality_value 为通用 vs 中国改造 |
 | skill_decision_expert | 决策专家 | 决策矩阵、决策链、概率分析、Mermaid、图表规范 | 通用决策工具；重大决策时可叠加 skill_decision_premortem |
 | skill_advanced_analytics | 高级数据分析 | 微积分、概率、矩阵、统计分析、回归、时间序列 | 支撑情景概率与回测 |
 | skill_data_cleaning | 数据分层清洗 | 数据分层、清洗、质量管理 | 支撑〇与六·1 |
@@ -206,7 +208,7 @@
 
 ### 3.3 RAG 知识库分组与职责
 
-共 **16 个** RAG。**调用逻辑**：`queryRAG(userMessage, ragList)` 对**每个** RAG 执行检索/匹配（文档向量 > defaultContent 关键词 > 外部源），结果合并为一段 `ragContext` 注入【知识库参考】。用户问题与某 RAG 相关度低时，该 RAG 可能不返回内容，从而减少噪音。
+共 **20 个** RAG。**调用逻辑**：`queryRAG(userMessage, ragList)` 对**每个** RAG 执行检索/匹配（文档向量 > defaultContent 关键词 > 外部源），结果合并为一段 `ragContext` 注入【知识库参考】。用户问题与某 RAG 相关度低时，该 RAG 可能不返回内容，从而减少噪音。**可连通时须优先使用 RAG 与检索得到的数据**，以保持样本足够多、足够实时、足够专业。
 
 #### 3.3.1 投资与市场（优先）
 
@@ -216,6 +218,10 @@
 | rag_decision_behavior_protocols | 决策与行为协议 | 二阶思维、预验尸、决策日志要素、行为约束（大跌/大涨/决策日与情绪自评） |
 | rag_snowball_realtime | 雪球等专业财经实时 | 雪球、同花顺、东财、财联社等实时渠道说明与使用建议 |
 | rag_value_investment | 价值投资与量化 | 关键指标、BMP、中国股市特点、定性分析、数据可靠性、政策与宏观 |
+| rag_data_api_finance | 免费金融与行情数据API | AkShare、BaoStock、Tushare Pro、Yahoo Finance、CoinGecko、CryptoCompare 等免费/免费额度数据源知识；实际可用性需用户自行验证 |
+| rag_data_api_official | 官方与免费开放数据 | 国家数据（data.stats.gov.cn）、信用中国等官方免费开放数据 |
+| rag_sse | 上交所官方数据 | 上海证券交易所公告、披露、市场数据；沪市标的须在可连通时优先引用 |
+| rag_szse | 深交所官方数据 | 深圳证券交易所公告、披露、市场数据；深市标的须在可连通时优先引用 |
 | rag_finance | 金融知识库 | 货币银行、投资理论、风险管理、财务报表基础 |
 
 #### 3.3.2 政策与行业
@@ -247,6 +253,13 @@
 
 - **mcp_web_search**：网络搜索，支撑「实时最新数据收集」。
 - **mcp_calculator**：计算器，支撑回测与指标计算。
+
+### 3.6 数据 API 基础连通性验证
+
+- 项目内提供脚本 **`scripts/verify_data_apis.py`**，对部分数据源做**最小调用/HTTP 可达性**测试（AkShare、Tushare Pro、国家数据、信用中国），便于在 RAG 或说明中注明「已于某日做过基础连通性验证」。
+- 运行方式：`pip install akshare requests`（可选 `tushare`）；若验证 Tushare Pro 需设置环境变量 `TUSHARE_TOKEN`；执行 `python scripts/verify_data_apis.py`。结果打印到终端并写入 **`scripts/verify_data_apis_result.txt`**（含校验日期与逐项通过/跳过/失败）。
+- **验证日期**：以脚本输出或 `verify_data_apis_result.txt` 中的「校验时间」为准。例如：**已于 2026-03-16 做过基础连通性验证**（以实际运行结果为准）。
+- RAG `rag_data_api_finance` 与 `rag_data_api_official` 的 defaultContent 中已注明：本项目对部分数据源做过基础连通性验证，详见上述脚本及结果文件。
 
 ---
 
@@ -296,10 +309,11 @@ skill_cn_smallcap_specialized, skill_cn_allweather,
 skill_decision_premortem, skill_devil_advocate, skill_behavior_guardrails
 ```
 
-### 5.2 RAG（16 个）
+### 5.2 RAG（20 个）
 
 ```
 rag_cn_analysis_framework, rag_decision_behavior_protocols, rag_snowball_realtime, rag_value_investment,
+rag_data_api_finance, rag_data_api_official, rag_sse, rag_szse,
 rag_finance, rag_industry_reports, rag_government_reports, rag_social, rag_first_principles, rag_logic,
 rag_iceberg_model, rag_psychology, rag_neuroscience, rag_temporal_logic, rag_common_sense, rag_history
 ```
@@ -316,9 +330,9 @@ rule_format, rule_accuracy, rule_examples, rule_structure, rule_context, rule_wo
 mcp_web_search, mcp_calculator
 ```
 
-### 5.5 Capabilities（UI 与卡片用，50 项）
+### 5.5 Capabilities（UI 与卡片用）
 
-用于展示与 buildAgentCards，与 systemPrompt/技能一一对应，无独立调用逻辑；清单见 `BUILTIN_SUB_AGENTS.quant_magic_square.capabilities`。
+用于展示与 buildAgentCards，与 systemPrompt/技能一一对应，无独立调用逻辑；清单见 `BUILTIN_SUB_AGENTS.quant_magic_square.capabilities`（含估值深度、现金流与盈利质量、PE Band 与短期支撑位技术面、行业差异化、行业与经济周期四维、可连通时须用 RAG、随时调用与向用户索要补充等）。
 
 ---
 

@@ -21,6 +21,11 @@
 - 应用版本：app.js（VERSION）、index.html、js 模块头、release.sh 默认、README 徽章。
 - 文档：CHANGELOG、RELEASE_READINESS、DEPLOYMENT、唐宋文化设计、助手能力全集、DESIGN_A2A、review-test 等。
 
+### 数据 API 基础连通性验证
+
+- 新增 **`scripts/verify_data_apis.py`**：对 AkShare、Tushare Pro、国家数据、信用中国做最小调用/HTTP 可达性测试；结果写入 `scripts/verify_data_apis_result.txt`，含校验日期。
+- RAG 与设计文档中已注明：**已于某日做过基础连通性验证**，验证日期以脚本输出为准。详见 [DESIGN_QUANT_MAGIC_SQUARE.md](DESIGN_QUANT_MAGIC_SQUARE.md) 第 3.6 节。
+
 **下载与发布**：在线访问 https://sugarwilliam.github.io/AI-Agent-pro/ ；发布脚本 `./release.sh 8.5.1`（需在 gh-pages 分支执行）。
 
 ---
