@@ -110,6 +110,7 @@
 | 〇 | 数据甄别、分类、分层、清洗与深度分析 | 基础数据能力；重要程度/优先级/权重显式 | skill_data_cleaning, skill_advanced_analytics, skill_value_investment |
 | - | **【禁止与强制执行】** | **禁止**：占位符、模拟报告、模拟数据、占位模拟；**强制执行**：实时最新数据收集（须先 RAG/网络检索再输出，数据须来自本次检索并注明来源；无法获取时须说明并仅给方法框架） | 硬性约束，见 systemPrompt 首段 |
 | 〇·1 | 事实与观点、逻辑严谨、时序与时效 | 硬性约束；事实 vs 观点；时效与陈旧信息 | rule_accuracy；贯穿各 skill |
+| 〇·2 | 量化幻方报告输出协议（王者级） | 数据贞操与分级响应 A/B/C；强观点概率-结论；决策路径图与复查节点；五条技术条款；王者级四要件；示例与数据引用防误用 | rag_quant_output_protocols |
 | 一 | 高级量化幻方与决策矩阵 | 多维度权重评分、阈值筛选、综合排序 | skill_value_investment, skill_decision_expert |
 | 二 | BMP选股框架 | B(业务)/M(管理)/P(价格)；估值含**动态PE、PEG** | skill_value_investment, skill_cn_quality_value |
 | 三 | 定量财务分析 | ROE、股东盈余、毛利率、留存利润效率；**现金流与盈利质量深化**（OCF、资本开支计划、FCF/净利润等） | skill_value_investment, skill_advanced_analytics |
@@ -181,7 +182,7 @@
 | skill_cn_cycle_timing | 中国周期与择时 | 政策-市场双周期、政策底→市场底→经济底、政策-资金-情绪三维择时 |
 | skill_cn_core_satellite | 中国版核心-卫星配置 | 高股息蓝筹底仓 + 政策主题卫星 + 现金 |
 | skill_cn_smallcap_specialized | 专精特新与小盘策略 | 壳价值消亡后真成长筛选、专精特新得分、剔除条件 |
-| skill_cn_allweather | 中国全天候策略 | 经济/通胀/政策三维、宽松/紧缩/结构性资产配置 |
+| skill_cn_allweather | 中国全天候策略 | 经济/通胀/政策三维；联海本土化：风险因子拆解、典型/非典型周期、回撤前置；宏观情景概率；贝塔底仓+阿尔法择时 |
 
 #### 3.2.6 重大决策与行为、鲁棒性（3 个）
 
@@ -208,7 +209,7 @@
 
 ### 3.3 RAG 知识库分组与职责
 
-共 **20 个** RAG。**调用逻辑**：`queryRAG(userMessage, ragList)` 对**每个** RAG 执行检索/匹配（文档向量 > defaultContent 关键词 > 外部源），结果合并为一段 `ragContext` 注入【知识库参考】。用户问题与某 RAG 相关度低时，该 RAG 可能不返回内容，从而减少噪音。**可连通时须优先使用 RAG 与检索得到的数据**，以保持样本足够多、足够实时、足够专业。
+共 **21 个** RAG。**调用逻辑**：`queryRAG(userMessage, ragList)` 对**每个** RAG 执行检索/匹配（文档向量 > defaultContent 关键词 > 外部源），结果合并为一段 `ragContext` 注入【知识库参考】。用户问题与某 RAG 相关度低时，该 RAG 可能不返回内容，从而减少噪音。**可连通时须优先使用 RAG 与检索得到的数据**，以保持样本足够多、足够实时、足够专业。
 
 #### 3.3.1 投资与市场（优先）
 
@@ -216,6 +217,7 @@
 |----|------|------|
 | rag_cn_analysis_framework | CN分析框架 | 本土化适配、质量价值改造、多因子、全天候、双周期、三维择时、核心-卫星、专精特新、政策β+质量α+行为γ |
 | rag_decision_behavior_protocols | 决策与行为协议 | 二阶思维、预验尸、决策日志要素、行为约束（大跌/大涨/决策日与情绪自评） |
+| rag_quant_output_protocols | 量化幻方报告输出协议 | 数据贞操与分级响应、强观点、决策路径图、同业比较与五条技术条款、王者级四要件 |
 | rag_snowball_realtime | 雪球等专业财经实时 | 雪球、同花顺、东财、财联社等实时渠道说明与使用建议 |
 | rag_value_investment | 价值投资与量化 | 关键指标、BMP、中国股市特点、定性分析、数据可靠性、政策与宏观 |
 | rag_data_api_finance | 免费金融与行情数据API | AkShare、BaoStock、Tushare Pro、Yahoo Finance、CoinGecko、CryptoCompare 等免费/免费额度数据源知识；实际可用性需用户自行验证 |
@@ -292,6 +294,11 @@
 - 无「条件分支」：当前实现不根据用户意图自动选择部分 skill 或部分 RAG；所有绑定 skill 与 RAG 均参与构建提示（RAG 为检索结果，可能为空）。合理性：模型可根据问题与篇幅自行侧重，避免漏能力。
 - 顺序：Skill 顺序为配置数组顺序，建议保持「核心投资 → 思维与结构 → 研究可视化 → 依赖时序情景回测 → CN 本土化 → 决策与行为」的大类顺序，便于模型优先看到核心能力。当前顺序已基本符合。
 
+### 4.6 示例与数据引用（防误用）
+
+- RAG 与技能中出现的**公司名、股票代码、具体价格或数值**（如「长江电力、中国神华」「沪电股份、深南电路」等）均为**方法论示例**，用于说明框架或筛选标准，**不得**直接当作本次分析的标的、可比公司或结论数据。
+- 具体分析须以**本次用户问题**与**本次 RAG/网络检索结果**为准；可比公司组、估值结论、支撑位等均须来自本次检索或用户提供，并注明来源与时间。systemPrompt 〇·2 已含「示例与数据引用」条款。
+
 ---
 
 ## 五、配置清单（完整）
@@ -309,10 +316,10 @@ skill_cn_smallcap_specialized, skill_cn_allweather,
 skill_decision_premortem, skill_devil_advocate, skill_behavior_guardrails
 ```
 
-### 5.2 RAG（20 个）
+### 5.2 RAG（21 个）
 
 ```
-rag_cn_analysis_framework, rag_decision_behavior_protocols, rag_snowball_realtime, rag_value_investment,
+rag_cn_analysis_framework, rag_decision_behavior_protocols, rag_quant_output_protocols, rag_snowball_realtime, rag_value_investment,
 rag_data_api_finance, rag_data_api_official, rag_sse, rag_szse,
 rag_finance, rag_industry_reports, rag_government_reports, rag_social, rag_first_principles, rag_logic,
 rag_iceberg_model, rag_psychology, rag_neuroscience, rag_temporal_logic, rag_common_sense, rag_history
@@ -348,6 +355,9 @@ mcp_web_search, mcp_calculator
 | RAG 查询 | `js/rag.js` / RAGManager → `queryRAGKnowledgeBase(query, ragList)` |
 | 系统提示词组装 | `js/llm.js` → `buildEnhancedSystemPrompt(...)` |
 | 发送与流式 | `js/llm.js` → `invokeIntelligentAgent` → `callLLM`；`js/events.js` → `sendMessageWithContent` |
+| 全天候本土化（联海） | `docs/全天候本土化框架_增强版.md`；RAG 见 `rag_cn_analysis_framework` 第四节，技能见 `skill_cn_allweather` |
+| 报告输出协议（王者级） | 源于 test/ 生益科技报告评价与自我反省；RAG 见 `rag_quant_output_protocols`，systemPrompt 见 〇·2 |
+| 实时数据获取 | 见 [量化幻方_实时数据获取方案.md](量化幻方_实时数据获取方案.md)；量化幻方多轮也执行网络搜索（events.js）；数据补全请求模板见 rag_quant_output_protocols |
 
 ---
 
