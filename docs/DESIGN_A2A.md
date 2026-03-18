@@ -338,7 +338,7 @@
 | 子 Agent（步骤 1..n-1） | 上一步输出 + 本步 instruction | 本步产出 |
 | 整合（最后一步） | 全部 stepOutputs[0..n-1] | 最终结论与交付物 |
 
-### 8.3 多轮对话行为（v8.5.1）
+### 8.3 多轮对话行为（v8.5.2）
 
 - **首轮**：有 delegateTo 且无 `[Workflow:...]` 前缀时，走完整 Workflow 链（主 Agent 分析 → 子 Agent → 主 Agent 整合）。
 - **后续轮次**：由主 Agent 控住上下文，**不再重新执行整条 Workflow**，仅以当前主 Agent 单轮对话（带完整历史消息），避免信息流丢失、避免重复调用子 Agent。

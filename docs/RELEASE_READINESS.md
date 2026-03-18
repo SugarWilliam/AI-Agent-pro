@@ -1,6 +1,6 @@
 # AI Agent Pro Release 正式版本准备清单
 
-**版本**: v8.5.1  
+**版本**: v8.5.2  
 **评审日期**: 2026-03-15  
 **目标**: 深度评审与 release 正式版本准备
 
@@ -13,7 +13,7 @@
 | 架构 | ✅ 通过 | 分层清晰，扩展性好 |
 | 代码质量 | ✅ 通过 | 规范良好，空值防护完善 |
 | 资源加载 | ✅ 通过 | vendor 本地化，无 CDN 依赖 |
-| 版本一致性 | ✅ 通过 | 8.5.1 已统一 |
+| 版本一致性 | ✅ 通过 | 8.5.2 已统一 |
 | 文档 | ✅ 通过 | 设计/部署/功能说明书齐全 |
 | **安全** | ⚠️ 需关注 | API Key 硬编码（见下） |
 
@@ -96,7 +96,7 @@ storage.js → logger → error-handler → event-manager → ui-utils
 | docs/DESIGN_A2A.md | A2A 自主调度与多轮对话 |
 | docs/DEPLOYMENT.md | 部署说明 |
 | docs/助手能力全集.md | 内置 SubAgent 能力列表（含量化幻方矩阵） |
-| docs/RELEASES.md | 发布说明汇总（含 v8.5.1、v8.5.0 等） |
+| docs/RELEASES.md | 发布说明汇总（含 v8.5.2、v8.5.1、v8.5.0 等） |
 | docs/AI-Agent-Pro-Features.html | 功能说明书 |
 | docs/PROJECT_REVIEW.md | 工程评审 |
 | CHANGELOG.md | 版本变更 |
@@ -126,21 +126,21 @@ storage.js → logger → error-handler → event-manager → ui-utils
 # 1. 确保在 gh-pages 分支
 git checkout gh-pages
 
-# 2. 执行发布脚本（默认 8.5.1）
-./release.sh 8.5.1
+# 2. 执行发布脚本（默认 8.5.2）
+./release.sh 8.5.2
 
 # 或手动：
 git push origin gh-pages
-git tag -a v8.5.1 -m "Release v8.5.1"
-git push origin v8.5.1
+git tag -a v8.5.2 -m "Release v8.5.2"
+git push origin v8.5.2
 git checkout main && git merge gh-pages && git push origin main && git checkout gh-pages
 ```
 
 ### 5.3 发布后
 
-- [ ] 在 GitHub 创建 Release：https://github.com/SugarWilliam/AI-Agent-pro/releases/new?tag=v8.5.1
+- [ ] 在 GitHub 创建 Release：https://github.com/SugarWilliam/AI-Agent-pro/releases/new?tag=v8.5.2
 - [ ] **勾选「Set as a pre-release」**：此版本标注为非生产就绪（non-production ready）
-- [ ] 填写 Release 说明（可复制 CHANGELOG 8.5.1 或 docs/RELEASES.md 对应段落）
+- [ ] 填写 Release 说明（可复制 CHANGELOG 8.5.2 或 docs/RELEASES.md 对应段落）
 - [ ] 验证 Pages 部署：https://sugarwilliam.github.io/AI-Agent-pro/
 
 ---
@@ -155,6 +155,6 @@ git checkout main && git merge gh-pages && git push origin main && git checkout 
 
 ---
 
-**文档版本**: v8.5.1  
-**最后更新**: 2026-03-03  
+**文档版本**: v8.5.2  
+**最后更新**: 2026-03-18  
 **维护者**: AI Agent Pro Team

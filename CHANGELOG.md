@@ -4,6 +4,23 @@
 
 ---
 
+## [8.5.2] - 2026-03-18
+
+### 量化幻方矩阵 V2.0 全栈协议与钻石标准能力升级
+
+- **systemPrompt 增强**：新增 〇·3 数据贞操与溯源协议、〇·4 立体交叉验证框架（行业景气度 X / 公司相对优势 Y / 市场系统性风险 Z）、六·2 逻辑量化锚定协议、八·1 程序化操作清单（阶梯式交易执行手册、KDI 监控与自动警报清单）；魔鬼代言人由可选改为**每份报告必含**。
+- **输出规范 V2.0**：强制 8 段结构（核心结论、数据层与溯源表、立体分析与量化矩阵、决策路径图、KDI 与警报清单、压力测试含魔鬼代言人+3×3 估值压力测试矩阵、阶梯式交易执行手册、报告使用指南与版本更新日志及免责声明）；报告末尾须注明「建议提交量化幻方矩阵标准委员会进行署名评估与审核」。
+- **RAG**：`rag_quant_output_protocols` 合入 V2.0 协议要点（数据溯源、立体交叉验证、逻辑锚定、程序化清单、魔鬼代言人必含、标准委员会署名审核）。
+- **能力列表**：补全并保留原能力表述（含 KDI 监控仪表盘、AI 魔鬼代言人报告鲁棒性测试），新增数据溯源表与溯源协议、立体交叉验证三维定位、逻辑量化锚定与 KDI 触发公式、阶梯式交易执行手册、KDI 监控与自动警报清单、3×3 估值压力测试矩阵、报告使用指南与版本更新日志、魔鬼代言人必含、标准委员会署名评估与审核、V2.0 钻石标准报告结构。
+- **设计文档**：DESIGN_QUANT_MAGIC_SQUARE.md 同步 3.1 表（〇·3、〇·4、六·2、八·1）、输出规范、必须/可选说明及 RAG 职责。
+
+### 版本号统一为 8.5.2
+
+- 应用与脚本：app.js（VERSION）、index.html、js 模块头（app/rag/events/ui/sync/plan/llm）、release.sh 默认、deploy.sh。
+- 文档：CHANGELOG、RELEASES、RELEASE_READINESS、DEPLOYMENT、DEPLOYMENT_GUIDE、DESIGN、DESIGN_QUANT_MAGIC_SQUARE、DESIGN_A2A、PROJECT_REVIEW、REVIEWS、唐宋文化设计、助手能力全集、docs 内 HTML、README 徽章、review-test。
+
+---
+
 ## [8.5.1] - 2026-03-15
 
 ### 导出与下载：仅报告、不含思考过程（全助手）
@@ -380,6 +397,7 @@
 
 ---
 
+[8.5.2]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.2
 [8.5.1]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.1
 [8.5.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.0
 [8.4.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.4.0

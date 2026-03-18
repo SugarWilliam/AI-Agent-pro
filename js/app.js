@@ -1,12 +1,12 @@
 /**
- * AI Agent Pro v8.5.1 - 应用状态管理
+ * AI Agent Pro v8.5.2 - 应用状态管理
  * 多模态AI Agent - 支持输入输出多模态
  */
 
 (function() {
     'use strict';
 
-    const VERSION = '8.5.1';
+    const VERSION = '8.5.2';
     const STORAGE_KEY = 'ai_agent_state_v6';
 
     /** 检测 localStorage 是否可用（部分环境如 file://、隐私模式、iframe 可能不可用） */
