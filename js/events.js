@@ -1167,10 +1167,13 @@
                 }
             }
         }
-        // 多轮对话时跳过网络搜索，直接基于对话继续（所有 SubAgent 一致）
+        // 多轮对话时跳过网络搜索，直接基于对话继续（所有 SubAgent 一致）；量化幻方除外：多轮也执行搜索以获取最新行情与数据
         const msgCount = (window.AppState.messages || []).length;
         const isMultiTurn = msgCount >= 2;
-        const enableWebSearch = (isWorkflow || autoWorkflow || (window.AppState.settings?.webSearchEnabled || false)) && !isMultiTurn;
+        const currentSub = window.AppState?.currentSubAgent;
+        const webSearchOn = isWorkflow || autoWorkflow || (window.AppState.settings?.webSearchEnabled || false);
+        const allowQuantMultiTurnSearch = currentSub === 'quant_magic_square';
+        const enableWebSearch = webSearchOn && (!isMultiTurn || allowQuantMultiTurnSearch);
         // A2A 多轮：后续轮次由主 Agent 控住上下文，不重复走整条 Workflow，避免信息流丢失；仅当首轮或用户显式 [Workflow:...] 时走链
         if (autoWorkflow && isMultiTurn) {
             workflowChainSteps = [];

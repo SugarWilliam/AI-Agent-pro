@@ -406,6 +406,12 @@ docker run -d -p 8000:80 --name ai-agent-pro ai-agent-pro
 - 简体中文
 - English
 
+### 5.5 数据 API 连通性验证（可选）
+
+**适用**：使用「量化幻方矩阵」助手时，RAG 中引用的数据源（AkShare、Tushare、国家数据等）仅作知识参考，本应用不直接调用；实际数据获取与合规由用户自行负责。
+
+**可选校验**：项目内提供 `scripts/verify_data_apis.py`，可对部分数据源做最小调用/HTTP 可达性测试。运行方式：`pip install akshare requests`（可选 `tushare`），设置 `TUSHARE_TOKEN` 可验证 Tushare Pro；执行 `python scripts/verify_data_apis.py`。结果写入 `scripts/verify_data_apis_result.txt`，验证日期以该输出为准。
+
 ---
 
 ## 6. 故障排查

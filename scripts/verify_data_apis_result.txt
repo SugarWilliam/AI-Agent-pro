@@ -1,0 +1,16 @@
+
+======== 数据 API 基础连通性校验 ========
+校验时间: 2026-03-16 01:55:44
+
+[FAIL] AkShare: 未安装 (pip install akshare)
+
+[SKIP] Tushare Pro: 未设置 TUSHARE_TOKEN，跳过
+
+[OK] 国家数据 (data.stats.gov.cn): HTTP 200 可达
+
+[FAIL] 信用中国: HTTPError: HTTP Error 412: Precondition Failed
+
+----------------------------------------
+汇总: 1/4 项通过（Tushare 未配置 token 时最多 3 项）
+
+说明: 通过项可视为该日做过基础连通性验证；失败可能为网络、依赖或服务方变更。

@@ -31,7 +31,7 @@
 |------|------|
 | **主战场** | 股票、基金、数据分析、政策与企业研究；中国市场政策、资金面、估值与监管 |
 | **方法论** | 高级量化幻方与决策矩阵、BMP 选股、情景动态概率、CN 本土化分析框架（政策β+质量α+行为γ） |
-| **输出形态** | 结论简洁可操作；数据与来源注明；矩阵/情景双重决策；强支撑位与多层次退出；可选预验尸与魔鬼代言人鲁棒性测试 |
+| **输出形态** | 结论简洁可操作；数据与来源注明；矩阵/情景双重决策；强支撑位与多层次退出；**每份报告必含魔鬼代言人压力测试**；建议提交量化幻方矩阵标准委员会署名评估与审核；质量基准为《量化幻方矩阵投资决策报告【V2.0钻石标准】》 |
 | **边界** | 不替代用户决策；行为护栏与重大决策协议为「可选」；量化标准优先于行为建议；**仅供个人 Agent 学习与研究方法论使用，不构成投资建议**（见文首免责声明） |
 
 ### 1.3 与其它助手的关系
@@ -110,21 +110,27 @@
 | 〇 | 数据甄别、分类、分层、清洗与深度分析 | 基础数据能力；重要程度/优先级/权重显式 | skill_data_cleaning, skill_advanced_analytics, skill_value_investment |
 | - | **【禁止与强制执行】** | **禁止**：占位符、模拟报告、模拟数据、占位模拟；**强制执行**：实时最新数据收集（须先 RAG/网络检索再输出，数据须来自本次检索并注明来源；无法获取时须说明并仅给方法框架） | 硬性约束，见 systemPrompt 首段 |
 | 〇·1 | 事实与观点、逻辑严谨、时序与时效 | 硬性约束；事实 vs 观点；时效与陈旧信息 | rule_accuracy；贯穿各 skill |
+| 〇·2 | 量化幻方报告输出协议（王者级） | 数据贞操与分级响应 A/B/C；强观点概率-结论；决策路径图与复查节点；五条技术条款；王者级四要件；示例与数据引用防误用 | rag_quant_output_protocols |
+| 〇·3 | 数据贞操与溯源协议（V2.0） | 关键数据精确来源；报告末尾**数据溯源表**；禁止模糊表述；存疑数据剔除或敏感性分析 | rag_quant_output_protocols |
+| 〇·4 | 立体交叉验证框架（V2.0） | 标的置于「行业景气度(X)-公司相对优势(Y)-市场系统性风险(Z)」三维坐标系；同业含动态估值对比与溢价/折价历史分位 | rag_quant_output_protocols |
 | 一 | 高级量化幻方与决策矩阵 | 多维度权重评分、阈值筛选、综合排序 | skill_value_investment, skill_decision_expert |
-| 二 | BMP选股框架 | B(业务)/M(管理)/P(价格) | skill_value_investment, skill_cn_quality_value |
-| 三 | 定量财务分析 | ROE、股东盈余、毛利率、留存利润效率等 | skill_value_investment, skill_advanced_analytics |
+| 二 | BMP选股框架 | B(业务)/M(管理)/P(价格)；估值含**动态PE、PEG** | skill_value_investment, skill_cn_quality_value |
+| 三 | 定量财务分析 | ROE、股东盈余、毛利率、留存利润效率；**现金流与盈利质量深化**（OCF、资本开支计划、FCF/净利润等） | skill_value_investment, skill_advanced_analytics |
 | 四 | 定性竞争优势判断 | 护城河、行业地位、定价权、治理 | skill_value_investment, skill_swot |
 | 五 | 信息与数据可靠性识别 | 审计意见、口径、关联交易、来源可信度 | skill_value_investment |
 | 六 | 数据高级分析 | 时间序列、可比公司、异常值、多源交叉验证 | skill_advanced_analytics, skill_analyst, skill_researcher |
 | 六·1 | 数据档案 | 事实层/解读层/推断层；来源与时间 | 与〇分层一致，强调「档案」落地 |
+| 六·2 | 逻辑量化锚定协议（V2.0） | 主观判断须有客观量化依据或动态调整公式；鼓励 KDI 触发调整公式；输出时注明权重与概率依据 | rag_quant_output_protocols |
 | 七 | 情景动态概率与双重决策体系 | 初始概率、KDI 权重、多时间维度沙盘、量化矩阵+情景概率、按季度更新 | skill_scenario_dynamic_probability, skill_multi_temporal_sandbox |
-| 八 | 强支撑位与多层次退出 | 强支撑位量化标准、多层次退出机制；**重大决策与行为护栏（可选）** | skill_behavior_guardrails；预验尸/魔鬼代言人/行为约束见绑定 skill 与 RAG「决策与行为协议」 |
+| 八 | 强支撑位与多层次退出 | **PE Band 下轨**；**短期支撑位**结合成交量、均线等技术面；多层次退出；**八·1 程序化操作清单（V2.0）**：阶梯式交易执行手册、KDI 监控与自动警报清单；**重大决策与行为护栏（可选）** | skill_behavior_guardrails；rag_quant_output_protocols；预验尸/魔鬼代言人/行为约束见绑定 skill 与 RAG「决策与行为协议」 |
 | 九 | 策略回测与对冲 | 回测设计、绩效指标、稳健性；对冲方案 | skill_backtest |
-| 十 | 实时最新数据收集 | RAG 与网络必须精准全面调用；多渠道并行 | 绑定 RAG（雪球实时、价值投资、行业/政府报告等）+ mcp_web_search |
-| 十一 | 关键指标分析 | ROE、股东盈余、毛利率、留存利润、估值与安全边际 | 与三、二呼应 |
+| 十 | 实时最新数据收集 | RAG 与网络必须精准全面调用；**可连通时须用 RAG 数据**；**随时可再次调用全部 RAG 与网络**，必要时**向用户反馈并请求补充信息** | 绑定 RAG（含上交所/深交所官方、雪球实时等）+ mcp_web_search |
+| 十一 | 关键指标分析 | ROE、股东盈余、毛利率、留存利润；**估值深度**（动态PE、PEG）；**现金流与盈利质量** | 与三、二呼应 |
 | 十二 | 中国市场特点 | 政策、资金面、估值体系、板块轮动 | rag_cn_analysis_framework, skill_cn_* |
+| 十二·1 | 行业差异化分析 | **不同行业不同侧重**：制造业/互联网/周期/金融/消费等对应方法与关键指标 | skill_value_investment |
+| 十二·2 | 行业周期与经济周期 | **四维**：识别位置、判断方向、衡量幅度、管理时间；库存/政策/盈利/资金周期 | skill_cn_cycle_timing, skill_value_investment |
 | 十三 | 中国本土化分析框架（CN分析框架） | 政策β+质量α+行为γ；本土化方法论；实施节奏；关键原则 | 须调用 CN 框架 RAG 与 6 个 CN 技能 |
-| - | 【输出规范】 | 结论清晰、数据来源与时间、本报告时间、可读性、合规提示 | 通用约束 |
+| - | 【输出规范】 | **V2.0 强制 8 段**：①核心结论 ②数据层与溯源表 ③立体分析与量化矩阵 ④决策路径图 ⑤KDI 与警报清单 ⑥压力测试（魔鬼代言人必含+3×3 估值压力测试矩阵）⑦阶梯式交易执行手册 ⑧报告使用指南、版本更新日志、免责声明；**魔鬼代言人必含**；**报告末尾须注明建议提交量化幻方矩阵标准委员会署名评估与审核**；结论清晰、数据来源与时间、可读性、合规提示 | 以《量化幻方矩阵投资决策报告【V2.0钻石标准】》为质量基准 |
 
 ### 3.2 技能（Skills）分组与职责
 
@@ -134,7 +140,7 @@
 
 | id | 名称 | 职责 | 与其它资源关系 |
 |----|------|------|----------------|
-| skill_value_investment | 价值投资与量化幻方 | BMP、数据甄别/分层、事实与观点、高级量化幻方、中国市场 | 与 rag_value_investment 互补；与 skill_cn_quality_value 为通用 vs 中国改造 |
+| skill_value_investment | 价值投资与量化幻方 | BMP、动态PE/PEG、现金流与盈利质量深化、PE Band 与短期支撑位（成交量/均线）、行业差异化、周期四维、随时调用 RAG/网络并可向用户索要补充 | 与 rag_value_investment 互补；与 skill_cn_quality_value 为通用 vs 中国改造 |
 | skill_decision_expert | 决策专家 | 决策矩阵、决策链、概率分析、Mermaid、图表规范 | 通用决策工具；重大决策时可叠加 skill_decision_premortem |
 | skill_advanced_analytics | 高级数据分析 | 微积分、概率、矩阵、统计分析、回归、时间序列 | 支撑情景概率与回测 |
 | skill_data_cleaning | 数据分层清洗 | 数据分层、清洗、质量管理 | 支撑〇与六·1 |
@@ -179,14 +185,14 @@
 | skill_cn_cycle_timing | 中国周期与择时 | 政策-市场双周期、政策底→市场底→经济底、政策-资金-情绪三维择时 |
 | skill_cn_core_satellite | 中国版核心-卫星配置 | 高股息蓝筹底仓 + 政策主题卫星 + 现金 |
 | skill_cn_smallcap_specialized | 专精特新与小盘策略 | 壳价值消亡后真成长筛选、专精特新得分、剔除条件 |
-| skill_cn_allweather | 中国全天候策略 | 经济/通胀/政策三维、宽松/紧缩/结构性资产配置 |
+| skill_cn_allweather | 中国全天候策略 | 经济/通胀/政策三维；联海本土化：风险因子拆解、典型/非典型周期、回撤前置；宏观情景概率；贝塔底仓+阿尔法择时 |
 
 #### 3.2.6 重大决策与行为、鲁棒性（3 个）
 
 | id | 名称 | 职责 | 调用时机 |
 |----|------|------|----------|
 | skill_decision_premortem | 重大决策预验尸与二阶思维 | 二阶思维两问、预验尸、决策日志要素 | 涉及重大仓位或战略转向时**可调用**（不替代矩阵与情景概率） |
-| skill_devil_advocate | AI魔鬼代言人 | 对报告与结论做对立面反驳、逻辑漏洞与未证实假设检查 | 报告与结论**可用**作鲁棒性测试 |
+| skill_devil_advocate | AI魔鬼代言人 | 对报告与结论做对立面反驳、逻辑漏洞与未证实假设检查 | **每份报告必须**包含魔鬼代言人环节（V2.0 强制） |
 | skill_behavior_guardrails | 行为约束协议 | 大跌>20% 检查+48h 冷静期、涨幅>100% 再平衡、决策日与情绪自评 | 仅作行为护栏，不替代量化标准 |
 
 ### 3.2.7 技能使用说明（如何选用、无条件分支）
@@ -206,7 +212,7 @@
 
 ### 3.3 RAG 知识库分组与职责
 
-共 **16 个** RAG。**调用逻辑**：`queryRAG(userMessage, ragList)` 对**每个** RAG 执行检索/匹配（文档向量 > defaultContent 关键词 > 外部源），结果合并为一段 `ragContext` 注入【知识库参考】。用户问题与某 RAG 相关度低时，该 RAG 可能不返回内容，从而减少噪音。
+共 **21 个** RAG。**调用逻辑**：`queryRAG(userMessage, ragList)` 对**每个** RAG 执行检索/匹配（文档向量 > defaultContent 关键词 > 外部源），结果合并为一段 `ragContext` 注入【知识库参考】。用户问题与某 RAG 相关度低时，该 RAG 可能不返回内容，从而减少噪音。**可连通时须优先使用 RAG 与检索得到的数据**，以保持样本足够多、足够实时、足够专业。
 
 #### 3.3.1 投资与市场（优先）
 
@@ -214,8 +220,13 @@
 |----|------|------|
 | rag_cn_analysis_framework | CN分析框架 | 本土化适配、质量价值改造、多因子、全天候、双周期、三维择时、核心-卫星、专精特新、政策β+质量α+行为γ |
 | rag_decision_behavior_protocols | 决策与行为协议 | 二阶思维、预验尸、决策日志要素、行为约束（大跌/大涨/决策日与情绪自评） |
+| rag_quant_output_protocols | 量化幻方报告输出协议 | 数据贞操与分级响应、强观点、决策路径图、同业比较与五条技术条款、王者级四要件；**V2.0**：数据溯源表、立体交叉验证、逻辑量化锚定、阶梯式执行手册、KDI 警报清单、8 段结构、魔鬼代言人必含、标准委员会署名审核 |
 | rag_snowball_realtime | 雪球等专业财经实时 | 雪球、同花顺、东财、财联社等实时渠道说明与使用建议 |
 | rag_value_investment | 价值投资与量化 | 关键指标、BMP、中国股市特点、定性分析、数据可靠性、政策与宏观 |
+| rag_data_api_finance | 免费金融与行情数据API | AkShare、BaoStock、Tushare Pro、Yahoo Finance、CoinGecko、CryptoCompare 等免费/免费额度数据源知识；实际可用性需用户自行验证 |
+| rag_data_api_official | 官方与免费开放数据 | 国家数据（data.stats.gov.cn）、信用中国等官方免费开放数据 |
+| rag_sse | 上交所官方数据 | 上海证券交易所公告、披露、市场数据；沪市标的须在可连通时优先引用 |
+| rag_szse | 深交所官方数据 | 深圳证券交易所公告、披露、市场数据；深市标的须在可连通时优先引用 |
 | rag_finance | 金融知识库 | 货币银行、投资理论、风险管理、财务报表基础 |
 
 #### 3.3.2 政策与行业
@@ -248,6 +259,13 @@
 - **mcp_web_search**：网络搜索，支撑「实时最新数据收集」。
 - **mcp_calculator**：计算器，支撑回测与指标计算。
 
+### 3.6 数据 API 基础连通性验证
+
+- 项目内提供脚本 **`scripts/verify_data_apis.py`**，对部分数据源做**最小调用/HTTP 可达性**测试（AkShare、Tushare Pro、国家数据、信用中国），便于在 RAG 或说明中注明「已于某日做过基础连通性验证」。
+- 运行方式：`pip install akshare requests`（可选 `tushare`）；若验证 Tushare Pro 需设置环境变量 `TUSHARE_TOKEN`；执行 `python scripts/verify_data_apis.py`。结果打印到终端并写入 **`scripts/verify_data_apis_result.txt`**（含校验日期与逐项通过/跳过/失败）。
+- **验证日期**：以脚本输出或 `verify_data_apis_result.txt` 中的「校验时间」为准。例如：**已于 2026-03-16 做过基础连通性验证**（以实际运行结果为准）。
+- RAG `rag_data_api_finance` 与 `rag_data_api_official` 的 defaultContent 中已注明：本项目对部分数据源做过基础连通性验证，详见上述脚本及结果文件。
+
 ---
 
 ## 四、冗余与边界说明
@@ -271,13 +289,18 @@
 
 ### 4.4 可选 vs 必须
 
-- **必须**：数据甄别/分层/事实与观点/逻辑与时效、量化矩阵与情景概率双重决策、强支撑位与多层次退出、数据来源与时间与本报告时间、**先 RAG/网络检索再输出（禁止占位与模拟）**、CN 框架结合（凡涉及 A 股）。
-- **可选**：重大决策预验尸与二阶思维（仅涉及重大仓位或战略转向时）；AI 魔鬼代言人（用于报告与结论鲁棒性测试）；行为约束协议（仅作行为护栏）。systemPrompt 中已明确标注「可选」「不替代量化标准」。
+- **必须**：数据甄别/分层/事实与观点/逻辑与时效、量化矩阵与情景概率双重决策、强支撑位与多层次退出、数据来源与时间与本报告时间、**先 RAG/网络检索再输出（禁止占位与模拟）**、CN 框架结合（凡涉及 A 股）；**V2.0**：**每份报告必须包含魔鬼代言人环节**；报告末尾须注明「建议提交量化幻方矩阵标准委员会进行署名评估与审核」；报告结构须符合 V2.0 强制 8 段（含数据溯源表、3×3 估值压力测试、阶梯式交易执行手册、报告使用指南与版本更新日志）。
+- **可选**：重大决策预验尸与二阶思维（仅涉及重大仓位或战略转向时）；行为约束协议（仅作行为护栏）。systemPrompt 中已明确标注「可选」「不替代量化标准」。
 
 ### 4.5 调用逻辑合理性
 
 - 无「条件分支」：当前实现不根据用户意图自动选择部分 skill 或部分 RAG；所有绑定 skill 与 RAG 均参与构建提示（RAG 为检索结果，可能为空）。合理性：模型可根据问题与篇幅自行侧重，避免漏能力。
 - 顺序：Skill 顺序为配置数组顺序，建议保持「核心投资 → 思维与结构 → 研究可视化 → 依赖时序情景回测 → CN 本土化 → 决策与行为」的大类顺序，便于模型优先看到核心能力。当前顺序已基本符合。
+
+### 4.6 示例与数据引用（防误用）
+
+- RAG 与技能中出现的**公司名、股票代码、具体价格或数值**（如「长江电力、中国神华」「沪电股份、深南电路」等）均为**方法论示例**，用于说明框架或筛选标准，**不得**直接当作本次分析的标的、可比公司或结论数据。
+- 具体分析须以**本次用户问题**与**本次 RAG/网络检索结果**为准；可比公司组、估值结论、支撑位等均须来自本次检索或用户提供，并注明来源与时间。systemPrompt 〇·2 已含「示例与数据引用」条款。
 
 ---
 
@@ -296,10 +319,11 @@ skill_cn_smallcap_specialized, skill_cn_allweather,
 skill_decision_premortem, skill_devil_advocate, skill_behavior_guardrails
 ```
 
-### 5.2 RAG（16 个）
+### 5.2 RAG（21 个）
 
 ```
-rag_cn_analysis_framework, rag_decision_behavior_protocols, rag_snowball_realtime, rag_value_investment,
+rag_cn_analysis_framework, rag_decision_behavior_protocols, rag_quant_output_protocols, rag_snowball_realtime, rag_value_investment,
+rag_data_api_finance, rag_data_api_official, rag_sse, rag_szse,
 rag_finance, rag_industry_reports, rag_government_reports, rag_social, rag_first_principles, rag_logic,
 rag_iceberg_model, rag_psychology, rag_neuroscience, rag_temporal_logic, rag_common_sense, rag_history
 ```
@@ -316,9 +340,9 @@ rule_format, rule_accuracy, rule_examples, rule_structure, rule_context, rule_wo
 mcp_web_search, mcp_calculator
 ```
 
-### 5.5 Capabilities（UI 与卡片用，50 项）
+### 5.5 Capabilities（UI 与卡片用）
 
-用于展示与 buildAgentCards，与 systemPrompt/技能一一对应，无独立调用逻辑；清单见 `BUILTIN_SUB_AGENTS.quant_magic_square.capabilities`。
+用于展示与 buildAgentCards，与 systemPrompt/技能一一对应，无独立调用逻辑；清单见 `BUILTIN_SUB_AGENTS.quant_magic_square.capabilities`（含估值深度、现金流与盈利质量、PE Band 与短期支撑位技术面、行业差异化、行业与经济周期四维、可连通时须用 RAG、随时调用与向用户索要补充等）。
 
 ---
 
@@ -334,6 +358,9 @@ mcp_web_search, mcp_calculator
 | RAG 查询 | `js/rag.js` / RAGManager → `queryRAGKnowledgeBase(query, ragList)` |
 | 系统提示词组装 | `js/llm.js` → `buildEnhancedSystemPrompt(...)` |
 | 发送与流式 | `js/llm.js` → `invokeIntelligentAgent` → `callLLM`；`js/events.js` → `sendMessageWithContent` |
+| 全天候本土化（联海） | `docs/全天候本土化框架_增强版.md`；RAG 见 `rag_cn_analysis_framework` 第四节，技能见 `skill_cn_allweather` |
+| 报告输出协议（王者级） | 源于 test/ 生益科技报告评价与自我反省；RAG 见 `rag_quant_output_protocols`，systemPrompt 见 〇·2 |
+| 实时数据获取 | 见 [量化幻方_实时数据获取方案.md](量化幻方_实时数据获取方案.md)；量化幻方多轮也执行网络搜索（events.js）；数据补全请求模板见 rag_quant_output_protocols |
 
 ---
 
