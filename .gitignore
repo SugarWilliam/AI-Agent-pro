@@ -66,6 +66,8 @@ ssh_private_key
 docs/archive/
 test/*.md
 !test/README.md
+# V4.0 黄金基准样例（须纳入版本库，供协议与 RELEASES 引用）
+!test/量化幻方矩阵投资决策报告【V4.0钻石标准】.md
 !test/comprehensive-test.html
 !test/browser-test.html
 !test/review-test.html
