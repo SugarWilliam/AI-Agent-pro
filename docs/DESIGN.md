@@ -1,6 +1,6 @@
 # AI Agent Pro 详细设计文档
 
-**版本**: v8.5.3  
+**版本**: v8.6.0  
 **日期**: 2026-03-15  
 **文档类型**: 详细设计文档（可用于移动端复刻）
 
@@ -1725,13 +1725,13 @@ async function sendMessage() {
 
 ---
 
-**文档版本**: v8.5.3  
+**文档版本**: v8.6.0  
 **最后更新**: 2026-03-15  
 **维护者**: AI Agent Pro Team
 
 ---
 
-## 13. 工作秘书与 A2A 自主调度（v8.5.3）
+## 13. 工作秘书与 A2A 自主调度（v8.6.0）
 
 ### 13.1 工作秘书（work_secretary）
 
@@ -1752,7 +1752,7 @@ async function sendMessage() {
 
 ## 14. 量化幻方助手完整设计
 
-> 以下为原独立设计文档合并内容，对应应用版本 v8.5.3。
+> 以下为原独立设计文档合并内容，对应应用版本 v8.6.0。
 
 ### 投资免责声明
 
@@ -1783,6 +1783,6 @@ async function sendMessage() {
 
 ## 附录 C. Workflow 主 Agent 能力差距分析（历史参考）
 
-> **v8.5.3 更新**：A2A 自主调度已实现，详见 [DESIGN_A2A.md](DESIGN_A2A.md)。以下保留为历史差距分析参考。
+> **v8.6.0 更新**：A2A 自主调度已实现，详见 [DESIGN_A2A.md](DESIGN_A2A.md)。以下保留为历史差距分析参考。
 
 **预期能力 vs 当前实现**：根据任务自主决策 ✅、动态调度顺序 ✅、监控被绑定 Agent 行为 ⚠ 部分、整合各 Agent 输出 ✅。**当前实现详细分析**：自主决策与调度顺序已通过 parseScheduleFromOutput 与 schedule 动态链实现；整合步骤接收全部 stepOutputs。**架构级改造方向**：主 Agent 输出结构化调度指令（A2A 风格 JSON）、整合步骤接收全部输出（已实现）、校验与重试（远期）。**A2A 协议参考**：AgentCard、Task、Message、Artifact、Task 状态、message/send；方案 A（数据模型参考）推荐，方案 B/C 为远期。**实现优先级**：P0 整合全部输出已实现，P1 主 Agent 输出调度指令，P2 AgentCard 注入，P3 校验与重试。

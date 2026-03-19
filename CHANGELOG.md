@@ -4,6 +4,21 @@
 
 ---
 
+## [8.6.0] - 2026-03-15
+
+### 量化幻方 V4.0 黄金样例与文档链对齐（评审发布）
+
+- **黄金基准样例**（`test/量化幻方矩阵投资决策报告【V4.0钻石标准】.md`）：〇·6 期望值与 **P_i、C、P₀** 代数对齐；**母概率↔派生 60/40** 强制一致；**KDI→类型 A/B 再归一化程序**（含算例）；**阶梯3** **E[r'|止盈]** vs **E[r'|持有]** 与第六节目标价同源；**持有期 H、路径约定、r_i↔r'_i** 校验；**决策链总览**与 **〇·8** 检查清单、决策流管道同步；魔鬼代言人表述修正（毛利率口径）。
+- **设计文档**：`docs/DESIGN_QUANT_MAGIC_SQUARE.md` 对应应用版本 **v8.6.0**，第七节补充与黄金样例行维护说明。
+- **发布文档**：**v8.6.0** 执行摘要与评审表已**并入** **`docs/RELEASES.md`**（不再单独维护 `RELEASE_v8.6.0.md`）；`RELEASE_READINESS.md` / `PROJECT_REVIEW.md` / `REVIEWS.md` 等引用已指向 RELEASES；`docs/MODIFICATIONS_2026-03.md` 增加「以 CHANGELOG/RELEASES 为准」指引。
+
+### 版本号统一为 8.6.0
+
+- 应用与脚本：app.js（VERSION）、index.html、js 模块头、release.sh 默认、deploy.sh。
+- 文档：CHANGELOG、RELEASES、RELEASE_READINESS、DEPLOYMENT、DEPLOYMENT_GUIDE、DESIGN、DESIGN_QUANT_MAGIC_SQUARE、DESIGN_A2A、PROJECT_REVIEW、REVIEWS、唐宋文化设计、助手能力全集、docs 内 HTML、README 徽章、review-test。
+
+---
+
 ## [8.5.3] - 2026-03-19
 
 ### 量化幻方矩阵协议与版本维护
@@ -411,6 +426,7 @@
 
 ---
 
+[8.6.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.6.0
 [8.5.3]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.3
 [8.5.2]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.2
 [8.5.1]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.1

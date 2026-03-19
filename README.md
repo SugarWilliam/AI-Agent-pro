@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-8.5.3-blue.svg)
+![Version](https://img.shields.io/badge/version-8.6.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Web-lightgrey.svg)
 
@@ -369,6 +369,17 @@ http://localhost:8000/test/comprehensive-test.html
 ---
 
 ## 📝 更新日志
+
+> 完整列表见 [CHANGELOG.md](CHANGELOG.md)；发布汇总见 [docs/RELEASES.md](docs/RELEASES.md)。
+
+### v8.6.0 (2026-03-15)
+
+- **量化幻方**：V4.0 黄金样例（`test/量化幻方矩阵投资决策报告【V4.0钻石标准】.md`）与 **E[r]/E[r']、KDI 类型 A/B 再归一化、决策链** 对齐；设计文档 `DESIGN_QUANT_MAGIC_SQUARE.md` 对应 **v8.6.0**。
+- **发布**：`docs/RELEASES.md`（**v8.6.0** 节含评审摘要）；`docs/MODIFICATIONS_2026-03.md` 标注以 CHANGELOG/RELEASES 为准。
+
+### v8.5.3 (2026-03-19)
+
+- 量化幻方 V3.0 协议与 〇·6/〇·7；版本统一 8.5.3。
 
 ### v8.4.0 (2026-03-05)
 
