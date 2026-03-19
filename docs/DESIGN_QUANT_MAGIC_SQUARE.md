@@ -216,7 +216,7 @@
 
 ### 3.3 RAG 知识库分组与职责
 
-共 **21 个** RAG。**调用逻辑**：`queryRAG(userMessage, ragList)` 对**每个** RAG 执行检索/匹配（文档向量 > defaultContent 关键词 > 外部源），结果合并为一段 `ragContext` 注入【知识库参考】。用户问题与某 RAG 相关度低时，该 RAG 可能不返回内容，从而减少噪音。**可连通时须优先使用 RAG 与检索得到的数据**，以保持样本足够多、足够实时、足够专业。
+共 **21 个** RAG。**调用逻辑**：`queryRAG(userMessage, ragList)` 对**每个** RAG 执行检索/匹配（文档向量 → **内置 defaultContent**：`alwaysInject===true` 时**绑定即全文注入** → 否则中文增强关键词匹配 → 外部源），结果合并为一段 `ragContext` 注入【知识库参考】。其中 **rag_quant_output_protocols、rag_cn_analysis_framework、rag_decision_behavior_protocols、rag_value_investment、rag_snowball_realtime** 带有 **`alwaysInject: true`**，避免「个股/数据补全」类问句与协议正文词面重合度过低导致本地命中统计恒为 0。其余 RAG 仍按相关度匹配；用户上传的财报/研报文档走向量检索，命中后单独计入 documentMatches。**可连通时须优先使用 RAG 与检索得到的数据**，以保持样本足够多、足够实时、足够专业。
 
 #### 3.3.1 投资与市场（优先）
 

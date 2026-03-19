@@ -582,6 +582,7 @@
 
         // 页面可见性变化 - 支持后台运行
         document.addEventListener('visibilitychange', () => {
+            if (!window.AppState) return;
             if (document.visibilityState === 'hidden') {
                 // 先同步当前对话消息到 chats，再保存
                 window.AIAgentEvents?.updateCurrentChat?.();
@@ -604,10 +605,11 @@
         
         // 页面失焦/获得焦点事件（额外支持）
         window.addEventListener('blur', () => {
-            window.AppState.isBackground = true;
+            if (window.AppState) window.AppState.isBackground = true;
         });
         
         window.addEventListener('focus', () => {
+            if (!window.AppState) return;
             window.AppState.isBackground = false;
             checkPendingTasks();
         });
@@ -3119,7 +3121,10 @@ tags: code, review, quality
             });
             
             if (response.ok) {
+                window.LLMService?.resetJinaReaderQuotaState?.();
                 window.AIAgentUI?.showToast?.('Jina AI连接成功', 'success');
+            } else if (response.status === 402) {
+                window.AIAgentUI?.showToast?.('Jina 账户需付费或额度不足（402），请登录 jina.ai 充值或更换密钥', 'error');
             } else if (response.status === 401 || response.status === 403) {
                 window.AIAgentUI?.showToast?.('API密钥无效或已过期', 'error');
             } else if (response.status === 429) {
@@ -3139,6 +3144,7 @@ tags: code, review, quality
         if (window.AIAgentApp && typeof window.AIAgentApp.setJinaAIKey === 'function') {
             window.AIAgentApp.setJinaAIKey(apiKey);
             window.AIAgentApp.setJinaAIEnabled(enabled);
+            window.LLMService?.resetJinaReaderQuotaState?.();
             window.AIAgentUI?.showToast?.('Jina AI配置已保存', 'success');
         } else {
             window.AIAgentUI?.showToast?.('保存失败：AIAgentApp未初始化', 'error');

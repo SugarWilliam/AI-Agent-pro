@@ -2,7 +2,7 @@
  * AI Agent Pro - Service Worker
  * 支持 PWA 安装与离线缓存
  */
-const CACHE_NAME = 'ai-agent-pro-v8.4.2';
+const CACHE_NAME = 'ai-agent-pro-v8.6.1';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -46,15 +46,29 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+  let reqUrl;
+  try {
+    reqUrl = new URL(e.request.url);
+  } catch (_) {
+    return;
+  }
+  // 跨域请求不拦截：network 失败时 caches.match 通常无条目，若返回 undefined 会导致
+  // respondWith 抛出 Failed to convert value to 'Response'（如 DuckDuckGo API/HTML）。
+  if (reqUrl.origin !== self.location.origin) {
+    return;
+  }
+
   if (e.request.mode === 'navigate' || e.request.url.endsWith('.html')) {
     e.respondWith(
       fetch(e.request).catch(() =>
-        caches.match('./index.html').then((r) => r || new Response('Offline'))
+        caches.match('./index.html').then((r) => r || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }))
       )
     );
     return;
   }
   e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
+    fetch(e.request).catch(() =>
+      caches.match(e.request).then((cached) => cached || Response.error())
+    )
   );
 });

@@ -29,7 +29,7 @@
 const DEFAULT_API_KEYS = {
     'glm-4-plus': '...',
     'deepseek-chat': 'sk-...',
-    'jina-ai': 'jina_...'
+    'jina-ai': '' // 发布版应留空，由用户在设置中配置
 };
 ```
 

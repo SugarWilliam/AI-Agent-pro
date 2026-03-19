@@ -8,6 +8,31 @@
 
     const LLMService = {
         currentController: null,
+
+        /** Jina Reader：402/403 后避免重复请求与控制台刷屏 */
+        _jinaReaderQuota: { exceeded: false, messageLogged: false },
+
+        noteJinaHttpStatus(status) {
+            if (status === 402 || status === 403) {
+                this._jinaReaderQuota.exceeded = true;
+                if (!this._jinaReaderQuota.messageLogged) {
+                    this._jinaReaderQuota.messageLogged = true;
+                    window.Logger?.warn(
+                        'Jina Reader 返回 402/403（需付费、额度用尽或密钥无效）。已跳过后续 Jina 请求；请在「设置 → Jina AI」填写有效密钥或访问 https://jina.ai 处理账单。'
+                    );
+                    window.AIAgentUI?.showToast?.('Jina Reader 不可用（402/403），网页抓取已降级', 'warning');
+                }
+            }
+        },
+
+        isJinaReaderQuotaExceeded() {
+            return this._jinaReaderQuota.exceeded;
+        },
+
+        resetJinaReaderQuotaState() {
+            this._jinaReaderQuota.exceeded = false;
+            this._jinaReaderQuota.messageLogged = false;
+        },
         
         // ==================== 多模态输入处理 ====================
         async processMultimodalInput(input) {
@@ -120,8 +145,10 @@
             // 5. 应用Rules
             const rulesPrompt = this.buildRulesPrompt(resources.rules || []);
             
-            // 6. 初始化RAG上下文（提前声明，以便搜索时可以添加内容）
+            // 6. 初始化注入系统提示词的合并上下文（变量名历史原因叫 ragContext：先写网络搜索，再追加本地 RAG）
             let ragContext = '';
+            /** 本轮由网络搜索写入的字符数（用于日志区分「本地知识库命中」与「实时搜索」） */
+            let webSearchContextChars = 0;
             
             // 7. 调用MCP工具 - 增强网络搜索功能
             let mcpResults = [];
@@ -311,7 +338,10 @@
                                 ragContext += '4. 多个搜索源的结果可互相印证，提高信息准确性\n';
                                 ragContext += '5. 若不同来源信息有冲突，请标注并说明\n';
                                 
-                                window.Logger?.info(`✅ 多源搜索结果已添加到RAG上下文，内容长度: ${ragContext.length} 字符，来源数: ${Object.keys(resultsBySource).length}`);
+                                webSearchContextChars = ragContext.length;
+                                window.Logger?.info(
+                                    `✅ 网络搜索已合并进提示词上下文(ragContext)：本段约 ${webSearchContextChars} 字符，搜索来源数: ${Object.keys(resultsBySource).length}（与下方「本地知识库 RAG 命中」相互独立）`
+                                );
                             }
                         } else {
                             updateSearchTodo([
@@ -349,16 +379,18 @@
 
             // 搜索完成后不立即隐藏，保留✔显示直到响应结束（由 events.js 统一隐藏）
             
-            // 8. 查询RAG知识库（如果搜索结果已添加到ragContext，这里会追加）
+            // 8. 查询本地 RAG 知识库（文档/内置/外链向量等；与上文网络搜索无关，未命中时 context 为空属正常）
             let usedRagNames = [];
+            let localRagContextChars = 0;
             if (resources.rag && resources.rag.length > 0) {
                 const ragRet = await this.queryRAG(messages[messages.length - 1]?.content, resources.rag);
                 const ragKnowledge = (typeof ragRet === 'object' && ragRet !== null && ragRet.context !== undefined)
                     ? String(ragRet.context ?? '')
                     : (typeof ragRet === 'string' ? ragRet : '');
                 usedRagNames = ragRet.usedRagNames || [];
+                localRagContextChars = ragKnowledge.length;
                 if (ragKnowledge) {
-                    // 如果已有搜索结果，追加RAG知识库内容
+                    // 如果已有网络搜索结果，追加本地知识库内容
                     if (ragContext) {
                         ragContext += '\n\n【知识库参考】\n' + ragKnowledge;
                     } else {
@@ -368,7 +400,9 @@
             }
 
             // 9. 构建完整提示词
-            window.Logger?.info(`📝 构建系统提示词: ragContext长度=${ragContext?.length || 0}, mcpResults数量=${mcpResults.length}`);
+            window.Logger?.info(
+                `📝 构建系统提示词: ragContext合计=${ragContext?.length || 0} 字符（网络搜索约 ${webSearchContextChars} + 本地知识库约 ${localRagContextChars}）, mcpResults数量=${mcpResults.length}`
+            );
             const systemPrompt = this.buildEnhancedSystemPrompt({
                 subAgent,
                 skillPrompts,
@@ -462,7 +496,9 @@
                     const ret = await window.RAGManager.queryRAGKnowledgeBase(query, ragList);
                     const context = typeof ret === 'object' && ret !== null ? (ret.context || '') : ret;
                     const usedRagNames = typeof ret === 'object' && ret !== null && Array.isArray(ret.usedRagNames) ? ret.usedRagNames : [];
-                    window.Logger?.debug(`RAG查询结果长度: ${context.length} 字符，调用: ${usedRagNames.join(', ') || '无'}`);
+                    window.Logger?.debug(
+                        `本地知识库(RAG)返回片段长度: ${context.length} 字符，命中源: ${usedRagNames.join(', ') || '无'}（网络搜索内容不在此项统计内）`
+                    );
                     return { context, usedRagNames };
                 } else {
                     // 降级方案：使用buildRAGContext
@@ -576,7 +612,8 @@ ${rows}
                 const now = new Date();
                 const beijingStr = now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\//g, '-');
                 prompt += `【当前日期与时间】${beijingStr}（北京时间）。输出报告时，「本报告生成/更新时间」及数据时间标注须以此为准；不得将报告时间或数据时间写成已过时的年份（如 2025）除非确为历史数据来源日期。\n`;
-                prompt += `【约束重申】禁止输出占位符、模拟报告或模拟数据；须先通过 RAG 与网络搜索获取实时数据后再生成报告，报告中引用的数据须来自本次检索并注明来源。\n\n`;
+                prompt += `【约束重申】禁止输出占位符、模拟报告或模拟数据；须先通过 RAG 与网络搜索获取实时数据后再生成报告，报告中引用的数据须来自本次检索并注明来源。\n`;
+                prompt += `【〇·6 / 〇·7 显式落笔（硬性）】须在正文使用 Markdown **四级标题** \`####\` **各单独一节**（不得合并进魔鬼代言人一段带过）：① \`#### **期望值思维（工程化落地）**\` — 至少含：主行动选项的 **E(结果)=Σ P(情景)×（收益或损失）** 的口头演算或表格；与「减仓/持有/加仓」等备选路径的**期望优劣比较**；核心假设**上下界**与敏感性一句。② \`#### **霍华德·马克斯 / 橡树思想**\` — 至少含：**第二层次思维**（共识已定价什么 vs 本报告增量观点）；**周期与钟摆**（风险偏好/盈利预期大致位置，须挂钩本次数据）；**永久资本损失** vs **波动**；**安全边际来自何处**及逆向操作的**触发条件与证伪指标**。位置建议：紧接「立体交叉验证与量化矩阵」之后，或「压力测试」之前/内前后并列，但**两节标题必须在目录式结构中可见**。\n\n`;
             }
             if (subAgent.id === 'work_secretary') {
                 const target = subAgent.serviceTarget?.trim();
@@ -1223,7 +1260,7 @@ ${rows}
                 // 方法2: 使用Jina AI Reader API搜索（如果配置了API密钥，优先使用）
                 const jinaApiKey = window.AIAgentApp?.getJinaAIKey?.() || '';
                 let jinaTimeoutMs = 20000 + (retryCount * 5000); // 增加超时时间到20秒
-                if (jinaApiKey) {
+                if (jinaApiKey && !this.isJinaReaderQuotaExceeded()) {
                     // 定义多个搜索源（按优先级）
                     const searchSources = [
                         {
@@ -1250,6 +1287,7 @@ ${rows}
                     
                     // 尝试每个搜索源
                     for (const source of searchSources) {
+                        if (this.isJinaReaderQuotaExceeded()) break;
                         try {
                             window.Logger?.info(`尝试使用Jina AI搜索 ${source.name}`);
                             const searchHeaders = {
@@ -1309,6 +1347,7 @@ ${rows}
                                     }];
                                 }
                             } else {
+                                this.noteJinaHttpStatus(jinaResponse.status);
                                 window.Logger?.warn(`Jina AI搜索 ${source.name} 返回错误状态: ${jinaResponse.status}`);
                             }
                         } catch (jinaError) {
@@ -1359,7 +1398,7 @@ ${rows}
                 }
                 
                 // 方法4: 尝试使用Jina AI直接搜索（如果配置了密钥，且前面的方法都失败）
-                if (jinaApiKey && retryCount === 0) {
+                if (jinaApiKey && retryCount === 0 && !this.isJinaReaderQuotaExceeded()) {
                     try {
                         window.Logger?.info('尝试使用Jina AI直接搜索（备用方法）');
                         // 直接使用Jina AI搜索API（如果支持）
@@ -1387,6 +1426,8 @@ ${rows}
                                     snippet: content.substring(0, 1000)
                                 }];
                             }
+                        } else {
+                            this.noteJinaHttpStatus(directResponse.status);
                         }
                     } catch (directError) {
                         window.Logger?.warn('Jina AI直接搜索失败', directError.message);
@@ -1488,8 +1529,8 @@ ${rows}
                 }
             ];
             
-            // 如果配置了Jina AI，添加更多搜索源
-            if (jinaApiKey) {
+            // 如果配置了Jina AI 且未处于 402/403 熔断状态，添加更多搜索源
+            if (jinaApiKey && !this.isJinaReaderQuotaExceeded()) {
                 searchSources.push(
                     {
                         name: 'Bing',
@@ -1638,6 +1679,11 @@ ${rows}
             const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
             
             try {
+                if (source.type === 'jina' && jinaApiKey && this.isJinaReaderQuotaExceeded()) {
+                    clearTimeout(timeoutId);
+                    return [];
+                }
+
                 let response;
                 
                 if (source.type === 'jina' && jinaApiKey) {
@@ -1674,6 +1720,9 @@ ${rows}
                 clearTimeout(timeoutId);
                 
                 if (!response.ok) {
+                    if (source.type === 'jina') {
+                        this.noteJinaHttpStatus(response.status);
+                    }
                     throw new Error(`HTTP ${response.status}`);
                 }
                 
@@ -3010,7 +3059,7 @@ ${rows}
                 
                 // 使用 Jina AI 抓取网页内容（如果配置了API密钥）
                 const jinaApiKey = window.AIAgentApp?.getJinaAIKey?.() || '';
-                if (jinaApiKey) {
+                if (jinaApiKey && !this.isJinaReaderQuotaExceeded()) {
                     const fetchHeaders = {
                         'Content-Type': 'application/json',
                         'X-Return-Format': 'text',
@@ -3035,29 +3084,33 @@ ${rows}
                             };
                         }
                         window.Logger?.warn(`Jina 爬取失败(POST): ${response.status}`);
+                        this.noteJinaHttpStatus(response.status);
                     } catch (postErr) {
                         window.Logger?.warn('Jina POST 爬取异常', postErr);
                     }
-                    // 方法2: GET + 前缀（Jina 官方格式）
-                    try {
-                        const encodedUrl = encodeURIComponent(cleanUrl);
-                        const jinaUrl = `https://r.jina.ai/${encodedUrl}`;
-                        window.Logger?.debug(`尝试 GET: ${jinaUrl}`);
-                        response = await fetch(jinaUrl, {
-                            headers: { 'X-Return-Format': 'text', 'Authorization': `Bearer ${jinaApiKey}` }
-                        });
-                        if (response.ok) {
-                            const content = await response.text();
-                            window.Logger?.info(`网页爬取成功(GET): ${cleanUrl}, 内容长度: ${content.length}`);
-                            return {
-                                url: cleanUrl,
-                                title: this.extractTitle(content) || cleanUrl,
-                                content: content.substring(0, 5000)
-                            };
+                    // 方法2: GET + 前缀（402/403 时不再重复请求）
+                    if (!this.isJinaReaderQuotaExceeded()) {
+                        try {
+                            const encodedUrl = encodeURIComponent(cleanUrl);
+                            const jinaUrl = `https://r.jina.ai/${encodedUrl}`;
+                            window.Logger?.debug(`尝试 GET: ${jinaUrl}`);
+                            response = await fetch(jinaUrl, {
+                                headers: { 'X-Return-Format': 'text', 'Authorization': `Bearer ${jinaApiKey}` }
+                            });
+                            if (response.ok) {
+                                const content = await response.text();
+                                window.Logger?.info(`网页爬取成功(GET): ${cleanUrl}, 内容长度: ${content.length}`);
+                                return {
+                                    url: cleanUrl,
+                                    title: this.extractTitle(content) || cleanUrl,
+                                    content: content.substring(0, 5000)
+                                };
+                            }
+                            window.Logger?.warn(`Jina 爬取失败(GET): ${response.status}`);
+                            this.noteJinaHttpStatus(response.status);
+                        } catch (getErr) {
+                            window.Logger?.warn('Jina GET 爬取异常', getErr);
                         }
-                        window.Logger?.warn(`Jina 爬取失败(GET): ${response.status}`);
-                    } catch (getErr) {
-                        window.Logger?.warn('Jina GET 爬取异常', getErr);
                     }
                 }
                 
