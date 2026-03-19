@@ -4,6 +4,20 @@
 
 ---
 
+## [8.5.3] - 2026-03-19
+
+### 量化幻方矩阵协议与版本维护
+
+- **V3.0 协议栈**：动态适应声明、22 项专业级增强、能力与协议检查（设计文档 4.7）；必须体现现金流分析、3×3 估值矩阵、时间止损、三维坐标显式小标题、动态情绪因子；新增 〇·6 期望值思维与工程化落地、〇·7 霍华德·马克斯/橡树资本思想融合。
+- **RAG**：`rag_quant_output_protocols` 增补「九、必须体现与思想融合」等要点。
+
+### 版本号统一为 8.5.3
+
+- 应用与脚本：app.js（VERSION）、index.html、js 模块头、release.sh 默认、deploy.sh。
+- 文档：CHANGELOG、RELEASES、RELEASE_READINESS、DEPLOYMENT、DEPLOYMENT_GUIDE、DESIGN、DESIGN_QUANT_MAGIC_SQUARE、DESIGN_A2A、PROJECT_REVIEW、REVIEWS、唐宋文化设计、助手能力全集、docs 内 HTML、README 徽章、review-test。
+
+---
+
 ## [8.5.2] - 2026-03-18
 
 ### 量化幻方矩阵 V2.0 全栈协议与钻石标准能力升级
@@ -397,6 +411,7 @@
 
 ---
 
+[8.5.3]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.3
 [8.5.2]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.2
 [8.5.1]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.1
 [8.5.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.0
