@@ -11,6 +11,8 @@
 - [x] main 分支已同步 gh-pages
 - [x] 版本号已统一为 8.6.1
 - [x] CHANGELOG、RELEASES、输出规范模板已更新
+- [x] fix: 模板字符串反引号转义导致 SyntaxError（已并入）
+- [x] tag v8.6.1 已指向最新提交 b49b6cd
 
 ---
 
@@ -40,16 +42,10 @@ git checkout gh-pages
 ```bash
 git checkout gh-pages
 git push origin gh-pages
-git tag -a v8.6.1 -m "AI Agent Pro v8.6.1 正式发布
-
-- 量化幻方 V4.1 协议栈（V4.0 全栈 + V6.0 可选增强）
-- 禁止动作清单、时间止损强化、贝叶斯+置信区间
-- 发布说明汇总于 docs/RELEASES.md，变更见 CHANGELOG
-- 版本号统一至 8.6.1"
 git push origin v8.6.1
 ```
 
-> 注：main 已同步，无需再 merge。
+> 注：tag v8.6.1 已创建并指向 b49b6cd；main 已同步。
 
 ---
 
@@ -72,6 +68,7 @@ git push origin v8.6.1
 ### 量化幻方 V4.1 协议栈升级（V4.0 全栈 + V6.0 可选增强）
 
 - **协议栈 V4.1**：在 V4.0 全栈基础上，将 V6.0 增强能力作为可选模块纳入
+- **fix**：模板字符串反引号转义导致 SyntaxError（`test/...` 未转义）
 - **V6.0 可选增强**：信息期权定价、全天候组合、三维退出网格、3×3×3 压力测试、BMP-E 四维矩阵、时间止损强化、贝叶斯+置信区间+动态更新
 - **禁止动作清单**：阶梯式执行手册须含 3–5 条可执行禁止项，编号格式
 - **概率处理分层**：V4.0 基础层母概率 + KDI 再归一化（必须）；V6.0 可选层贝叶斯+置信区间（互补）
