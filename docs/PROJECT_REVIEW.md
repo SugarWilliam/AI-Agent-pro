@@ -1,6 +1,6 @@
 # AI Agent Pro 工程评审报告
 
-**版本**: v8.6.0  
+**版本**: v8.6.1  
 **评审日期**: 2026-03-15  
 **评审范围**: 架构、代码质量、近期变更、文档一致性、量化幻方黄金样例与发布文档链
 
@@ -94,13 +94,13 @@
 | AI-Agent-Pro-Features.html | 工作秘书、问题演化、delegateTo 配置 |
 | PROJECT_SUMMARY.md | 功能统计、文档引用 |
 
-### 4.2 版本号一致性（v8.6.0）
+### 4.2 版本号一致性（v8.6.1）
 
-- 代码：VERSION = '8.6.0' ✅
-- CHANGELOG：[8.6.0] ✅
-- README 徽章：8.6.0 ✅
-- docs：RELEASES（含 v8.6.0 并入内容）、RELEASE_READINESS、DEPLOYMENT、DESIGN*、HTML 导出 ✅
-- 黄金样例：`test/量化幻方矩阵投资决策报告【V4.0钻石标准】.md` 已标注对齐 **应用 v8.6.0**（协议仍为 V4.0）✅
+- 代码：VERSION = '8.6.1' ✅
+- CHANGELOG：[8.6.1] ✅
+- README 徽章：8.6.1 ✅
+- docs：RELEASES（含 v8.6.1 并入内容）、RELEASE_READINESS、DEPLOYMENT、DESIGN*、HTML 导出 ✅
+- 黄金样例：`test/量化幻方矩阵投资决策报告【V4.0钻石标准】.md` 已标注对齐 **应用 v8.6.1**（协议栈 V4.1）✅
 
 ---
 
@@ -143,6 +143,6 @@
 
 ---
 
-**文档版本**: v8.6.0  
+**文档版本**: v8.6.1  
 **最后更新**: 2026-03-03  
 **维护者**: AI Agent Pro Team

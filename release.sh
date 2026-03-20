@@ -7,7 +7,7 @@
 set -e
 
 REPO="SugarWilliam/AI-Agent-pro"
-VERSION="${1:-8.6.0}"
+VERSION="${1:-8.6.1}"
 
 echo "=========================================="
 echo "🚀 AI Agent Pro v${VERSION} 正式发布"

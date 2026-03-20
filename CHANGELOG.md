@@ -4,6 +4,23 @@
 
 ---
 
+## [8.6.1] - 2026-03-15
+
+### 量化幻方助手 V4.1 协议栈升级（V4.0 全栈 + V6.0 可选增强）
+
+- **协议栈 V4.1**：在 V4.0 全栈基础上，将 V6.0 增强能力作为可选模块纳入；助手版本升级至 **V4.1**。
+- **V6.0 可选增强模块**：信息期权定价、全天候组合、三维退出网格、3×3×3 压力测试、BMP-E 四维矩阵、时间止损强化、贝叶斯+置信区间+动态更新；当场景适用时建议输出，不替代 V4.0 强制 8 段。
+- **禁止动作清单**：阶梯式执行手册须含禁止动作清单（3–5 条，编号格式），由禁止动作条款升级为清单化。
+- **概率处理分层**：V4.0 基础层（必须）母概率 + KDI 再归一化；V6.0 可选层贝叶斯 + 置信区间 + 动态更新（互补，不替代）。
+- **输出规范模板**：新增 `docs/量化幻方矩阵_输出规范模板_V4.1.md`，整合 8 段结构、必须体现、V6.0 可选、检查清单。
+
+### 版本号统一为 8.6.1
+
+- 应用与脚本：app.js（VERSION）、index.html、js 模块头、release.sh 默认、deploy.sh。
+- 文档：CHANGELOG、RELEASES、DESIGN_QUANT_MAGIC_SQUARE、输出稳定性升级、量化幻方输出规范模板。
+
+---
+
 ## [8.6.0] - 2026-03-15
 
 ### 量化幻方 V4.0 黄金样例与文档链对齐（评审发布）
@@ -426,6 +443,7 @@
 
 ---
 
+[8.6.1]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.6.1
 [8.6.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.6.0
 [8.5.3]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.3
 [8.5.2]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.2

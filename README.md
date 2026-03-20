@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-8.6.0-blue.svg)
+![Version](https://img.shields.io/badge/version-8.6.1-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Web-lightgrey.svg)
 
@@ -371,6 +371,11 @@ http://localhost:8000/test/comprehensive-test.html
 ## 📝 更新日志
 
 > 完整列表见 [CHANGELOG.md](CHANGELOG.md)；发布汇总见 [docs/RELEASES.md](docs/RELEASES.md)。
+
+### v8.6.1 (2026-03-15)
+
+- **量化幻方 V4.1**：协议栈升级（V4.0 全栈 + V6.0 可选增强）；禁止动作清单、时间止损强化、贝叶斯+置信区间；输出规范模板 `docs/量化幻方矩阵_输出规范模板_V4.1.md`。
+- **发布**：`docs/RELEASES.md`（**v8.6.1** 节）；`CHANGELOG.md` [8.6.1]。
 
 ### v8.6.0 (2026-03-15)
 
