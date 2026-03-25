@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-8.6.2-blue.svg)
+![Version](https://img.shields.io/badge/version-8.6.3-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Web-lightgrey.svg)
 
@@ -371,6 +371,11 @@ http://localhost:8000/test/comprehensive-test.html
 ## 📝 更新日志
 
 > 完整列表见 [CHANGELOG.md](CHANGELOG.md)；发布汇总见 [docs/RELEASES.md](docs/RELEASES.md)。
+
+### v8.6.3 (2026-03-26)
+
+- **版本号全量对齐**：应用、Service Worker 缓存、脚本默认版本、设计与部署类文档统一为 **v8.6.3**。
+- **发布**：`docs/RELEASES.md`（**v8.6.3** 节）；`CHANGELOG.md` [8.6.3]。
 
 ### v8.6.2 (2026-03-25)
 

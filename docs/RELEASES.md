@@ -4,6 +4,26 @@
 
 ---
 
+## v8.6.3（2026-03-26）
+
+**类型**：**版本号全量对齐**至 **v8.6.3**（应用、SW、脚本默认、设计与部署文档等）。**完整变更日志**：[CHANGELOG.md](../CHANGELOG.md) **[8.6.3]**。
+
+### 要点
+
+- `js/app.js`：`VERSION = '8.6.3'`；各模块头与 `sync.js` 回退版本字符串一致。
+- `sw.js`：`CACHE_NAME = 'ai-agent-pro-v8.6.3'`（部署后需刷新或跳过等待以加载新缓存）。
+- `release.sh` / `deploy.sh`：默认与注释版本 **8.6.3**。
+- 文档：`DESIGN.md`、`DESIGN_QUANT_*`、`DEPLOYMENT*`、`PROJECT_REVIEW`、`RELEASE_READINESS`、HTML 导出与测试页等与 **v8.6.3** 一致。
+
+### 升级与发布命令
+
+```bash
+git checkout gh-pages
+./release.sh 8.6.3
+```
+
+---
+
 ## v8.6.2（2026-03-25）
 
 **类型**：新增 SubAgent **量化基金**（`quant_fund`），对齐 **F6.0-Ultimate-Personal** 家庭基金协议。**完整变更日志**：[CHANGELOG.md](../CHANGELOG.md) **[8.6.2]**。
@@ -192,4 +212,4 @@ git checkout gh-pages
 
 ---
 
-**文档版本**: v8.6.2 · 最后更新: 2026-03-25
+**文档版本**: v8.6.3 · 最后更新: 2026-03-26

@@ -1,7 +1,7 @@
 # AI Agent Pro 详细设计文档
 
-**版本**: v8.6.2  
-**日期**: 2026-03-25  
+**版本**: v8.6.3  
+**日期**: 2026-03-26  
 **文档类型**: 详细设计文档（可用于移动端复刻）
 
 ---
@@ -1726,8 +1726,8 @@ async function sendMessage() {
 
 ---
 
-**文档版本**: v8.6.2  
-**最后更新**: 2026-03-25  
+**文档版本**: v8.6.3  
+**最后更新**: 2026-03-26  
 **维护者**: AI Agent Pro Team
 
 ---
@@ -1792,7 +1792,7 @@ async function sendMessage() {
 
 ### 一、概述与定位
 
-**定义**：量化基金（SubAgent id: `quant_fund`，界面名「量化基金」）面向**家庭基金配置与主动基金租约评估**，以「家庭目标实现概率」为核心指标，对抗平台算法诱导（近一年排名、明星经理、万人购买、费率锚定等）。
+**定义**：量化基金（SubAgent id: `quant_fund`，界面名「量化基金」）面向**家庭基金配置、选基（初筛/短名单/同类比较）与主动基金租约评估**，以「家庭目标实现概率」为核心指标，对抗平台算法诱导（近一年排名、明星经理、万人购买、费率锚定等）。
 
 **核心方法**：SCVO、**C×S×M**、PCL 离散、规则化贝叶斯、租约 **L3→L0**、M05/M06/M07、魔鬼代言人 15 问与预验尸、数据 A/B/C；默认输出**标准深度版**（见 `systemPrompt`）。
 
@@ -1810,7 +1810,7 @@ async function sendMessage() {
 
 **配置来源**：`js/app.js` → `BUILTIN_SUB_AGENTS.quant_fund`。
 
-**系统提示词组装顺序**：角色与描述 → 【当前日期与时间】+【约束重申】+【署名】+【期望值/橡树硬性落笔】（`js/llm.js`）→ `systemPrompt`（F6.0）→ **规则**（6 条，与矩阵助手相同）→ **技能指引**（29 个 skill，与 `quant_magic_square` 同列表）→ 网络搜索结果 → MCP 结果 → **知识库参考**（`rag_quant_fund_f6` + 21 个扩展 RAG，含 `rag_realtime_finance_data`；**不含** `rag_quant_output_protocols`）→ 输出格式。
+**系统提示词组装顺序**：角色与描述 → 【当前日期与时间】+【约束重申】+【署名】+【期望值/橡树硬性落笔】+【实时金融数据】（`js/llm.js`；**约束重申**与矩阵助手对齐：禁止模拟数据、分层甄别与置信度、补全清单模板）→ `systemPrompt`（F6.0，含【禁止与强制执行】、数据完备度 A/B/C、溯源与置信度表；详见 [DESIGN_QUANT_FUND.md](DESIGN_QUANT_FUND.md) §3）→ **规则**（6 条，与矩阵助手相同）→ **技能指引**（**30** 个 skill：与矩阵同列表 **29** 个 + **`skill_fund_selection_portfolio_pro`** 选基与组合高级）→ 网络搜索结果 → MCP 结果 → **知识库参考**（`rag_quant_fund_f6` + 21 个扩展 RAG，含 `rag_realtime_finance_data`；**不含** `rag_quant_output_protocols`）→ 输出格式。
 
 **多轮对话**：`js/events.js` 中与 `quant_magic_square` 相同，**多轮仍执行网络搜索**（在用户开启网络搜索时），便于持续核对净值、规模、费率。
 
@@ -1823,6 +1823,7 @@ async function sendMessage() {
 | 主场景 | A 股个股/深度矩阵/BMP/DCF 等 | 基金筛选、家庭组合、平台对抗 |
 | 协议 | V4.x 钻石标准报告结构 | F6.0-Ultimate-Personal |
 | 专属 RAG | 含 `rag_quant_output_protocols`；**二者均绑定** `rag_realtime_finance_data` | 含 `rag_quant_fund_f6`，**不含**股票输出协议；**二者均绑定** `rag_realtime_finance_data` |
+| 数据红线（与矩阵对齐） | 禁止模拟、分层甄别、溯源等（见 §14） | `llm.js` 约束重申与矩阵同级；`systemPrompt` 含【禁止与强制执行】、完备度 A/B/C、补全模板、**溯源与置信度表**（见 [DESIGN_QUANT_FUND.md](DESIGN_QUANT_FUND.md) §3） |
 | 署名 | 量化幻方矩阵 呈上 | 量化基金助手 呈上 |
 
 ---

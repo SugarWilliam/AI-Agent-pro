@@ -4,6 +4,16 @@
 
 ---
 
+## [8.6.3] - 2026-03-26
+
+### 版本号统一为 8.6.3
+
+- 应用 `VERSION`、各 `js` 模块头注释、`sw.js` 缓存名、`index.html` 展示版本、`release.sh` 默认参数、`deploy.sh` 注释等与 **v8.6.3** 全量对齐。
+- 设计/部署/HTML 导出类文档（含 `DESIGN*.md`、`DEPLOYMENT*.md`、`PROJECT_REVIEW.md`、`RELEASE_READINESS.md`、测试页等）同步为当前版本号。
+- **说明**：功能层面延续 8.6.2（量化基金、`skill_fund_selection_portfolio_pro` 等）；本版以**发布与文档版本一致性**为主。
+
+---
+
 ## [8.6.2] - 2026-03-25
 
 ### 新增 SubAgent：量化基金（quant_fund）
@@ -12,6 +22,12 @@
 - **能力要点**：SCVO 租约、三维档位 C×S×M、规则化贝叶斯与租约 L3→L0、平台算法陷阱对抗、极简/标准分层输出、魔鬼代言人 15 问与预验尸、数据质量 A/B/C 与补全清单。
 - **实现**：`js/app.js` → `BUILTIN_SUB_AGENTS.quant_fund`；`js/llm.js` 注入北京时间、禁止占位、署名「量化基金助手 呈上」；`js/events.js` 与量化幻方矩阵助手相同，多轮对话仍执行网络搜索以核对基金数据。
 - **文档**：`docs/助手能力全集.md` 新增「量化基金」能力表与合计能力数；`docs/DESIGN.md` 新增第 15 章。
+
+### 量化基金：内置 Skill「基金选基与组合（高级）」
+
+- **id**：`skill_fund_selection_portfolio_pro`（`js/app.js` → `BUILTIN_SKILLS`）。
+- **要点**：MPT/CAPM/Black-Litterman/风险平价、费用-流程-业绩（FPP）、多源校验、回测与压力测试、行为偏差与学术披露；与 F6 选基闭环及禁止模拟数据一致；**非可执行代码**，由模型按方法论输出。
+- **绑定**：仅 `quant_fund` 的 `skills` 含此项（相对矩阵助手 **+1**，共 **30** 个 skill）。详见 `docs/DESIGN_QUANT_FUND.md` §2.1。
 
 ### 版本号统一为 8.6.2
 
@@ -459,6 +475,7 @@
 
 ---
 
+[8.6.3]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.6.3
 [8.6.2]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.6.2
 [8.6.1]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.6.1
 [8.6.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.6.0
