@@ -4,6 +4,24 @@
 
 ---
 
+## v8.6.4（2026-03-27）
+
+**类型**：量化基金助手 **「完美报告」** 协议增强 + **版本号全量对齐**至 **v8.6.4**。**完整变更日志**：[CHANGELOG.md](../CHANGELOG.md) **[8.6.4]**。
+
+### 要点
+
+- **PCL**：Potential Consistency Level + Berk & Green (2004)、Sharpe (1991) 学术溯源；M04 标题同步。
+- **盈亏平衡 / 反事实 / 可视化**：见 `BUILTIN_SUB_AGENTS.quant_fund.systemPrompt` 新增章节；`buildEnhancedSystemPrompt` 注入【完美报告增强】。
+
+### 升级与发布命令
+
+```bash
+git checkout gh-pages
+./release.sh 8.6.4
+```
+
+---
+
 ## v8.6.3（2026-03-26）
 
 **类型**：**版本号全量对齐**至 **v8.6.3**（应用、SW、脚本默认、设计与部署文档等）。**完整变更日志**：[CHANGELOG.md](../CHANGELOG.md) **[8.6.3]**。
@@ -212,4 +230,4 @@ git checkout gh-pages
 
 ---
 
-**文档版本**: v8.6.3 · 最后更新: 2026-03-26
+**文档版本**: v8.6.4 · 最后更新: 2026-03-27

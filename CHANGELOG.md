@@ -4,6 +4,23 @@
 
 ---
 
+## [8.6.4] - 2026-03-27
+
+### 量化基金助手「完美报告」增强
+
+- **PCL 学术溯源**：报告首次深入 PCL 须写明 **Potential Consistency Level**，理论对话 **Berk & Green (2004)**、**Sharpe (1991)**，并标明 F6 离散化框架为方法论原创（见 `js/app.js` → `quant_fund.systemPrompt`【学术溯源·PCL】、【M04·PCL】）。
+- **盈亏平衡分析**：持有成本与机会成本（货基/现金收益率须检索，禁止默认固定利率）；表格或公式+补全清单。
+- **反事实情景**：可选历史时点思想实验（如 2021 年初热门基金），标注非预测；讨论 PCL 事前风险识别。
+- **数据验证可视化**：规模趋势、滚动超额、风格暴露（Barra 不可得时用季报行业等替代）；`chart` 或数据缺口说明。
+- **llm 注入**：`js/llm.js` 对 `quant_fund` 增加【完美报告增强】提示。
+- **文档**：`docs/DESIGN_QUANT_FUND.md`、`docs/助手能力全集.md` 同步。
+
+### 版本号统一为 8.6.4
+
+- 应用 `VERSION`、各 `js` 模块头、`sw.js`、`index.html`、`release.sh`、`deploy.sh` 及设计与部署类文档与 **v8.6.4** 全量对齐。
+
+---
+
 ## [8.6.3] - 2026-03-26
 
 ### 版本号统一为 8.6.3
@@ -475,6 +492,7 @@
 
 ---
 
+[8.6.4]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.6.4
 [8.6.3]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.6.3
 [8.6.2]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.6.2
 [8.6.1]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.6.1

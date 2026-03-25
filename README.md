@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-8.6.3-blue.svg)
+![Version](https://img.shields.io/badge/version-8.6.4-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Web-lightgrey.svg)
 
@@ -371,6 +371,12 @@ http://localhost:8000/test/comprehensive-test.html
 ## 📝 更新日志
 
 > 完整列表见 [CHANGELOG.md](CHANGELOG.md)；发布汇总见 [docs/RELEASES.md](docs/RELEASES.md)。
+
+### v8.6.4 (2026-03-27)
+
+- **量化基金「完美报告」**：PCL（Potential Consistency Level）学术溯源与 Berk & Green / Sharpe 引用；盈亏平衡分析、反事实情景、数据验证可视化；`llm.js`【完美报告增强】。
+- **版本号全量对齐**：应用、SW、脚本与文档统一为 **v8.6.4**。
+- **发布**：`docs/RELEASES.md`（**v8.6.4** 节）；`CHANGELOG.md` [8.6.4]。
 
 ### v8.6.3 (2026-03-26)
 

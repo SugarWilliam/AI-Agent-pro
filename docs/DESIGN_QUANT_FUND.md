@@ -1,11 +1,11 @@
 # 量化基金助手 — 能力协议、资源与调用链
 
-**对应应用版本**: v8.6.3  
+**对应应用版本**: v8.6.4  
 **SubAgent id**: `quant_fund`  
 **配置来源**: `js/app.js` → `BUILTIN_SUB_AGENTS.quant_fund`  
 **方法论文档**: 仓库 `test/量化基金`（文档 1～6）；内置 RAG `rag_quant_fund_f6`（`alwaysInject: true`）
 
-**选基能力**：助手须完成「约束澄清 → 初筛 → 短名单 → 横向比较表 → M04/C×S×M/贝叶斯深度」闭环（见 `js/app.js` 中 `quant_fund.systemPrompt` 的 **【选基能力】**）；`js/llm.js` 对 `quant_fund` 注入 **【选基能力】** 以强化筛选/推荐/对比类问题。**高级方法论**由内置 Skill **`skill_fund_selection_portfolio_pro`**（基金选基与组合（高级））提供：MPT/CAPM/Black-Litterman/风险平价、费用-流程-业绩(FPP)、多源校验、回测与压力测试、行为偏差披露等（见 `js/app.js` → `BUILTIN_SKILLS`）。
+**选基能力**：助手须完成「约束澄清 → 初筛 → 短名单 → 横向比较表 → M04/C×S×M/贝叶斯深度」闭环（见 `js/app.js` 中 `quant_fund.systemPrompt` 的 **【选基能力】**）；`js/llm.js` 对 `quant_fund` 注入 **【选基能力】** 以强化筛选/推荐/对比类问题。**高级方法论**由内置 Skill **`skill_fund_selection_portfolio_pro`**（基金选基与组合（高级））提供：MPT/CAPM/Black-Litterman/风险平价、费用-流程-业绩(FPP)、多源校验、回测与压力测试、行为偏差披露等（见 `js/app.js` → `BUILTIN_SKILLS`）。**「完美报告」增强**（同 `systemPrompt`）：**PCL** 写作 **Potential Consistency Level** 并溯源 Berk & Green (2004)、Sharpe (1991)；**盈亏平衡分析**（费率+机会成本）；**反事实情景**（思想实验）；**规模/滚动超额/风格**等可视化或数据缺口说明。
 
 ---
 

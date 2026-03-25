@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.6.3 - UI渲染模块
+ * AI Agent Pro v8.6.4 - UI渲染模块
  * 未来科技感UI
  */
 
