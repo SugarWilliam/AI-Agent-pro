@@ -2333,6 +2333,73 @@ ${prompt}
 十二、数据 A/B/C；禁止捏造；缺字段列补全清单。
 
 十三、诚实边界：内置 RAG 无「百只产品向量库」；不声称自动 M11/M12 进化；用户可上传自建知识库。路径：test/量化基金/1~6。`
+        },
+        {
+            id: 'rag_realtime_finance_data',
+            name: '实时金融数据接口',
+            description: '基金估算净值(天天基金)、日频净值、A股估值(ifind/东财)、港美股(yahoo)；供量化基金与量化幻方矩阵检索+联网拉取',
+            enabled: true,
+            alwaysInject: false,
+            category: '金融',
+            documents: [],
+            protocol: 'rag://1.0',
+            supportedTypes: ['pdf', 'doc', 'docx', 'txt', 'md', 'markdown', 'html', 'htm', 'url'],
+            vectorized: false,
+            documentCount: 0,
+            externalSources: [
+                { name: '天天基金·fundgz', url: 'http://fundgz.1234567.com.cn/js/', type: 'api', description: '基金估算净值 JSONP' },
+                { name: 'Yahoo Finance', url: 'https://finance.yahoo.com/', type: 'website', description: '港美股行情' },
+                { name: '东方财富', url: 'https://www.eastmoney.com/', type: 'website', description: '行情与估值' }
+            ],
+            defaultContent: `【实时金融数据接口协议】（本 Web Agent 不直连数据库；须通过「网络搜索」或宿主侧工具按下列 URL/参数拉取；若部署 get_data_source(ifind/yahoo_finance) 则按宿主文档调用。）
+
+一、需求与推荐方案（延迟/稳定性为经验值，以实际为准）
+
+| 需求 | 推荐方案 | 延迟 | 稳定性 |
+| 基金实时估算净值 | 天天基金 fundgz 接口 | 约5分钟级 | 高 |
+| 基金历史净值 | iFinD（若可用）或天天/基金披露 | 日频 | 高 |
+| A股实时估值 | iFinD（若可用）或东财/行情 | 实时~分钟 | 中高 |
+| A股 PE/PB/ROE | iFinD / 东方财富 push2 等 | 日频 | 中高 |
+| 港股美股估值 | Yahoo Finance 或 iFinD | 实时 | 中高 |
+
+二、基金实时估算净值（天天基金，公开 JSONP，推荐）
+
+- URL：http://fundgz.1234567.com.cn/js/{基金代码}.js（可加 rt=时间戳防缓存）
+- 请求头建议：Referer: http://fund.eastmoney.com/
+- 返回：JSONP，形如 jsonpgz({...}); 需用正则提取括号内 JSON。
+- 字段：fundcode；name；jzrq 净值日期；dwjz 单位净值(昨日)；gsz 估算净值；gszzl 估算涨跌幅%；gztime 估算时间。
+- 适用：量化基金助手写「估算净值」时优先用本接口+联网结果，禁止凭记忆填数。
+
+三、基金历史净值（日频）
+
+- iFinD（机构）：若运行环境提供 get_data_source，data_source_name=ifind，示例 api_name=ifind_get_price，ticker 形如 001938.OF（场外基金），日期区间 start_date/end_date，输出路径由宿主定义。
+- 无 iFinD 时：用公开基金净值页或天天基金历史净值配合网络搜索，注明来源与日期。
+
+四、A股：价格与财务指标（iFinD 参考）
+
+- 代码格式：600223.SH、000001.SZ、xxxx.BJ；港股 0001.HK；美股 AAPL.O 等。
+- 典型 api_name（以宿主实现为准）：ifind_get_price；ifind_get_stock_financial_index（PE/PB/ROE 等）；ifind_get_financial_statements；ifind_get_stock_info。
+- 无量化宿主时：用东财等公开接口或雪球+网络搜索，注明数据层级 A/B/C。
+
+五、A股：东方财富 push2（公开 API，示例，字段以实际返回为准）
+
+- 基础：GET https://push2.eastmoney.com/api/qt/stock/get？secid={市场.代码}&fields=...
+- secid：沪市多为 1.六位代码，深市多为 0.六位代码（具体规则以东财当前文档为准）。
+- 须在报告中写清请求时间与字段含义；接口变更时以联网结果为准。
+
+六、港股/美股：Yahoo Finance
+
+- 通过 Yahoo 财经或宿主 yahoo_finance 数据源；禁止违反服务条款的高频抓取；须限频+注明来源。
+
+七、World Bank 等宏观（可选）
+
+- world_bank_open_data：GDP、人口、贸易等，用于宏观背景。
+
+八、量化基金助手与量化幻方矩阵助手的强制执行
+
+- 凡输出含**具体基金估算净值、基金历史净值、股票 PE/PB/ROE、实时价**等可观测数值：**必须先**结合本 RAG 与**网络搜索**（或宿主数据工具）拉取；**禁止**占位符与训练记忆编造。
+- 若 iFinD/机构 API 不可用，须明确声明数据缺口，并给出天天基金/东财等公开替代路径。
+- 数据溯源须写明：指标名、数值、时间、来源（URL 或接口类型）。`
         }
     ];
 
@@ -3312,7 +3379,7 @@ ${DIAGRAM_FORMAT_SPEC.projectDashboard}
             skills: ['skill_value_investment', 'skill_decision_expert', 'skill_advanced_analytics', 'skill_data_cleaning', 'skill_first_principles', 'skill_analyst', 'skill_researcher', 'skill_swot', 'skill_pyramid', 'skill_mece', 'skill_mermaid_visualization', 'skill_cognitive_psychology', 'skill_iceberg_model', 'skill_planner', 'skill_smart', 'skill_dependency', 'skill_temporal_relation', 'skill_scenario_dynamic_probability', 'skill_multi_temporal_sandbox', 'skill_backtest', 'skill_cn_quality_value', 'skill_cn_multifactor', 'skill_cn_cycle_timing', 'skill_cn_core_satellite', 'skill_cn_smallcap_specialized', 'skill_cn_allweather', 'skill_decision_premortem', 'skill_devil_advocate', 'skill_behavior_guardrails'],
             rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_context', 'rule_workflow'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
-            rag: ['rag_cn_analysis_framework', 'rag_decision_behavior_protocols', 'rag_quant_output_protocols', 'rag_snowball_realtime', 'rag_value_investment', 'rag_data_api_finance', 'rag_data_api_official', 'rag_sse', 'rag_szse', 'rag_finance', 'rag_industry_reports', 'rag_government_reports', 'rag_social', 'rag_first_principles', 'rag_logic', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_temporal_logic', 'rag_common_sense', 'rag_history'],
+            rag: ['rag_cn_analysis_framework', 'rag_decision_behavior_protocols', 'rag_quant_output_protocols', 'rag_realtime_finance_data', 'rag_snowball_realtime', 'rag_value_investment', 'rag_data_api_finance', 'rag_data_api_official', 'rag_sse', 'rag_szse', 'rag_finance', 'rag_industry_reports', 'rag_government_reports', 'rag_social', 'rag_first_principles', 'rag_logic', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_temporal_logic', 'rag_common_sense', 'rag_history'],
             color: '#059669',
             delegateTo: []
         },
@@ -3388,7 +3455,7 @@ A/B/C 分级；缺字段列**补全清单**；禁止捏造净值、规模、费�
             skills: ['skill_value_investment', 'skill_decision_expert', 'skill_advanced_analytics', 'skill_data_cleaning', 'skill_first_principles', 'skill_analyst', 'skill_researcher', 'skill_swot', 'skill_pyramid', 'skill_mece', 'skill_mermaid_visualization', 'skill_cognitive_psychology', 'skill_iceberg_model', 'skill_planner', 'skill_smart', 'skill_dependency', 'skill_temporal_relation', 'skill_scenario_dynamic_probability', 'skill_multi_temporal_sandbox', 'skill_backtest', 'skill_cn_quality_value', 'skill_cn_multifactor', 'skill_cn_cycle_timing', 'skill_cn_core_satellite', 'skill_cn_smallcap_specialized', 'skill_cn_allweather', 'skill_decision_premortem', 'skill_devil_advocate', 'skill_behavior_guardrails'],
             rules: ['rule_format', 'rule_accuracy', 'rule_examples', 'rule_structure', 'rule_context', 'rule_workflow'],
             mcp: ['mcp_web_search', 'mcp_calculator'],
-            rag: ['rag_quant_fund_f6', 'rag_cn_analysis_framework', 'rag_decision_behavior_protocols', 'rag_value_investment', 'rag_finance', 'rag_data_api_finance', 'rag_data_api_official', 'rag_sse', 'rag_szse', 'rag_snowball_realtime', 'rag_industry_reports', 'rag_government_reports', 'rag_social', 'rag_first_principles', 'rag_logic', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_temporal_logic', 'rag_common_sense', 'rag_history'],
+            rag: ['rag_quant_fund_f6', 'rag_realtime_finance_data', 'rag_cn_analysis_framework', 'rag_decision_behavior_protocols', 'rag_value_investment', 'rag_finance', 'rag_data_api_finance', 'rag_data_api_official', 'rag_sse', 'rag_szse', 'rag_snowball_realtime', 'rag_industry_reports', 'rag_government_reports', 'rag_social', 'rag_first_principles', 'rag_logic', 'rag_iceberg_model', 'rag_psychology', 'rag_neuroscience', 'rag_temporal_logic', 'rag_common_sense', 'rag_history'],
             color: '#0d9488',
             delegateTo: []
         }

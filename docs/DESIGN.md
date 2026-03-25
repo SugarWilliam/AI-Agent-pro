@@ -1778,7 +1778,7 @@ async function sendMessage() {
 
 ### 三、能力体系摘要
 
-**systemPrompt 结构**：〇 数据甄别/分层/清洗、〇·1 事实与观点与时效、【禁止与强制执行】、一～十三（高级量化幻方、BMP、定量财务、定性竞争、数据可靠性、数据高级分析、数据档案、情景动态概率、强支撑位与退出、回测与对冲、实时数据收集、关键指标、中国市场、CN 分析框架）、【输出规范】。**Skills**：29 个；**RAG**：16 个；**规则**：6 条；**MCP**：mcp_web_search、mcp_calculator。完整配置清单、技能/RAG 分组表格、与实现文件对应关系、冗余与边界说明见 **[DESIGN_QUANT_MAGIC_SQUARE.md](DESIGN_QUANT_MAGIC_SQUARE.md)**。
+**systemPrompt 结构**：〇 数据甄别/分层/清洗、〇·1 事实与观点与时效、【禁止与强制执行】、一～十三（高级量化幻方、BMP、定量财务、定性竞争、数据可靠性、数据高级分析、数据档案、情景动态概率、强支撑位与退出、回测与对冲、实时数据收集、关键指标、中国市场、CN 分析框架）、【输出规范】。**Skills**：29 个；**RAG**：22 个（含 `rag_realtime_finance_data` 等）；**规则**：6 条；**MCP**：mcp_web_search、mcp_calculator。完整配置清单、技能/RAG 分组表格、与实现文件对应关系、冗余与边界说明见 **[DESIGN_QUANT_MAGIC_SQUARE.md](DESIGN_QUANT_MAGIC_SQUARE.md)**。
 
 ---
 
@@ -1810,7 +1810,7 @@ async function sendMessage() {
 
 **配置来源**：`js/app.js` → `BUILTIN_SUB_AGENTS.quant_fund`。
 
-**系统提示词组装顺序**：角色与描述 → 【当前日期与时间】+【约束重申】+【署名】+【期望值/橡树硬性落笔】（`js/llm.js`）→ `systemPrompt`（F6.0）→ **规则**（6 条，与矩阵助手相同）→ **技能指引**（29 个 skill，与 `quant_magic_square` 同列表）→ 网络搜索结果 → MCP 结果 → **知识库参考**（`rag_quant_fund_f6` + 20 个扩展 RAG，**不含** `rag_quant_output_protocols`）→ 输出格式。
+**系统提示词组装顺序**：角色与描述 → 【当前日期与时间】+【约束重申】+【署名】+【期望值/橡树硬性落笔】（`js/llm.js`）→ `systemPrompt`（F6.0）→ **规则**（6 条，与矩阵助手相同）→ **技能指引**（29 个 skill，与 `quant_magic_square` 同列表）→ 网络搜索结果 → MCP 结果 → **知识库参考**（`rag_quant_fund_f6` + 21 个扩展 RAG，含 `rag_realtime_finance_data`；**不含** `rag_quant_output_protocols`）→ 输出格式。
 
 **多轮对话**：`js/events.js` 中与 `quant_magic_square` 相同，**多轮仍执行网络搜索**（在用户开启网络搜索时），便于持续核对净值、规模、费率。
 
@@ -1822,7 +1822,7 @@ async function sendMessage() {
 |------|-------------------------------------|-------------------------|
 | 主场景 | A 股个股/深度矩阵/BMP/DCF 等 | 基金筛选、家庭组合、平台对抗 |
 | 协议 | V4.x 钻石标准报告结构 | F6.0-Ultimate-Personal |
-| 专属 RAG | 含 `rag_quant_output_protocols` | 含 `rag_quant_fund_f6`，**不含**股票输出协议 |
+| 专属 RAG | 含 `rag_quant_output_protocols`；**二者均绑定** `rag_realtime_finance_data` | 含 `rag_quant_fund_f6`，**不含**股票输出协议；**二者均绑定** `rag_realtime_finance_data` |
 | 署名 | 量化幻方矩阵 呈上 | 量化基金助手 呈上 |
 
 ---
