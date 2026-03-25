@@ -1,8 +1,8 @@
 # AI Agent Pro 工程评审报告
 
-**版本**: v8.6.1  
-**评审日期**: 2026-03-15  
-**评审范围**: 架构、代码质量、近期变更、文档一致性、量化幻方黄金样例与发布文档链
+**版本**: v8.6.2  
+**评审日期**: 2026-03-25  
+**评审范围**: 架构、代码质量、近期变更、文档一致性、量化幻方黄金样例、量化基金 SubAgent 与发布文档链
 
 ---
 
@@ -94,13 +94,14 @@
 | AI-Agent-Pro-Features.html | 工作秘书、问题演化、delegateTo 配置 |
 | PROJECT_SUMMARY.md | 功能统计、文档引用 |
 
-### 4.2 版本号一致性（v8.6.1）
+### 4.2 版本号一致性（v8.6.2）
 
-- 代码：VERSION = '8.6.1' ✅
-- CHANGELOG：[8.6.1] ✅
-- README 徽章：8.6.1 ✅
-- docs：RELEASES（含 v8.6.1 并入内容）、RELEASE_READINESS、DEPLOYMENT、DESIGN*、HTML 导出 ✅
-- 黄金样例：`test/量化幻方矩阵投资决策报告【V4.0钻石标准】.md` 已标注对齐 **应用 v8.6.1**（协议栈 V4.1）✅
+- 代码：VERSION = '8.6.2' ✅
+- CHANGELOG：[8.6.2]、[8.6.1] ✅
+- README 徽章：8.6.2 ✅
+- docs：RELEASES（含 v8.6.2 / v8.6.1）、RELEASE_READINESS、DEPLOYMENT、DESIGN*（含第 15 章量化基金）、HTML 导出 ✅
+- 黄金样例：`test/量化幻方矩阵投资决策报告【V4.0钻石标准】.md` 协议栈 V4.1；应用发版以 CHANGELOG 当前版为准 ✅
+- SubAgent：**quant_fund**（量化基金）见 `docs/DESIGN.md` 第 15 章 ✅
 
 ---
 
@@ -143,6 +144,6 @@
 
 ---
 
-**文档版本**: v8.6.1  
-**最后更新**: 2026-03-03  
+**文档版本**: v8.6.2  
+**最后更新**: 2026-03-25  
 **维护者**: AI Agent Pro Team

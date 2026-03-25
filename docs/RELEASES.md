@@ -4,6 +4,29 @@
 
 ---
 
+## v8.6.2（2026-03-25）
+
+**类型**：新增 SubAgent **量化基金**（`quant_fund`），对齐 **F6.0-Ultimate-Personal** 家庭基金协议。**完整变更日志**：[CHANGELOG.md](../CHANGELOG.md) **[8.6.2]**。
+
+### 量化基金（quant_fund）
+
+- **内置 RAG**：`rag_quant_fund_f6`（F6.0 协议浓缩）；另绑定价值投资、财经、雪球、行为协议等。
+- **系统提示增强**：`buildEnhancedSystemPrompt` 对 `quant_fund` 注入北京时间、禁止虚构净值/费率、署名规范；多轮对话仍启用网络搜索（与 `quant_magic_square` 同策略）。
+- **设计说明**：见 [DESIGN.md](DESIGN.md) **第 15 章**；能力清单见 [助手能力全集.md](助手能力全集.md)。
+
+### 版本号统一为 8.6.2
+
+- 应用、脚本与主要展示文档已统一为 v8.6.2。
+
+### 升级与发布命令
+
+```bash
+git checkout gh-pages
+./release.sh 8.6.2
+```
+
+---
+
 ## v8.6.1（2026-03-15）
 
 **类型**：量化幻方助手 V4.1 协议栈升级。**完整变更日志**：[CHANGELOG.md](../CHANGELOG.md) **[8.6.1]**。
@@ -169,4 +192,4 @@ git checkout gh-pages
 
 ---
 
-**文档版本**: v8.6.1 · 最后更新: 2026-03-15
+**文档版本**: v8.6.2 · 最后更新: 2026-03-25

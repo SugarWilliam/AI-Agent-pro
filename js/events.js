@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.6.1 - 事件处理模块
+ * AI Agent Pro v8.6.2 - 事件处理模块
  * 未来科技感交互设计
  */
 
@@ -1169,12 +1169,12 @@
                 }
             }
         }
-        // 多轮对话时跳过网络搜索，直接基于对话继续（所有 SubAgent 一致）；量化幻方除外：多轮也执行搜索以获取最新行情与数据
+        // 多轮对话时跳过网络搜索，直接基于对话继续（所有 SubAgent 一致）；量化幻方 / 量化基金除外：多轮也执行搜索以获取最新行情与基金数据
         const msgCount = (window.AppState.messages || []).length;
         const isMultiTurn = msgCount >= 2;
         const currentSub = window.AppState?.currentSubAgent;
         const webSearchOn = isWorkflow || autoWorkflow || (window.AppState.settings?.webSearchEnabled || false);
-        const allowQuantMultiTurnSearch = currentSub === 'quant_magic_square';
+        const allowQuantMultiTurnSearch = currentSub === 'quant_magic_square' || currentSub === 'quant_fund';
         const enableWebSearch = webSearchOn && (!isMultiTurn || allowQuantMultiTurnSearch);
         // A2A 多轮：后续轮次由主 Agent 控住上下文，不重复走整条 Workflow，避免信息流丢失；仅当首轮或用户显式 [Workflow:...] 时走链
         if (autoWorkflow && isMultiTurn) {

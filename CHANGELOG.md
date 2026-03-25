@@ -4,6 +4,21 @@
 
 ---
 
+## [8.6.2] - 2026-03-25
+
+### 新增 SubAgent：量化基金（quant_fund）
+
+- **协议**：家庭基金投资 **F6.0-Ultimate-Personal**（方法论见仓库 `test/量化基金` 文档 1～6；内置 RAG `rag_quant_fund_f6`）。
+- **能力要点**：SCVO 租约、三维档位 C×S×M、规则化贝叶斯与租约 L3→L0、平台算法陷阱对抗、极简/标准分层输出、魔鬼代言人 15 问与预验尸、数据质量 A/B/C 与补全清单。
+- **实现**：`js/app.js` → `BUILTIN_SUB_AGENTS.quant_fund`；`js/llm.js` 注入北京时间、禁止占位、署名「量化基金助手 呈上」；`js/events.js` 与量化幻方矩阵助手相同，多轮对话仍执行网络搜索以核对基金数据。
+- **文档**：`docs/助手能力全集.md` 新增「量化基金」能力表与合计能力数；`docs/DESIGN.md` 新增第 15 章。
+
+### 版本号统一为 8.6.2
+
+- 应用、脚本与主要展示文档已统一为 v8.6.2。
+
+---
+
 ## [8.6.1] - 2026-03-15
 
 ### 量化幻方助手 V4.1 协议栈升级（V4.0 全栈 + V6.0 可选增强）
@@ -444,6 +459,7 @@
 
 ---
 
+[8.6.2]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.6.2
 [8.6.1]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.6.1
 [8.6.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.6.0
 [8.5.3]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.3

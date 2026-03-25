@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# AI Agent Pro v8.6.1 - GitHub自动化部署脚本
+# AI Agent Pro v8.6.2 - GitHub自动化部署脚本
 # 使用方法: ./deploy.sh [--auto] [--force] [--token]
 #   --token: 使用 GITHUB_TOKEN 环境变量推送（解决SSH错误）
 

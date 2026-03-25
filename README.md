@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-8.6.1-blue.svg)
+![Version](https://img.shields.io/badge/version-8.6.2-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Web-lightgrey.svg)
 
@@ -371,6 +371,11 @@ http://localhost:8000/test/comprehensive-test.html
 ## 📝 更新日志
 
 > 完整列表见 [CHANGELOG.md](CHANGELOG.md)；发布汇总见 [docs/RELEASES.md](docs/RELEASES.md)。
+
+### v8.6.2 (2026-03-25)
+
+- **量化基金 SubAgent**（`quant_fund`）：F6.0-Ultimate-Personal 家庭基金协议；内置 RAG `rag_quant_fund_f6`；多轮仍执行网络搜索以核对基金数据；设计见 `docs/DESIGN.md` 第 15 章。
+- **发布**：`docs/RELEASES.md`（**v8.6.2** 节）；`CHANGELOG.md` [8.6.2]。
 
 ### v8.6.1 (2026-03-15)
 

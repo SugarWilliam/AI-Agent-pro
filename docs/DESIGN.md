@@ -1,7 +1,7 @@
 # AI Agent Pro 详细设计文档
 
-**版本**: v8.6.1  
-**日期**: 2026-03-15  
+**版本**: v8.6.2  
+**日期**: 2026-03-25  
 **文档类型**: 详细设计文档（可用于移动端复刻）
 
 ---
@@ -20,6 +20,7 @@
 **专项设计文档**（其余已合并入本文）：
 - [A2A 自主调度设计](DESIGN_A2A.md)：主 Agent 智能化分析任务、根据 AgentCard 能力选择与排序助手、制定工作流、调度 subagent 输入输出的完整设计（含 SubAgent 集群、提示词专家默认绑定）
 - 量化幻方助手完整设计：见本文 **第 14 章**
+- 量化基金助手（F6.0）：见本文 **第 15 章**；完整资源与调用链见 **[DESIGN_QUANT_FUND.md](DESIGN_QUANT_FUND.md)**
 - Workflow 主 Agent 能力差距分析（历史参考）：见本文 **附录 C**
 - [重要修改摘要 2026-03](MODIFICATIONS_2026-03.md)：任务与计划强化、SubAgent 强化、提示词专家默认绑定、SubAgent 集群的修改原因、逻辑与效果
 
@@ -1725,8 +1726,8 @@ async function sendMessage() {
 
 ---
 
-**文档版本**: v8.6.1  
-**最后更新**: 2026-03-15  
+**文档版本**: v8.6.2  
+**最后更新**: 2026-03-25  
 **维护者**: AI Agent Pro Team
 
 ---
@@ -1773,11 +1774,56 @@ async function sendMessage() {
 
 ### 二、架构与调用链
 
-**配置来源**：`js/app.js` → `BUILTIN_SUB_AGENTS.quant_magic_square`；资源解析 `getSubAgentResources(subAgentId)`。**调用链**：用户消息 → sendMessage → invokeIntelligentAgent → getSubAgentResources → buildSkillPrompts → queryRAG → buildEnhancedSystemPrompt → callLLM。**系统提示词组装顺序**：角色与描述 → 【当前日期与时间】+【约束重申】（仅量化幻方）→ systemPrompt（含禁止与强制执行）→ 规则 → 技能指引 → 网络搜索结果 → 工具结果 → 知识库参考 → 输出格式。**助手调用逻辑**：触发方式（界面选择或工作流指定 subAgentId）；单轮 vs 多轮（每次发送走完整链，RAG 基于当前轮用户消息）；工作流模式、参数传递、与其它助手切换见 DESIGN_A2A 与实现。
+**配置来源**：`js/app.js` → `BUILTIN_SUB_AGENTS.quant_magic_square`；资源解析 `getSubAgentResources(subAgentId)`。**调用链**：用户消息 → sendMessage → invokeIntelligentAgent → getSubAgentResources → buildSkillPrompts → queryRAG → buildEnhancedSystemPrompt → callLLM。**系统提示词组装顺序**：角色与描述 → 【当前日期与时间】+【约束重申】（**量化幻方**与**量化基金**均注入，基金助手署名与基金数据约束见第 15 章）→ systemPrompt（含禁止与强制执行）→ 规则 → 技能指引 → 网络搜索结果 → 工具结果 → 知识库参考 → 输出格式。**助手调用逻辑**：触发方式（界面选择或工作流指定 subAgentId）；单轮 vs 多轮（每次发送走完整链，RAG 基于当前轮用户消息）；工作流模式、参数传递、与其它助手切换见 DESIGN_A2A 与实现。
 
 ### 三、能力体系摘要
 
 **systemPrompt 结构**：〇 数据甄别/分层/清洗、〇·1 事实与观点与时效、【禁止与强制执行】、一～十三（高级量化幻方、BMP、定量财务、定性竞争、数据可靠性、数据高级分析、数据档案、情景动态概率、强支撑位与退出、回测与对冲、实时数据收集、关键指标、中国市场、CN 分析框架）、【输出规范】。**Skills**：29 个；**RAG**：16 个；**规则**：6 条；**MCP**：mcp_web_search、mcp_calculator。完整配置清单、技能/RAG 分组表格、与实现文件对应关系、冗余与边界说明见 **[DESIGN_QUANT_MAGIC_SQUARE.md](DESIGN_QUANT_MAGIC_SQUARE.md)**。
+
+---
+
+## 15. 量化基金助手（F6.0-Ultimate）
+
+> 家庭基金投资专用 SubAgent；方法论文档位于仓库 `test/量化基金`（文档 1～6）；内置 RAG `rag_quant_fund_f6`（`alwaysInject`）。**完整能力协议、资源表、层级关系与调用链**见 **[DESIGN_QUANT_FUND.md](DESIGN_QUANT_FUND.md)**。
+
+### 投资免责声明
+
+与第 14 章相同：**输出仅供学习研究参考，不构成投资建议**；用户独立决策并承担风险。
+
+### 一、概述与定位
+
+**定义**：量化基金（SubAgent id: `quant_fund`，界面名「量化基金」）面向**家庭基金配置与主动基金租约评估**，以「家庭目标实现概率」为核心指标，对抗平台算法诱导（近一年排名、明星经理、万人购买、费率锚定等）。
+
+**核心方法**：SCVO、**C×S×M**、PCL 离散、规则化贝叶斯、租约 **L3→L0**、M05/M06/M07、魔鬼代言人 15 问与预验尸、数据 A/B/C；默认输出**标准深度版**（见 `systemPrompt`）。
+
+### 二、能力协议层级（摘要）
+
+| 抽象层 | 文档模块 | 落地 |
+|--------|----------|------|
+| L1 感知 | M01 | 数据分级、补全清单、RAG+网络 |
+| L2 认知 | M02–M04 | 平台对抗、杠铃、PCL |
+| L3 决策 | M05–M07 | 三档情景、组合硬约束、租约状态机 |
+| L4 执行 | M08–M10 | 报告结构、纪律哨兵、人类确认清单 |
+| L5 进化 | M11–M12 | 不自称为自动进化；用户可自建知识 |
+
+### 三、架构与调用链
+
+**配置来源**：`js/app.js` → `BUILTIN_SUB_AGENTS.quant_fund`。
+
+**系统提示词组装顺序**：角色与描述 → 【当前日期与时间】+【约束重申】+【署名】+【期望值/橡树硬性落笔】（`js/llm.js`）→ `systemPrompt`（F6.0）→ **规则**（6 条，与矩阵助手相同）→ **技能指引**（29 个 skill，与 `quant_magic_square` 同列表）→ 网络搜索结果 → MCP 结果 → **知识库参考**（`rag_quant_fund_f6` + 20 个扩展 RAG，**不含** `rag_quant_output_protocols`）→ 输出格式。
+
+**多轮对话**：`js/events.js` 中与 `quant_magic_square` 相同，**多轮仍执行网络搜索**（在用户开启网络搜索时），便于持续核对净值、规模、费率。
+
+**资源绑定要点**：与量化幻方矩阵**共用** Rules、MCP、Skills 全集及大部分 RAG；**额外**以 `rag_quant_fund_f6` 为协议锚点；**排除**股票专用输出协议 RAG，避免与基金 F6.0 体例冲突。详见 [DESIGN_QUANT_FUND.md](DESIGN_QUANT_FUND.md) 第 2、3 节。
+
+### 四、与量化幻方矩阵的区别
+
+| 维度 | 量化幻方矩阵 (`quant_magic_square`) | 量化基金 (`quant_fund`) |
+|------|-------------------------------------|-------------------------|
+| 主场景 | A 股个股/深度矩阵/BMP/DCF 等 | 基金筛选、家庭组合、平台对抗 |
+| 协议 | V4.x 钻石标准报告结构 | F6.0-Ultimate-Personal |
+| 专属 RAG | 含 `rag_quant_output_protocols` | 含 `rag_quant_fund_f6`，**不含**股票输出协议 |
+| 署名 | 量化幻方矩阵 呈上 | 量化基金助手 呈上 |
 
 ---
 
