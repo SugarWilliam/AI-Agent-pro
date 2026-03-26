@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-8.5.1-blue.svg)
+![Version](https://img.shields.io/badge/version-8.6.4-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Web-lightgrey.svg)
 
@@ -369,6 +369,38 @@ http://localhost:8000/test/comprehensive-test.html
 ---
 
 ## 📝 更新日志
+
+> 完整列表见 [CHANGELOG.md](CHANGELOG.md)；发布汇总见 [docs/RELEASES.md](docs/RELEASES.md)。
+
+### v8.6.4 (2026-03-27)
+
+- **量化基金「完美报告」**：PCL（Potential Consistency Level）学术溯源与 Berk & Green / Sharpe 引用；盈亏平衡分析、反事实情景、数据验证可视化；`llm.js`【完美报告增强】。
+- **版本号全量对齐**：应用、SW、脚本与文档统一为 **v8.6.4**。
+- **发布**：`docs/RELEASES.md`（**v8.6.4** 节）；`CHANGELOG.md` [8.6.4]。
+
+### v8.6.3 (2026-03-26)
+
+- **版本号全量对齐**：应用、Service Worker 缓存、脚本默认版本、设计与部署类文档统一为 **v8.6.3**。
+- **发布**：`docs/RELEASES.md`（**v8.6.3** 节）；`CHANGELOG.md` [8.6.3]。
+
+### v8.6.2 (2026-03-25)
+
+- **量化基金 SubAgent**（`quant_fund`）：F6.0-Ultimate-Personal 家庭基金协议；内置 RAG `rag_quant_fund_f6`；多轮仍执行网络搜索以核对基金数据；设计见 `docs/DESIGN.md` 第 15 章。
+- **发布**：`docs/RELEASES.md`（**v8.6.2** 节）；`CHANGELOG.md` [8.6.2]。
+
+### v8.6.1 (2026-03-15)
+
+- **量化幻方 V4.1**：协议栈升级（V4.0 全栈 + V6.0 可选增强）；禁止动作清单、时间止损强化、贝叶斯+置信区间；输出规范模板 `docs/量化幻方矩阵_输出规范模板_V4.1.md`。
+- **发布**：`docs/RELEASES.md`（**v8.6.1** 节）；`CHANGELOG.md` [8.6.1]。
+
+### v8.6.0 (2026-03-15)
+
+- **量化幻方**：V4.0 黄金样例（`test/量化幻方矩阵投资决策报告【V4.0钻石标准】.md`）与 **E[r]/E[r']、KDI 类型 A/B 再归一化、决策链** 对齐；设计文档 `DESIGN_QUANT_MAGIC_SQUARE.md` 对应 **v8.6.0**。
+- **发布**：`docs/RELEASES.md`（**v8.6.0** 节含评审摘要）；`docs/MODIFICATIONS_2026-03.md` 标注以 CHANGELOG/RELEASES 为准。
+
+### v8.5.3 (2026-03-19)
+
+- 量化幻方 V3.0 协议与 〇·6/〇·7；版本统一 8.5.3。
 
 ### v8.4.0 (2026-03-05)
 

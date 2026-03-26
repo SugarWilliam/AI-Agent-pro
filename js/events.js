@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.5.1 - 事件处理模块
+ * AI Agent Pro v8.6.4 - 事件处理模块
  * 未来科技感交互设计
  */
 
@@ -582,6 +582,7 @@
 
         // 页面可见性变化 - 支持后台运行
         document.addEventListener('visibilitychange', () => {
+            if (!window.AppState) return;
             if (document.visibilityState === 'hidden') {
                 // 先同步当前对话消息到 chats，再保存
                 window.AIAgentEvents?.updateCurrentChat?.();
@@ -604,10 +605,11 @@
         
         // 页面失焦/获得焦点事件（额外支持）
         window.addEventListener('blur', () => {
-            window.AppState.isBackground = true;
+            if (window.AppState) window.AppState.isBackground = true;
         });
         
         window.addEventListener('focus', () => {
+            if (!window.AppState) return;
             window.AppState.isBackground = false;
             checkPendingTasks();
         });
@@ -1167,12 +1169,12 @@
                 }
             }
         }
-        // 多轮对话时跳过网络搜索，直接基于对话继续（所有 SubAgent 一致）；量化幻方除外：多轮也执行搜索以获取最新行情与数据
+        // 多轮对话时跳过网络搜索，直接基于对话继续（所有 SubAgent 一致）；量化幻方 / 量化基金除外：多轮也执行搜索以获取最新行情与基金数据
         const msgCount = (window.AppState.messages || []).length;
         const isMultiTurn = msgCount >= 2;
         const currentSub = window.AppState?.currentSubAgent;
         const webSearchOn = isWorkflow || autoWorkflow || (window.AppState.settings?.webSearchEnabled || false);
-        const allowQuantMultiTurnSearch = currentSub === 'quant_magic_square';
+        const allowQuantMultiTurnSearch = currentSub === 'quant_magic_square' || currentSub === 'quant_fund';
         const enableWebSearch = webSearchOn && (!isMultiTurn || allowQuantMultiTurnSearch);
         // A2A 多轮：后续轮次由主 Agent 控住上下文，不重复走整条 Workflow，避免信息流丢失；仅当首轮或用户显式 [Workflow:...] 时走链
         if (autoWorkflow && isMultiTurn) {
@@ -3120,7 +3122,10 @@ tags: code, review, quality
             });
             
             if (response.ok) {
+                window.LLMService?.resetJinaReaderQuotaState?.();
                 window.AIAgentUI?.showToast?.('Jina AI连接成功', 'success');
+            } else if (response.status === 402) {
+                window.AIAgentUI?.showToast?.('Jina 账户需付费或额度不足（402），请登录 jina.ai 充值或更换密钥', 'error');
             } else if (response.status === 401 || response.status === 403) {
                 window.AIAgentUI?.showToast?.('API密钥无效或已过期', 'error');
             } else if (response.status === 429) {
@@ -3140,6 +3145,7 @@ tags: code, review, quality
         if (window.AIAgentApp && typeof window.AIAgentApp.setJinaAIKey === 'function') {
             window.AIAgentApp.setJinaAIKey(apiKey);
             window.AIAgentApp.setJinaAIEnabled(enabled);
+            window.LLMService?.resetJinaReaderQuotaState?.();
             window.AIAgentUI?.showToast?.('Jina AI配置已保存', 'success');
         } else {
             window.AIAgentUI?.showToast?.('保存失败：AIAgentApp未初始化', 'error');

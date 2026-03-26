@@ -4,6 +4,118 @@
 
 ---
 
+## [8.6.4] - 2026-03-27
+
+### 量化基金助手「完美报告」增强
+
+- **PCL 学术溯源**：报告首次深入 PCL 须写明 **Potential Consistency Level**，理论对话 **Berk & Green (2004)**、**Sharpe (1991)**，并标明 F6 离散化框架为方法论原创（见 `js/app.js` → `quant_fund.systemPrompt`【学术溯源·PCL】、【M04·PCL】）。
+- **盈亏平衡分析**：持有成本与机会成本（货基/现金收益率须检索，禁止默认固定利率）；表格或公式+补全清单。
+- **反事实情景**：可选历史时点思想实验（如 2021 年初热门基金），标注非预测；讨论 PCL 事前风险识别。
+- **数据验证可视化**：规模趋势、滚动超额、风格暴露（Barra 不可得时用季报行业等替代）；`chart` 或数据缺口说明。
+- **llm 注入**：`js/llm.js` 对 `quant_fund` 增加【完美报告增强】提示。
+- **文档**：`docs/DESIGN_QUANT_FUND.md`、`docs/助手能力全集.md` 同步。
+
+### 版本号统一为 8.6.4
+
+- 应用 `VERSION`、各 `js` 模块头、`sw.js`、`index.html`、`release.sh`、`deploy.sh` 及设计与部署类文档与 **v8.6.4** 全量对齐。
+
+---
+
+## [8.6.3] - 2026-03-26
+
+### 版本号统一为 8.6.3
+
+- 应用 `VERSION`、各 `js` 模块头注释、`sw.js` 缓存名、`index.html` 展示版本、`release.sh` 默认参数、`deploy.sh` 注释等与 **v8.6.3** 全量对齐。
+- 设计/部署/HTML 导出类文档（含 `DESIGN*.md`、`DEPLOYMENT*.md`、`PROJECT_REVIEW.md`、`RELEASE_READINESS.md`、测试页等）同步为当前版本号。
+- **说明**：功能层面延续 8.6.2（量化基金、`skill_fund_selection_portfolio_pro` 等）；本版以**发布与文档版本一致性**为主。
+
+---
+
+## [8.6.2] - 2026-03-25
+
+### 新增 SubAgent：量化基金（quant_fund）
+
+- **协议**：家庭基金投资 **F6.0-Ultimate-Personal**（方法论见仓库 `test/量化基金` 文档 1～6；内置 RAG `rag_quant_fund_f6`）。
+- **能力要点**：SCVO 租约、三维档位 C×S×M、规则化贝叶斯与租约 L3→L0、平台算法陷阱对抗、极简/标准分层输出、魔鬼代言人 15 问与预验尸、数据质量 A/B/C 与补全清单。
+- **实现**：`js/app.js` → `BUILTIN_SUB_AGENTS.quant_fund`；`js/llm.js` 注入北京时间、禁止占位、署名「量化基金助手 呈上」；`js/events.js` 与量化幻方矩阵助手相同，多轮对话仍执行网络搜索以核对基金数据。
+- **文档**：`docs/助手能力全集.md` 新增「量化基金」能力表与合计能力数；`docs/DESIGN.md` 新增第 15 章。
+
+### 量化基金：内置 Skill「基金选基与组合（高级）」
+
+- **id**：`skill_fund_selection_portfolio_pro`（`js/app.js` → `BUILTIN_SKILLS`）。
+- **要点**：MPT/CAPM/Black-Litterman/风险平价、费用-流程-业绩（FPP）、多源校验、回测与压力测试、行为偏差与学术披露；与 F6 选基闭环及禁止模拟数据一致；**非可执行代码**，由模型按方法论输出。
+- **绑定**：仅 `quant_fund` 的 `skills` 含此项（相对矩阵助手 **+1**，共 **30** 个 skill）。详见 `docs/DESIGN_QUANT_FUND.md` §2.1。
+
+### 版本号统一为 8.6.2
+
+- 应用、脚本与主要展示文档已统一为 v8.6.2。
+
+---
+
+## [8.6.1] - 2026-03-15
+
+### 量化幻方助手 V4.1 协议栈升级（V4.0 全栈 + V6.0 可选增强）
+
+- **协议栈 V4.1**：在 V4.0 全栈基础上，将 V6.0 增强能力作为可选模块纳入；助手版本升级至 **V4.1**。
+- **V6.0 可选增强模块**：信息期权定价、全天候组合、三维退出网格、3×3×3 压力测试、BMP-E 四维矩阵、时间止损强化、贝叶斯+置信区间+动态更新；当场景适用时建议输出，不替代 V4.0 强制 8 段。
+- **禁止动作清单**：阶梯式执行手册须含禁止动作清单（3–5 条，编号格式），由禁止动作条款升级为清单化。
+- **概率处理分层**：V4.0 基础层（必须）母概率 + KDI 再归一化；V6.0 可选层贝叶斯 + 置信区间 + 动态更新（互补，不替代）。
+- **输出规范模板**：新增 `docs/量化幻方矩阵_输出规范模板_V4.1.md`，整合 8 段结构、必须体现、V6.0 可选、检查清单。
+- **fix**：模板字符串反引号转义导致 SyntaxError（`test/...` 未转义，Unexpected identifier 'test'）。
+
+### 版本号统一为 8.6.1
+
+- 应用与脚本：app.js（VERSION）、index.html、js 模块头、release.sh 默认、deploy.sh。
+- 文档：CHANGELOG、RELEASES、DESIGN_QUANT_MAGIC_SQUARE、输出稳定性升级、量化幻方输出规范模板。
+
+---
+
+## [8.6.0] - 2026-03-15
+
+### 量化幻方 V4.0 黄金样例与文档链对齐（评审发布）
+
+- **黄金基准样例**（`test/量化幻方矩阵投资决策报告【V4.0钻石标准】.md`）：〇·6 期望值与 **P_i、C、P₀** 代数对齐；**母概率↔派生 60/40** 强制一致；**KDI→类型 A/B 再归一化程序**（含算例）；**阶梯3** **E[r'|止盈]** vs **E[r'|持有]** 与第六节目标价同源；**持有期 H、路径约定、r_i↔r'_i** 校验；**决策链总览**与 **〇·8** 检查清单、决策流管道同步；魔鬼代言人表述修正（毛利率口径）。
+- **设计文档**：`docs/DESIGN_QUANT_MAGIC_SQUARE.md` 对应应用版本 **v8.6.0**，第七节补充与黄金样例行维护说明。
+- **发布文档**：**v8.6.0** 执行摘要与评审表已**并入** **`docs/RELEASES.md`**（不再单独维护 `RELEASE_v8.6.0.md`）；`RELEASE_READINESS.md` / `PROJECT_REVIEW.md` / `REVIEWS.md` 等引用已指向 RELEASES；`docs/MODIFICATIONS_2026-03.md` 增加「以 CHANGELOG/RELEASES 为准」指引。
+
+### 版本号统一为 8.6.0
+
+- 应用与脚本：app.js（VERSION）、index.html、js 模块头、release.sh 默认、deploy.sh。
+- 文档：CHANGELOG、RELEASES、RELEASE_READINESS、DEPLOYMENT、DEPLOYMENT_GUIDE、DESIGN、DESIGN_QUANT_MAGIC_SQUARE、DESIGN_A2A、PROJECT_REVIEW、REVIEWS、唐宋文化设计、助手能力全集、docs 内 HTML、README 徽章、review-test。
+
+---
+
+## [8.5.3] - 2026-03-19
+
+### 量化幻方矩阵协议与版本维护
+
+- **V3.0 协议栈**：动态适应声明、22 项专业级增强、能力与协议检查（设计文档 4.7）；必须体现现金流分析、3×3 估值矩阵、时间止损、三维坐标显式小标题、动态情绪因子；新增 〇·6 期望值思维与工程化落地、〇·7 霍华德·马克斯/橡树资本思想融合。
+- **RAG**：`rag_quant_output_protocols` 增补「九、必须体现与思想融合」等要点。
+
+### 版本号统一为 8.5.3
+
+- 应用与脚本：app.js（VERSION）、index.html、js 模块头、release.sh 默认、deploy.sh。
+- 文档：CHANGELOG、RELEASES、RELEASE_READINESS、DEPLOYMENT、DEPLOYMENT_GUIDE、DESIGN、DESIGN_QUANT_MAGIC_SQUARE、DESIGN_A2A、PROJECT_REVIEW、REVIEWS、唐宋文化设计、助手能力全集、docs 内 HTML、README 徽章、review-test。
+
+---
+
+## [8.5.2] - 2026-03-18
+
+### 量化幻方矩阵 V2.0 全栈协议与钻石标准能力升级
+
+- **systemPrompt 增强**：新增 〇·3 数据贞操与溯源协议、〇·4 立体交叉验证框架（行业景气度 X / 公司相对优势 Y / 市场系统性风险 Z）、六·2 逻辑量化锚定协议、八·1 程序化操作清单（阶梯式交易执行手册、KDI 监控与自动警报清单）；魔鬼代言人由可选改为**每份报告必含**。
+- **输出规范 V2.0**：强制 8 段结构（核心结论、数据层与溯源表、立体分析与量化矩阵、决策路径图、KDI 与警报清单、压力测试含魔鬼代言人+3×3 估值压力测试矩阵、阶梯式交易执行手册、报告使用指南与版本更新日志及免责声明）；报告末尾须注明「建议提交量化幻方矩阵标准委员会进行署名评估与审核」。
+- **RAG**：`rag_quant_output_protocols` 合入 V2.0 协议要点（数据溯源、立体交叉验证、逻辑锚定、程序化清单、魔鬼代言人必含、标准委员会署名审核）。
+- **能力列表**：补全并保留原能力表述（含 KDI 监控仪表盘、AI 魔鬼代言人报告鲁棒性测试），新增数据溯源表与溯源协议、立体交叉验证三维定位、逻辑量化锚定与 KDI 触发公式、阶梯式交易执行手册、KDI 监控与自动警报清单、3×3 估值压力测试矩阵、报告使用指南与版本更新日志、魔鬼代言人必含、标准委员会署名评估与审核、V2.0 钻石标准报告结构。
+- **设计文档**：DESIGN_QUANT_MAGIC_SQUARE.md 同步 3.1 表（〇·3、〇·4、六·2、八·1）、输出规范、必须/可选说明及 RAG 职责。
+
+### 版本号统一为 8.5.2
+
+- 应用与脚本：app.js（VERSION）、index.html、js 模块头（app/rag/events/ui/sync/plan/llm）、release.sh 默认、deploy.sh。
+- 文档：CHANGELOG、RELEASES、RELEASE_READINESS、DEPLOYMENT、DEPLOYMENT_GUIDE、DESIGN、DESIGN_QUANT_MAGIC_SQUARE、DESIGN_A2A、PROJECT_REVIEW、REVIEWS、唐宋文化设计、助手能力全集、docs 内 HTML、README 徽章、review-test。
+
+---
+
 ## [8.5.1] - 2026-03-15
 
 ### 导出与下载：仅报告、不含思考过程（全助手）
@@ -380,6 +492,13 @@
 
 ---
 
+[8.6.4]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.6.4
+[8.6.3]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.6.3
+[8.6.2]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.6.2
+[8.6.1]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.6.1
+[8.6.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.6.0
+[8.5.3]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.3
+[8.5.2]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.2
 [8.5.1]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.1
 [8.5.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.5.0
 [8.4.0]: https://github.com/SugarWilliam/AI-Agent-pro/releases/tag/v8.4.0

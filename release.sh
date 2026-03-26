@@ -7,7 +7,7 @@
 set -e
 
 REPO="SugarWilliam/AI-Agent-pro"
-VERSION="${1:-8.5.1}"
+VERSION="${1:-8.6.4}"
 
 echo "=========================================="
 echo "🚀 AI Agent Pro v${VERSION} 正式发布"
@@ -32,8 +32,9 @@ echo ""
 echo "🏷️ 步骤2: 创建 release 标签 v${VERSION}..."
 git tag -a "v${VERSION}" -m "AI Agent Pro v${VERSION} 正式发布
 
-- 项目评审与整理
-- 决策矩阵 Markdown 表格解析
+- 量化幻方 V4.1 协议栈（V4.0 全栈 + V6.0 可选增强）
+- 禁止动作清单、时间止损强化、贝叶斯+置信区间
+- 发布说明汇总于 docs/RELEASES.md，变更见 CHANGELOG
 - 版本号统一至 ${VERSION}"
 git push origin "v${VERSION}"
 echo "✅ 标签 v${VERSION} 已创建并推送"
@@ -57,5 +58,5 @@ echo "  1. 在 GitHub 创建 Release: https://github.com/${REPO}/releases/new?ta
 echo "  2. 填写 Release 说明，可参考 CHANGELOG.md"
 echo "  3. 上传源码 zip（或使用自动生成的 Source code）"
 echo ""
-echo "用法: ./release.sh [版本号]  默认 8.5.1"
+echo "用法: ./release.sh [版本号]  默认 8.6.4"
 echo ""

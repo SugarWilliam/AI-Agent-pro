@@ -1,5 +1,5 @@
 /**
- * AI Agent Pro v8.5.1 - RAG文档解析与向量化模块
+ * AI Agent Pro v8.6.4 - RAG文档解析与向量化模块
  * 支持PDF、DOC、网页、文本的解析和语义检索
  */
 
@@ -219,6 +219,9 @@
                 window.Logger?.warn(`Jina AI未配置或已禁用，PDF解析将使用降级方案。API Key: ${apiKey ? '已配置' : '未配置'}`);
                 return `[PDF文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：请配置Jina AI API密钥以启用PDF内容解析。获取密钥: https://jina.ai/)`;
             }
+            if (window.LLMService?.isJinaReaderQuotaExceeded?.()) {
+                return `[PDF文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：Jina Reader 返回 402/403（计费或额度），已跳过解析。请在「设置 → Jina AI」更换密钥或访问 https://jina.ai/)`;
+            }
 
             try {
                 const apiKey = this.getJinaAIKey();
@@ -331,7 +334,10 @@
                 // 所有方法都失败
                 const errorText = await response?.text?.()?.catch(() => '') || '';
                 window.Logger?.error(`PDF解析API错误: status=${response?.status}, error=${errorText.substring(0, 200)}`);
-                if (response?.status === 401 || response?.status === 403) {
+                if (response?.status === 402) {
+                    window.LLMService?.noteJinaHttpStatus?.(402);
+                    throw new Error(`Jina AI 需付费或额度不足（402）。请登录 jina.ai 充值或更换 API 密钥。`);
+                } else if (response?.status === 401 || response?.status === 403) {
                     throw new Error(`Jina AI API密钥无效或已过期。请检查设置中的Jina AI API密钥配置。`);
                 } else if (response?.status === 429) {
                     throw new Error(`Jina AI API请求频率限制。请稍后重试。`);
@@ -352,6 +358,9 @@
             if (!this.isJinaAIAvailable()) {
                 window.Logger?.warn('Jina AI未配置或已禁用，Word文档解析将使用降级方案');
                 return `[Word文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：请配置Jina AI API密钥以启用Word文档内容解析。获取密钥: https://jina.ai/)`;
+            }
+            if (window.LLMService?.isJinaReaderQuotaExceeded?.()) {
+                return `[Word文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：Jina Reader 402/403 熔断中，已跳过解析。请更换密钥或充值)`;
             }
 
             try {
@@ -446,6 +455,9 @@
             if (!this.isJinaAIAvailable()) {
                 window.Logger?.warn('Jina AI未配置或已禁用，PPT解析将使用降级方案');
                 return `[PowerPoint文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：请配置Jina AI API密钥以启用PPT内容解析。获取密钥: https://jina.ai/)`;
+            }
+            if (window.LLMService?.isJinaReaderQuotaExceeded?.()) {
+                return `[PowerPoint文档: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：Jina Reader 402/403 熔断中，已跳过解析。请更换密钥或充值)`;
             }
 
             try {
@@ -543,6 +555,14 @@
                     return text;
                 } catch (e) {
                     return `[电子表格: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：请配置Jina AI API密钥以启用Excel内容解析。获取密钥: https://jina.ai/)`;
+                }
+            }
+            if (window.LLMService?.isJinaReaderQuotaExceeded?.()) {
+                try {
+                    const text = await this.readTextFile(file);
+                    return text;
+                } catch (e) {
+                    return `[电子表格: ${file.name}]\n文件大小: ${(file.size / 1024).toFixed(2)} KB\n\n(注意：Jina Reader 402/403 熔断中，已跳过解析。请更换密钥或充值)`;
                 }
             }
 
@@ -665,7 +685,7 @@
 
         // 解析图片（使用OCR或图片描述API）
         async parseImage(file) {
-            if (this.isJinaAIAvailable()) {
+            if (this.isJinaAIAvailable() && !window.LLMService?.isJinaReaderQuotaExceeded?.()) {
             try {
                 const apiKey = this.getJinaAIKey();
                 window.Logger?.info(`开始解析图片: ${file.name}`);
@@ -749,7 +769,10 @@
                 if (response) {
                     const errorText = await response.text().catch(() => '');
                     window.Logger?.error(`图片解析失败: status=${response.status}, error=${errorText.substring(0, 200)}`);
-                    if (response.status === 401 || response.status === 403) {
+                    if (response.status === 402) {
+                        window.LLMService?.noteJinaHttpStatus?.(402);
+                        throw new Error(`Jina AI 需付费或额度不足（402）`);
+                    } else if (response.status === 401 || response.status === 403) {
                         throw new Error(`Jina AI API密钥无效或已过期。请检查设置中的Jina AI API密钥配置。`);
                     } else if (response.status === 429) {
                         throw new Error(`Jina AI API请求频率限制。请稍后重试。`);
@@ -760,7 +783,7 @@
                 window.Logger?.warn(`Jina 图片解析失败，尝试 Tesseract.js OCR: ${error.message}`);
             }
             } else {
-                window.Logger?.info('Jina AI 未配置，直接使用 Tesseract.js OCR');
+                window.Logger?.info('Jina AI 未配置或 Reader 已熔断(402/403)，直接使用 Tesseract.js OCR');
             }
 
         // 降级方案：使用 Tesseract.js 客户端 OCR（无需 API，支持中英文）
@@ -865,6 +888,9 @@
                 window.Logger?.warn('Jina AI未配置或已禁用，URL解析将使用降级方案');
                 return `[网页: ${url}]\n\n(注意：请配置Jina AI API密钥以启用网页内容解析。获取密钥: https://jina.ai/)`;
             }
+            if (window.LLMService?.isJinaReaderQuotaExceeded?.()) {
+                return `[网页: ${url}]\n\n(注意：Jina Reader 402/403 熔断中。请更换密钥或充值后再试)`;
+            }
 
             try {
                 const apiKey = this.getJinaAIKey();
@@ -884,7 +910,10 @@
                 
                 if (!response.ok) {
                     const errorText = await response.text().catch(() => '');
-                    if (response.status === 401 || response.status === 403) {
+                    if (response.status === 402) {
+                        window.LLMService?.noteJinaHttpStatus?.(402);
+                        throw new Error(`Jina AI 需付费或额度不足（402）。请登录 jina.ai 充值或更换 API 密钥。`);
+                    } else if (response.status === 401 || response.status === 403) {
                         throw new Error(`Jina AI API密钥无效或已过期。请检查设置中的Jina AI API密钥配置。`);
                     } else if (response.status === 429) {
                         throw new Error(`Jina AI API请求频率限制。请稍后重试。`);
@@ -983,15 +1012,27 @@
         },
 
         extractKeywords(content, count = 10) {
-            // 简单的关键词提取（基于词频）
-            const words = content.toLowerCase()
+            const raw = String(content || '');
+            const freq = {};
+
+            // A 股代码 6 位数字（独立成词，便于与正文中的示例/说明匹配）
+            (raw.match(/\b\d{6}\b/g) || []).forEach(code => {
+                freq[code] = (freq[code] || 0) + 3;
+            });
+
+            // 中文：连续 2～8 字的片段（覆盖公司名、主题词；无空格分词时的主要手段）
+            const zhRuns = raw.match(/[\u4e00-\u9fa5]{2,8}/g) || [];
+            zhRuns.forEach(seg => {
+                freq[seg] = (freq[seg] || 0) + 2;
+            });
+
+            // 英文/数字词（空格分词）
+            const words = raw.toLowerCase()
                 .replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s]/g, ' ')
                 .split(/\s+/)
                 .filter(w => w.length > 1);
-            
-            const freq = {};
-            words.forEach(w => freq[w] = (freq[w] || 0) + 1);
-            
+            words.forEach(w => { freq[w] = (freq[w] || 0) + 1; });
+
             return Object.entries(freq)
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, count)
@@ -1340,9 +1381,21 @@
 
                 // 2. 检查是否有defaultContent（内置知识库内容）
                 if (rag.defaultContent) {
-                    // 对defaultContent进行简单的关键词匹配
-                    const queryKeywords = this.extractKeywords(query, 5);
-                    const contentKeywords = this.extractKeywords(rag.defaultContent, 20);
+                    // 绑定即注入：用于协议/方法论类知识库；避免中文问句与协议正文词面重合度过低导致永远 matchedRAGs=0
+                    if (rag.alwaysInject === true) {
+                        usageStats.matchedRAGs++;
+                        usageStats.builtinMatches++;
+                        usageStats.totalResults++;
+                        return {
+                            source: rag.name,
+                            type: 'builtin',
+                            content: rag.defaultContent,
+                            matchScore: 1
+                        };
+                    }
+                    // 对 defaultContent 进行关键词匹配（query 侧已做中文增强）
+                    const queryKeywords = this.extractKeywords(query, 12);
+                    const contentKeywords = this.extractKeywords(rag.defaultContent, 24);
                     const matchScore = this.calculateKeywordMatch(queryKeywords, contentKeywords);
                     
                     if (matchScore > 0.2) {
@@ -1406,7 +1459,7 @@
             const usedRagNames = matchedResults.map(r => r.source || r.rag?.name).filter(Boolean);
             
             // 记录使用统计
-            window.Logger?.info(`RAG查询完成:`, {
+            window.Logger?.info(`RAG查询完成（仅本地绑定的知识库，不含网络搜索）:`, {
                 query: query.substring(0, 50) + (query.length > 50 ? '...' : ''),
                 totalRAGs: usageStats.totalRAGs,
                 matchedRAGs: matchedCount,
@@ -1415,7 +1468,10 @@
                 externalMatches: usageStats.externalMatches,
                 totalResults: usageStats.totalResults,
                 contextLength: context.length,
-                duration: `${(endTime - startTime).toFixed(2)}ms`
+                duration: `${(endTime - startTime).toFixed(2)}ms`,
+                hint: matchedCount === 0
+                    ? '未命中：可上传相关文档到 RAG，或依赖已注入的网络搜索/模型知识'
+                    : undefined
             });
 
             // 更新使用统计（可选：用于分析）

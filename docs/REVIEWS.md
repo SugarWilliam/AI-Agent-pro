@@ -4,32 +4,45 @@
 
 ---
 
-## 一、v8.5.1 与远端对比（2026-03-15）
+## 〇、v8.6.0 发布评审（2026-03-15）
+
+| 项 | 结论 |
+|----|------|
+| **范围** | 版本号统一 **8.6.0**；量化幻方 **V4.0 黄金样例** 与 **KDI/期望/阶梯** 口径对齐；**v8.6.0 说明已并入 [RELEASES.md](RELEASES.md)** |
+| **逻辑与计算** | 样例内 **E[r]、E[r']** 与 **P_i、C、P₀** 一致；**类型 A/B 再归一化** 可执行；**S1/S2** 灵敏度分源 |
+| **衔接** | **决策链总览**与 **〇·8** 清单、管道自证一致 |
+| **建议** | 发布前按 `docs/RELEASE_READINESS.md` 执行 API Key 策略与本地抽查；打 tag **v8.6.0** |
+
+**详细变更**: [CHANGELOG.md](../CHANGELOG.md) **[8.6.0]** · [RELEASES.md — v8.6.0](RELEASES.md)
+
+---
+
+## 一、v8.5.3 与远端对比（2026-03-15）
 
 **对比基准**: origin/gh-pages  
-**当前分支**: gh-pages（含 v8.5.1 及量化幻方等增强）
+**当前分支**: gh-pages（含 v8.5.3 及量化幻方等增强）
 
 ### 1.1 变更概览
 
 | 类别 | 说明 |
 |------|------|
-| 版本统一 8.5.1 | app.js、index.html、js 模块头、release.sh、CHANGELOG、RELEASE_READINESS、DEPLOYMENT、唐宋文化设计、助手能力全集、DESIGN_A2A、review-test、README |
+| 版本统一 8.5.3 | app.js、index.html、js 模块头、release.sh、CHANGELOG、RELEASE_READINESS、DEPLOYMENT、唐宋文化设计、助手能力全集、DESIGN_A2A、review-test、README |
 | 量化幻方助手 | app.js systemPrompt + 技能/RAG、llm.js 注入当前日期与约束重申、DESIGN_QUANT_MAGIC_SQUARE.md |
 | 导出/下载仅报告 | ui.js formatAs*、events.js export*、对话 PDF 实现 |
 | 时效与禁止占位 | app.js【禁止与强制执行】、十 实时数据 强化、rag_snowball、skill_value_investment |
-| 发布与文档 | RELEASES.md（合并发布说明）、CHANGELOG [8.5.1] 条目 |
+| 发布与文档 | RELEASES.md（合并发布说明）、CHANGELOG [8.5.3] 条目 |
 
 ### 1.2 评审结论
 
 | 维度 | 状态 | 说明 |
 |------|------|------|
-| 版本一致性 | ✅ | 本地已统一为 8.5.1，与 CHANGELOG/RELEASES 一致 |
+| 版本一致性 | ✅ | 本地已统一为 8.5.3，与 CHANGELOG/RELEASES 一致 |
 | 量化幻方约束 | ✅ | 禁止占位/模拟、强制实时数据在多处强化 |
 | 导出与下载 | ✅ | 单条与对话导出均仅报告、不含思考；PDF 对话导出已实现 |
 | 时效 | ✅ | 当前日期注入 + systemPrompt 时效与报告时间要求 |
 | 文档覆盖 | ✅ | 设计、发布、部署、就绪清单、能力全集、唐宋文化已更新或合并 |
 
-**建议**：推送前在本地做一次功能抽查（量化幻方、导出 MD/HTML/PDF、单条下载），确认无误后再推送到 origin/gh-pages 并视需打 tag v8.5.1。
+**建议**：推送前在本地做一次功能抽查（量化幻方、导出 MD/HTML/PDF、单条下载），确认无误后再推送到 origin/gh-pages 并视需打 tag v8.5.3。
 
 ---
 
@@ -64,4 +77,4 @@
 
 ---
 
-**文档版本**: v8.5.1 · 最后更新: 2026-03-15
+**文档版本**: v8.6.4 · 最后更新: 2026-03-27
