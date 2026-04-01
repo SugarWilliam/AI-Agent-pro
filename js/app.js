@@ -130,6 +130,7 @@
         'glm-4-flash': '052dd25c55a54c3f8a4e087230b7e43c.V3pCoVwBQsxhKqVe',
         'deepseek-chat': 'sk-a135315b7bf248c1978dabca70819936',
         'deepseek-reasoner': 'sk-a135315b7bf248c1978dabca70819936',
+        'kimi-latest': 'sk-itzMPosNEz0HEvB1nqcEhWrEDN8LSdWOunpEkHhQ5DpBxInG',
         'qwen-max': 'sk-9eeb995cf93d441aa74869af1f2decd0',
         'jina-ai': '' // Jina 须在「设置 → Jina AI」中自行配置，勿将密钥提交到公开仓库
     };
@@ -200,12 +201,14 @@
         'kimi-latest': {
             id: 'kimi-latest',
             name: 'Kimi',
-            description: 'Moonshot AI',
+            description: 'Kimi K2.5（Moonshot）',
             provider: 'kimi',
+            /** Moonshot 侧模型名，见 https://platform.moonshot.ai 文档 */
+            apiModelName: 'kimi-k2.5',
             url: 'https://api.moonshot.cn/v1/chat/completions',
-            apiKey: '',
+            apiKey: DEFAULT_API_KEYS['kimi-latest'],
             maxTokens: 4096,
-            temperature: 0.7,
+            temperature: 1,
             isBuiltin: true,
             outputFormats: ['markdown', 'text', 'json']
         },
@@ -3682,6 +3685,7 @@ L3 签订（cum>70%）：季度监控；跌破 70% 或经理冲击则降级。L2
                 loadState(),
                 sleep(5000).then(() => window.Logger?.warn?.('loadState 超时，使用默认状态'))
             ]);
+            syncBuiltinModelFields();
             // loadState 完成后应用已加载的配置（theme/language 等）
             applyTheme(AppState.settings.theme);
             applyLanguage(AppState.settings.language);
@@ -3778,6 +3782,18 @@ L3 签订（cum>70%）：季度监控；跌破 70% 或经理冲击则降级。L2
         } catch (e) {
             window.Logger?.warn?.('加载自定义模型失败:', e?.message);
         }
+    }
+
+    /** 将 BUILTIN_MODELS 中的 apiModelName/url 等同步到已加载的 AppState，避免旧缓存脚本与旧存档不一致 */
+    function syncBuiltinModelFields() {
+        if (!AppState.models) return;
+        Object.keys(BUILTIN_MODELS).forEach(id => {
+            const b = BUILTIN_MODELS[id];
+            const cur = AppState.models[id];
+            if (!b || !b.isBuiltin || !cur) return;
+            if (b.apiModelName !== undefined) cur.apiModelName = b.apiModelName;
+            if (b.url !== undefined) cur.url = b.url;
+        });
     }
 
     function initResources() {

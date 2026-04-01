@@ -722,25 +722,49 @@ ${rows}
             }
 
             // 构建消息列表，超长时保留最近消息防止上下文截断导致 API 报错
-            const MAX_CONTEXT_CHARS = 80000;  // 对话历史总字符上限（预留 systemPrompt 与响应空间）
+            // Moonshot：v1-8k 总 token 仅 8192；kimi-k2.5 等为长上下文（约 256K tokens）
+            let maxContextChars = 80000;
+            if (model.provider === 'kimi') {
+                const mn = (model.apiModelName || 'kimi-k2.5').toLowerCase();
+                // 勿用 .includes('32k') 等模糊匹配，避免将来模型名含类似子串误判
+                if (mn === 'moonshot-v1-8k' || /^moonshot-v1-8k$/i.test(mn)) maxContextChars = 14000;
+                else if (mn.includes('moonshot-v1-32k')) maxContextChars = 52000;
+                else if (mn.includes('moonshot-v1-128k')) maxContextChars = 200000;
+                else maxContextChars = 400000;
+            }
             const validMessages = messages.filter(msg => msg.role === 'user' || msg.role === 'assistant');
             let toSend = validMessages.map(msg => ({ role: msg.role, content: msg.content || '' }));
-            let totalLen = systemPrompt.length + toSend.reduce((s, m) => s + (m.content?.length || 0), 0);
-            if (totalLen > MAX_CONTEXT_CHARS && toSend.length > 1) {
-                const reserve = MAX_CONTEXT_CHARS - systemPrompt.length - 2000;
-                let kept = [];
-                let len = 0;
-                for (let i = toSend.length - 1; i >= 0; i--) {
-                    const l = (toSend[i].content?.length || 0);
-                    if (len + l > reserve && kept.length > 0) break;
-                    kept.unshift(toSend[i]);
-                    len += l;
+            let sysPrompt = systemPrompt;
+            let totalLen = sysPrompt.length + toSend.reduce((s, m) => s + (m.content?.length || 0), 0);
+            if (totalLen > maxContextChars) {
+                const minTail = 2000;
+                if (sysPrompt.length > maxContextChars - minTail) {
+                    sysPrompt = sysPrompt.slice(-(maxContextChars - minTail));
+                    window.Logger?.warn?.(`上下文截断(${model.provider || 'llm'}): 系统提示过长，已保留末尾 ${sysPrompt.length} 字符`);
                 }
-                toSend = kept;
-                window.Logger?.info?.(`上下文截断: 保留最近 ${toSend.length}/${validMessages.length} 条消息，约 ${len} 字符`);
+                totalLen = sysPrompt.length + toSend.reduce((s, m) => s + (m.content?.length || 0), 0);
+                const reserve = Math.max(0, maxContextChars - sysPrompt.length - 2000);
+                if (totalLen > maxContextChars && toSend.length > 1) {
+                    let kept = [];
+                    let len = 0;
+                    for (let i = toSend.length - 1; i >= 0; i--) {
+                        const l = (toSend[i].content?.length || 0);
+                        if (len + l > reserve && kept.length > 0) break;
+                        kept.unshift(toSend[i]);
+                        len += l;
+                    }
+                    toSend = kept;
+                    window.Logger?.info?.(`上下文截断(${model.provider || 'llm'}): 保留最近 ${toSend.length}/${validMessages.length} 条消息，约 ${len} 字符`);
+                } else if (totalLen > maxContextChars && toSend.length === 1) {
+                    const c = toSend[0].content;
+                    if (c.length > reserve) {
+                        toSend = [{ ...toSend[0], content: c.slice(-reserve) }];
+                        window.Logger?.info?.(`上下文截断(${model.provider || 'llm'}): 单条消息过长，保留末尾 ${reserve} 字符`);
+                    }
+                }
             }
             const formattedMessages = [
-                { role: 'system', content: systemPrompt },
+                { role: 'system', content: sysPrompt },
                 ...toSend
             ];
 
@@ -930,24 +954,77 @@ ${rows}
             return { content, thinking: '' };
         },
 
+        /** 8k 模型或网关仍按 8k 计时的兜底：总字符上限，保留 system 尾部与最近对话 */
+        trimKimiMessagesFor8kLegacy(messages, maxTotalChars) {
+            if (!Array.isArray(messages) || messages.length === 0) return messages;
+            const hasSystem = messages[0]?.role === 'system';
+            const sys = hasSystem ? messages[0] : { role: 'system', content: '' };
+            const rest = hasSystem ? messages.slice(1) : [...messages];
+            let budget = maxTotalChars;
+            let sysContent = String(sys.content || '');
+            const maxSys = Math.min(sysContent.length, Math.floor(maxTotalChars * 0.35));
+            if (sysContent.length > maxSys) {
+                sysContent = sysContent.slice(-maxSys);
+            }
+            budget -= sysContent.length;
+            const kept = [];
+            for (let i = rest.length - 1; i >= 0; i--) {
+                if (budget <= 0) break;
+                const c = String(rest[i].content || '');
+                if (c.length <= budget) {
+                    kept.unshift(rest[i]);
+                    budget -= c.length;
+                } else {
+                    kept.unshift({ ...rest[i], content: c.slice(-budget) });
+                    budget = 0;
+                }
+            }
+            return [{ role: 'system', content: sysContent }, ...kept];
+        },
+
         async callKimiStream(messages, model, onStream) {
-            const response = await fetch(model.url, {
+            const moonshotModel = 'kimi-k2.5';
+            window.Logger?.debug?.(`[Kimi] POST model=${moonshotModel} messages=${messages?.length || 0}`);
+            const maxTokFirst = Math.min(model.maxTokens || 4096, 4096);
+            // kimi-k2.5 等：Moonshot 要求 temperature 仅能为 1（非 1 会 400 invalid temperature）
+            const kimiTemperature = 1;
+            const buildBody = (msgs, maxTok) => JSON.stringify({
+                model: moonshotModel,
+                messages: msgs,
+                stream: true,
+                temperature: kimiTemperature,
+                max_tokens: maxTok
+            });
+            let response = await fetch(model.url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${model.apiKey}`
                 },
-                body: JSON.stringify({
-                    model: 'moonshot-v1-8k',
-                    messages: messages,
-                    stream: true,
-                    temperature: model.temperature || 0.7
-                })
+                body: buildBody(messages, maxTokFirst)
             });
-
             if (!response.ok) {
-                const error = await response.text();
-                throw new Error(`Kimi API错误: ${response.status} - ${error}`);
+                const errText = await response.text();
+                const is8kOverflow = response.status === 400 && /8192|exceeded model token limit|token limit:\s*8192/i.test(errText);
+                if (is8kOverflow) {
+                    window.Logger?.warn?.('[Kimi] 检测到 8192 上下文限制（多为旧脚本仍发 v1-8k 或网关按 8k 计费），已截断并重试');
+                    const trimmed = this.trimKimiMessagesFor8kLegacy(messages, 12000);
+                    const maxTokRetry = Math.min(2048, model.maxTokens || 2048);
+                    response = await fetch(model.url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${model.apiKey}`
+                        },
+                        body: buildBody(trimmed, maxTokRetry)
+                    });
+                    if (!response.ok) {
+                        const err2 = await response.text();
+                        throw new Error(`Kimi API错误: ${response.status} - ${err2}`);
+                    }
+                } else {
+                    throw new Error(`Kimi API错误: ${response.status} - ${errText}`);
+                }
             }
 
             const reader = response.body.getReader();
